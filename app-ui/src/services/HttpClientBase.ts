@@ -7,9 +7,7 @@ export abstract class HttpClientBase {
     }
   
     protected getBaseUrlFromConfig(): string {
-      // Read the base URL from a config file or environment variable
-      return "http://neurocorp.k8s:32698";
-      //return "http://localhost:5245";
+      return process.env.VUE_APP_API_BASE_URL || "http://localhost:5245";
     }
   
     protected async get<T>(url: string): Promise<T> {
@@ -17,9 +15,7 @@ export abstract class HttpClientBase {
       const response = await fetch(fullUrl, {
         method: "GET",
         headers: {
-          "Content-Type": "application/json",
-          "origin": this.getBaseUrlFromConfig(), // or the appropriate origin
-          "x-requested-with": "XMLHttpRequest"
+          "Content-Type": "application/json"
         }
       });
       if (!response.ok) {
