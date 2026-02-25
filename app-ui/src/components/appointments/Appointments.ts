@@ -22,9 +22,7 @@ export default defineComponent({
 
     const fetchAppointments = async (date: string) => {
       try {
-        console.log(`Selected date: ${date}`);
         const appointments = await sessionsHttpClient.getSessions(date);
-        console.log(`Fetched appointments:`, appointments);
 
         // Filter AM appointments
         const amApps = appointments.filter((app: Appointment) => determineTime(app) === 'AM');
