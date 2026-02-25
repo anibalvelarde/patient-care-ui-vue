@@ -1,11 +1,9 @@
 // services/HttpClientBase.ts
 export abstract class HttpClientBase {
     protected baseUrl: string;
-    private proxyUrl: string;
-  
+
     constructor() {
       this.baseUrl = this.getBaseUrlFromConfig();
-      this.proxyUrl = 'https://cors-anywhere.herokuapp.com/';
     }
   
     protected getBaseUrlFromConfig(): string {
@@ -15,7 +13,6 @@ export abstract class HttpClientBase {
     }
   
     protected async get<T>(url: string): Promise<T> {
-      // const fullUrl = this.proxyUrl + this.baseUrl + url;
       const fullUrl = this.baseUrl + url;
       const response = await fetch(fullUrl, {
         method: "GET",
