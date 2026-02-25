@@ -1,29 +1,27 @@
 {
-    "compilerOptions": {
-      "target": "esnext",
-      "module": "esnext",
-      "strict": true,
-      "jsx": "preserve",
-      "importHelpers": true,
-      "moduleResolution": "node",
-      "experimentalDecorators": true,
-      "esModuleInterop": true,
-      "skipLibCheck": true,
-      "allowSyntheticDefaultImports": true,
-      "sourceMap": true,
-      "baseUrl": ".",
-      "paths": {
-        "@/*": ["src/*"]
-      },
-      "lib": ["esnext", "dom"]
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "jsx": "preserve",
+    "importHelpers": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
     },
-    "include": [
-      "src/**/*.ts",
-      "src/**/*.tsx",
-      "src/**/*.vue",
-      "tests/**/*.ts",
-      "tests/**/*.tsx"
-    ],
-    "exclude": ["node_modules"]
-  }
-  
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"]
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue",
+    "vite.config.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

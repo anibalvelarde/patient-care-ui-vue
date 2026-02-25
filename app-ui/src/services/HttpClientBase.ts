@@ -7,7 +7,7 @@ export abstract class HttpClientBase {
     }
   
     protected getBaseUrlFromConfig(): string {
-      return process.env.VUE_APP_API_BASE_URL || "http://localhost:5245";
+      return import.meta.env.VITE_API_BASE_URL || "http://localhost:5245";
     }
   
     protected async get<T>(url: string): Promise<T> {

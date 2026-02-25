@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: [
     "./index.html",
     "./src/**/*.{vue,js,ts,jsx,tsx}",
@@ -10,18 +10,17 @@ module.exports = {
         sans: ['Poppins', 'sans-serif'],
       },
       colors: {
-        primary: '#f78da7', // Light pink
-        secondary: '#ffcccb', // Light coral
-        accent: '#ffd700', // Gold
-        neutral: '#e0f7fa', // Light cyan
-        base: '#ffffff', // White
-        info: '#0288d1', // Light blue
-        success: '#8bc34a', // Light green
-        warning: '#ffeb3b', // Yellow
-        danger: '#f44336', // Red
+        primary: '#f78da7',
+        secondary: '#ffcccb',
+        accent: '#ffd700',
+        neutral: '#e0f7fa',
+        base: '#ffffff',
+        info: '#0288d1',
+        success: '#8bc34a',
+        warning: '#ffeb3b',
+        danger: '#f44336',
       },
     },
   },
   plugins: [],
 }
-
