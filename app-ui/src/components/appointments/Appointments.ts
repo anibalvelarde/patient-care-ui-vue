@@ -35,7 +35,7 @@ export default defineComponent({
         amAppointments.value = amApps;
         pmAppointments.value = pmApps;
       } catch (error) {
-        console.error("Error fetching appointments:", error);
+        console.error("Error fetching appointments.");
       }
     };
 
