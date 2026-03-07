@@ -14,6 +14,6 @@ export class SessionsHttpClient extends HttpClientBase {
 
   private formatDateForApi(date: string): string {
     const [month, day, year] = date.split('/');
-    return `${year}-${month}-${day}`;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   }
 }
