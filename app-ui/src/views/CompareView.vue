@@ -63,6 +63,24 @@
             </span>
           </div>
         </router-link>
+        <!-- Option 03 -->
+        <router-link
+          to="/option-03"
+          class="group block bg-white rounded-xl border-2 border-slate-300 hover:border-cyan-400 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden"
+        >
+          <div class="bg-gradient-to-br from-slate-900 to-slate-700 px-6 py-10 text-center">
+            <span class="text-4xl">🌙</span>
+          </div>
+          <div class="p-6">
+            <h2 class="text-lg font-semibold text-gray-800 group-hover:text-cyan-600">Option 03: Modern Dark</h2>
+            <p class="text-sm text-gray-500 mt-2">
+              Dark mode with cyan/emerald accents, data-dense table layout, top navigation bar.
+            </p>
+            <span class="inline-block mt-4 text-sm font-medium text-slate-400 group-hover:text-cyan-600">
+              View &rarr;
+            </span>
+          </div>
+        </router-link>
       </div>
     </main>
   </div>
