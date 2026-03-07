@@ -2,10 +2,17 @@
   <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden h-full">
     <!-- Header -->
     <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-      <h2 class="text-sm font-semibold text-gray-700">
-        <font-awesome-icon :icon="['fas', 'calendar']" class="mr-1.5 text-violet-500" />
-        Calendar
-      </h2>
+      <div class="flex items-center gap-2">
+        <h2 class="text-sm font-semibold text-gray-700">
+          <font-awesome-icon :icon="['fas', 'calendar']" class="mr-1.5 text-violet-500" />
+          Calendar
+        </h2>
+        <JumpToDate
+          buttonClass="text-violet-600 bg-violet-50 hover:bg-violet-100 border border-violet-200"
+          jumpButtonClass="bg-violet-600 text-white hover:bg-violet-700"
+          @jump="onJump"
+        />
+      </div>
       <div class="flex items-center gap-1">
         <button
           @click="prevMonth"
@@ -106,12 +113,13 @@ import { defineComponent, ref, computed, onMounted } from 'vue';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faCalendar } from '@fortawesome/free-solid-svg-icons';
+import JumpToDate from '../shared/JumpToDate.vue';
 
 library.add(faCalendar);
 
 export default defineComponent({
   name: 'O2Calendar',
-  components: { FontAwesomeIcon },
+  components: { FontAwesomeIcon, JumpToDate },
   props: {
     selectedDate: {
       type: String,
@@ -207,11 +215,20 @@ export default defineComponent({
       }
     };
 
+    const onJump = (date: string) => {
+      const d = new Date(date);
+      viewMonth.value = d.getMonth();
+      viewYear.value = d.getFullYear();
+      weekDays.value = getWeekDays(d);
+      emit('date-selected', date);
+    };
+
     onMounted(() => {
       emit('date-selected', props.selectedDate);
     });
 
     return {
+      onJump,
       currentMonthLabel,
       monthStartOffset,
       monthDays,

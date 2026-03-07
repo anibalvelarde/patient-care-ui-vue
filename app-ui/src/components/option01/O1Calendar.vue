@@ -2,7 +2,13 @@
   <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
     <!-- Calendar Header -->
     <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-      <h2 class="text-sm font-semibold text-slate-700">Schedule</h2>
+      <div class="flex items-center gap-2">
+        <h2 class="text-sm font-semibold text-slate-700">Schedule</h2>
+        <JumpToDate
+          buttonClass="text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200"
+          @jump="onJump"
+        />
+      </div>
       <div class="flex items-center gap-1">
         <button
           @click="prevMonth"
@@ -80,9 +86,11 @@
 
 <script lang="ts">
 import { defineComponent, ref, computed, onMounted } from 'vue';
+import JumpToDate from '../shared/JumpToDate.vue';
 
 export default defineComponent({
   name: 'O1Calendar',
+  components: { JumpToDate },
   props: {
     selectedDate: {
       type: String,
@@ -160,11 +168,18 @@ export default defineComponent({
       days.value = getWeekDays(start);
     };
 
+    const onJump = (date: string) => {
+      const d = new Date(date);
+      days.value = getWeekDays(d);
+      emit('date-selected', date);
+    };
+
     onMounted(() => {
       emit('date-selected', props.selectedDate);
     });
 
     return {
+      onJump,
       days,
       currentMonthLabel,
       weekRangeLabel,

@@ -38,6 +38,11 @@
         >
           Today
         </button>
+        <JumpToDate
+          buttonClass="text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200"
+          jumpButtonClass="bg-indigo-600 text-white hover:bg-indigo-700"
+          @jump="(date: string) => $emit('date-selected', date)"
+        />
       </div>
     </div>
 
@@ -66,12 +71,13 @@ import { defineComponent } from 'vue';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import JumpToDate from '../shared/JumpToDate.vue';
 
 library.add(faArrowLeft);
 
 export default defineComponent({
   name: 'O4TopBar',
-  components: { FontAwesomeIcon },
+  components: { FontAwesomeIcon, JumpToDate },
   props: {
     selectedDate: {
       type: String,

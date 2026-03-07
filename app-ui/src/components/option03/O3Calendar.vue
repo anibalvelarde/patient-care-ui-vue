@@ -2,10 +2,21 @@
   <div class="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden h-full">
     <!-- Header -->
     <div class="px-4 py-3 border-b border-slate-700/50 flex items-center justify-between">
-      <h2 class="text-sm font-semibold text-slate-200">
-        <font-awesome-icon :icon="['fas', 'calendar']" class="mr-1.5 text-cyan-400" />
-        Calendar
-      </h2>
+      <div class="flex items-center gap-2">
+        <h2 class="text-sm font-semibold text-slate-200">
+          <font-awesome-icon :icon="['fas', 'calendar']" class="mr-1.5 text-cyan-400" />
+          Calendar
+        </h2>
+        <JumpToDate
+          buttonClass="text-cyan-400 bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30"
+          panelClass="bg-slate-800 border-slate-600"
+          labelClass="text-slate-500"
+          selectClass="bg-slate-700 border-slate-600 text-slate-200 focus:ring-cyan-400"
+          jumpButtonClass="bg-cyan-500 text-white hover:bg-cyan-600"
+          cancelButtonClass="text-slate-400 hover:bg-slate-700"
+          @jump="onJump"
+        />
+      </div>
       <div class="flex items-center gap-1">
         <button
           @click="prevMonth"
@@ -104,12 +115,13 @@ import { defineComponent, ref, computed, onMounted } from 'vue';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faCalendar } from '@fortawesome/free-solid-svg-icons';
+import JumpToDate from '../shared/JumpToDate.vue';
 
 library.add(faCalendar);
 
 export default defineComponent({
   name: 'O3Calendar',
-  components: { FontAwesomeIcon },
+  components: { FontAwesomeIcon, JumpToDate },
   props: {
     selectedDate: {
       type: String,
@@ -202,11 +214,20 @@ export default defineComponent({
       }
     };
 
+    const onJump = (date: string) => {
+      const d = new Date(date);
+      viewMonth.value = d.getMonth();
+      viewYear.value = d.getFullYear();
+      weekDays.value = getWeekDays(d);
+      emit('date-selected', date);
+    };
+
     onMounted(() => {
       emit('date-selected', props.selectedDate);
     });
 
     return {
+      onJump,
       currentMonthLabel,
       monthStartOffset,
       monthDays,
