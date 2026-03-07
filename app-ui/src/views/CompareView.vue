@@ -81,6 +81,44 @@
             </span>
           </div>
         </router-link>
+
+        <!-- Option 04 -->
+        <router-link
+          to="/option-04"
+          class="group block bg-white rounded-xl border-2 border-indigo-200 hover:border-indigo-400 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden"
+        >
+          <div class="bg-gradient-to-br from-indigo-500 to-purple-600 px-6 py-10 text-center">
+            <span class="text-4xl">📋</span>
+          </div>
+          <div class="p-6">
+            <h2 class="text-lg font-semibold text-gray-800 group-hover:text-indigo-700">Option 04: Kanban Board</h2>
+            <p class="text-sm text-gray-500 mt-2">
+              Status-first swim lanes (Upcoming, Completed, Past Due). Card-based, like a Trello board for appointments.
+            </p>
+            <span class="inline-block mt-4 text-sm font-medium text-indigo-400 group-hover:text-indigo-600">
+              View &rarr;
+            </span>
+          </div>
+        </router-link>
+
+        <!-- Option 05 -->
+        <router-link
+          to="/option-05"
+          class="group block bg-white rounded-xl border-2 border-rose-200 hover:border-rose-400 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden"
+        >
+          <div class="bg-gradient-to-br from-rose-500 to-orange-500 px-6 py-10 text-center">
+            <span class="text-4xl">🖥️</span>
+          </div>
+          <div class="p-6">
+            <h2 class="text-lg font-semibold text-gray-800 group-hover:text-rose-700">Option 05: Command Center</h2>
+            <p class="text-sm text-gray-500 mt-2">
+              Everything visible at once. Calendar, AM table, PM table side-by-side. Alert strip at bottom. No scrolling.
+            </p>
+            <span class="inline-block mt-4 text-sm font-medium text-rose-400 group-hover:text-rose-600">
+              View &rarr;
+            </span>
+          </div>
+        </router-link>
       </div>
     </main>
   </div>

@@ -28,6 +28,16 @@ const router = createRouter({
       name: 'option-03',
       component: () => import('../views/Option03View.vue'),
     },
+    {
+      path: '/option-04',
+      name: 'option-04',
+      component: () => import('../views/Option04View.vue'),
+    },
+    {
+      path: '/option-05',
+      name: 'option-05',
+      component: () => import('../views/Option05View.vue'),
+    },
   ],
 });
 
