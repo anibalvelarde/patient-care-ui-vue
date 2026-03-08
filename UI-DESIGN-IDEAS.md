@@ -14,6 +14,8 @@ Reference document for proposed UI design directions. Each option represents a s
 | 03 - Modern Dark | `/option-03` | Cyan/emerald on slate-900 | Top command bar | Dark mode, data-dense columnar table |
 | 04 - Kanban Board | `/option-04` | Indigo/purple | Slim top bar + date nav | Status swim lanes (Upcoming/Completed/Past Due), card-based |
 | 05 - Command Center | `/option-05` | Rose/orange | Compact top bar | Fixed grid: Calendar + AM table + PM table, alert strip, no scrolling |
+| 06 - Split Panel | `/option-06` | Slate/blue-gray | Top bar + collapsible calendar | Outlook-style master-detail: compact list left, full details right |
+| 07 - Warm Minimal | `/option-07` | Cream/amber/stone | Warm header + week pills | Large single-column cards, no tables, calm therapy-center feel |
 
 ---
 
@@ -32,13 +34,13 @@ Reference document for proposed UI design directions. Each option represents a s
 - Inline date nav in top bar (prev/next day + Today button)
 - Summary strip shows counts by status
 
-### Option C: Split Panel / Master-Detail
+### Option C: Split Panel / Master-Detail --- BUILT as Option 06
 - Left panel shows a **compact appointment list** (just name + time + status dot)
 - Clicking a row expands a **detail panel** on the right with full info: therapy type, therapist, payment breakdown, notes
 - Calendar lives in a collapsible top section
 - Feels like an email client (Outlook/Gmail style) — familiar pattern for office staff
 
-### Option D: Warm Minimal
+### Option D: Warm Minimal --- BUILT as Option 07
 - Cream/sand/stone palette, generous whitespace, large rounded elements
 - **Horizontal pill tabs** for weekday selection (Mon-Sat as big rounded buttons)
 - Appointments as **large cards** in a single column — each card shows everything at a glance, no table at all

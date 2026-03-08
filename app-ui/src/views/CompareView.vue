@@ -119,6 +119,43 @@
             </span>
           </div>
         </router-link>
+        <!-- Option 06 -->
+        <router-link
+          to="/option-06"
+          class="group block bg-white rounded-xl border-2 border-slate-200 hover:border-blue-400 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden"
+        >
+          <div class="bg-gradient-to-br from-slate-600 to-blue-600 px-6 py-10 text-center">
+            <span class="text-4xl">📧</span>
+          </div>
+          <div class="p-6">
+            <h2 class="text-lg font-semibold text-gray-800 group-hover:text-blue-700">Option 06: Split Panel</h2>
+            <p class="text-sm text-gray-500 mt-2">
+              Outlook-style master-detail layout. Compact list on the left, full details on the right. Collapsible calendar.
+            </p>
+            <span class="inline-block mt-4 text-sm font-medium text-slate-400 group-hover:text-blue-600">
+              View &rarr;
+            </span>
+          </div>
+        </router-link>
+
+        <!-- Option 07 -->
+        <router-link
+          to="/option-07"
+          class="group block bg-white rounded-xl border-2 border-amber-200 hover:border-amber-400 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden"
+        >
+          <div class="bg-gradient-to-br from-amber-400 to-orange-500 px-6 py-10 text-center">
+            <span class="text-4xl">🌿</span>
+          </div>
+          <div class="p-6">
+            <h2 class="text-lg font-semibold text-gray-800 group-hover:text-amber-700">Option 07: Warm Minimal</h2>
+            <p class="text-sm text-gray-500 mt-2">
+              Calm cream/sand palette with large cards. Pill-style weekday selector. No tables &mdash; everything at a glance.
+            </p>
+            <span class="inline-block mt-4 text-sm font-medium text-amber-400 group-hover:text-amber-600">
+              View &rarr;
+            </span>
+          </div>
+        </router-link>
       </div>
     </main>
   </div>
