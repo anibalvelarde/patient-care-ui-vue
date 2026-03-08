@@ -19,6 +19,14 @@ export default {
         success: '#8bc34a',
         warning: '#ffeb3b',
         danger: '#f44336',
+        // Option 01: Medical Blue/Teal
+        medical: {
+          50: '#f0f9ff',
+          100: '#e0f2fe',
+          500: '#0ea5e9',
+          600: '#0284c7',
+          700: '#0369a1',
+        },
       },
     },
   },

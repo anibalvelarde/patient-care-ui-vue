@@ -1,0 +1,91 @@
+<template>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div
+      v-for="stat in stats"
+      :key="stat.label"
+      :class="[
+        'bg-white rounded-xl border px-5 py-4 flex items-center gap-4',
+        stat.borderClass,
+      ]"
+    >
+      <div :class="['w-10 h-10 rounded-lg flex items-center justify-center', stat.iconBg]">
+        <font-awesome-icon :icon="['fas', stat.icon]" :class="stat.iconColor" />
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-gray-800">{{ stat.value }}</p>
+        <p class="text-xs text-gray-400">{{ stat.label }}</p>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script lang="ts">
+import { defineComponent, computed, PropType } from 'vue';
+import { Appointment } from '../../interfaces/Appointment';
+import { library } from '@fortawesome/fontawesome-svg-core';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import {
+  faCalendarDay,
+  faHourglassHalf,
+  faExclamationTriangle,
+  faCheckCircle,
+} from '@fortawesome/free-solid-svg-icons';
+
+library.add(faCalendarDay, faHourglassHalf, faExclamationTriangle, faCheckCircle);
+
+export default defineComponent({
+  name: 'O2StatsBar',
+  components: { FontAwesomeIcon },
+  props: {
+    appointments: {
+      type: Array as PropType<Appointment[]>,
+      required: true,
+    },
+  },
+  setup(props) {
+    const stats = computed(() => {
+      const total = props.appointments.length;
+      const paid = props.appointments.filter((a) => a.isPaidOff).length;
+      const pastDue = props.appointments.filter((a) => a.isPastDue).length;
+      const pending = total - paid - pastDue;
+
+      return [
+        {
+          label: "Today's Appointments",
+          value: total,
+          icon: 'calendar-day',
+          iconBg: 'bg-violet-100',
+          iconColor: 'text-violet-600',
+          borderClass: 'border-gray-200',
+        },
+        {
+          label: 'Paid Off',
+          value: paid,
+          icon: 'check-circle',
+          iconBg: 'bg-green-100',
+          iconColor: 'text-green-600',
+          borderClass: 'border-gray-200',
+        },
+        {
+          label: 'Pending Payment',
+          value: pending < 0 ? 0 : pending,
+          icon: 'hourglass-half',
+          iconBg: 'bg-amber-100',
+          iconColor: 'text-amber-600',
+          borderClass: 'border-gray-200',
+        },
+        {
+          label: 'Past Due',
+          value: pastDue,
+          icon: 'exclamation-triangle',
+          iconBg: 'bg-red-100',
+          iconColor: 'text-red-600',
+          borderClass: pastDue > 0 ? 'border-red-200' : 'border-gray-200',
+        },
+      ];
+    });
+
+    return { stats };
+  },
+});
+</script>
