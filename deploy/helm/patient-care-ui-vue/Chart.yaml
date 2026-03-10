@@ -1,0 +1,6 @@
+apiVersion: v2
+name: patient-care-ui-vue
+description: Neurocorp Patient Care UI — Vue 3 SPA served by Nginx
+type: application
+version: 1.0.0
+appVersion: "1.0.0"

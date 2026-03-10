@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "patient-care-ui-vue.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "patient-care-ui-vue.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "patient-care-ui-vue.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "patient-care-ui-vue.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: VITE_API_BASE_URL
+              value: {{ .Values.apiBaseUrl | quote }}
+          ports:
+            - containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          {{- if .Values.healthChecks.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.healthChecks.path }}
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: {{ .Values.healthChecks.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthChecks.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.healthChecks.path }}
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: {{ .Values.healthChecks.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthChecks.periodSeconds }}
+          {{- end }}

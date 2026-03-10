@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "patient-care-ui-vue.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "patient-care-ui-vue.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      nodePort: {{ .Values.service.nodePort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "patient-care-ui-vue.selectorLabels" . | nindent 4 }}
