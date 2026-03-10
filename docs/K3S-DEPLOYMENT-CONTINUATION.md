@@ -10,16 +10,16 @@ Dockerize and deploy the Vue 3 SPA (`patient-care-ui-vue`) to the local LAN K3s 
 
 | # | Question | Decision |
 |---|----------|----------|
-| 1 | **NodePort for SPA** | **40000** — UI apps use the 40000 range; REST APIs use the 30000 range (see ADR below) |
-| 2 | **API URL at runtime** | Sourced from `VITE_API_BASE_URL` in a `.env` file. **Build must fail if this var is absent or empty.** The `.env` file is used at Docker image build time to bake the URL into the SPA's static assets. |
+| 1 | **NodePort for SPA** | **31000** — UI apps use the 31000–31499 range; REST APIs use the 30000–30499 range (see ADR below) |
+| 2 | **API URL at runtime** | Sourced from `VITE_API_BASE_URL` environment variable, injected at container startup via entrypoint script. The Docker image is environment-agnostic. |
 | 3 | **Docker Hub image** | `anibalvelarde/patient-care-ui-vue` (same Docker Hub account as the API) |
 | 4 | **Namespace** | `nc-k3s` (same namespace as the API) |
 | 5 | **CI/CD** | GitHub Actions from the start (same pattern as the API repo's `.github/workflows/main.yaml`) |
 
 ## Port Range Convention (ADR)
 
-- **30000–30999** — REST API services (e.g., `patient-care-api` on 30000)
-- **40000–40999** — UI/SPA applications (e.g., `patient-care-ui-vue` on 40000)
+- **30000–30499** — REST API services (e.g., `patient-care-api` on 30000)
+- **31000–31499** — UI/SPA applications (e.g., `patient-care-ui-vue` on 31000)
 
 This convention should be documented in project docs and enforced in Helm `values.yaml` defaults.
 
@@ -67,9 +67,9 @@ deploy/helm/patient-care-api/
 
 ### 3. Helm Chart (`deploy/helm/patient-care-ui-vue/`)
 - `Chart.yaml` — chart metadata
-- `values.yaml` — image: `anibalvelarde/patient-care-ui-vue:latest`, service: NodePort 40000, namespace: `nc-k3s`
+- `values.yaml` — image: `anibalvelarde/patient-care-ui-vue:latest`, service: NodePort 31000, namespace: `nc-k3s`
 - `templates/deployment.yaml` — Deployment (nginx container, port 80)
-- `templates/service.yaml` — NodePort (80 → 80, nodePort 40000)
+- `templates/service.yaml` — NodePort (80 → 80, nodePort 31000)
 - `templates/namespace.yaml` — `nc-k3s` (same as API, idempotent)
 - `templates/_helpers.tpl` — Helm helpers
 - `templates/NOTES.txt` — Post-deploy access instructions
