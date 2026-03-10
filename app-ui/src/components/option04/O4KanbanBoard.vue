@@ -78,7 +78,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, watch, computed, onMounted, PropType } from 'vue';
+import { defineComponent, ref, watch, computed, onMounted } from 'vue';
 import { Appointment } from '../../interfaces/Appointment';
 import { SessionsHttpClient } from '../../services/SessionsHttpClient';
 import { library } from '@fortawesome/fontawesome-svg-core';
