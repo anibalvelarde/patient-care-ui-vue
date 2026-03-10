@@ -10,7 +10,7 @@ This guide covers setting up the `neurocorp` S3 bucket for static website hostin
 
 1. Go to **AWS Console → S3 → Create bucket**
 2. Bucket name: `neurocorp`
-3. Region: `us-east-1`
+3. Region: `us-east-2`
 4. **Uncheck** "Block all public access" and acknowledge the warning
 5. Leave all other defaults and click **Create bucket**
 
@@ -93,7 +93,7 @@ This guide covers setting up the `neurocorp` S3 bucket for static website hostin
 ### 1. Create the S3 Bucket
 
 ```bash
-aws s3 mb s3://neurocorp --region us-east-1
+aws s3 mb s3://neurocorp --region us-east-2
 ```
 
 ### 2. Enable Static Website Hosting
@@ -165,12 +165,12 @@ In your repo: **Settings → Secrets and variables → Actions**, update:
 |--------|-------|
 | `AWS_ACCESS_KEY_ID` | The Access Key ID from above |
 | `AWS_SECRET_ACCESS_KEY` | The Secret Access Key from above |
-| `AWS_REGION` | `us-east-1` (already set) |
+| `AWS_REGION` | `us-east-2` (already set) |
 
 ## Access the Site
 
 Once deployed, the SPA will be available at:
 
 ```
-http://neurocorp.s3-website-us-east-1.amazonaws.com
+http://neurocorp.s3-website.us-east-2.amazonaws.com/
 ```
