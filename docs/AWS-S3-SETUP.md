@@ -172,5 +172,5 @@ In your repo: **Settings → Secrets and variables → Actions**, update:
 Once deployed, the SPA will be available at:
 
 ```
-http://neurocorp.s3-website-us-east-2.amazonaws.com
+http://neurocorp.s3-website.us-east-2.amazonaws.com/
 ```
