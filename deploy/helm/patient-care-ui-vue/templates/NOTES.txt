@@ -1,0 +1,7 @@
+Neurocorp Patient Care UI has been deployed!
+
+Access the application at:
+  http://<NODE_IP>:{{ .Values.service.nodePort }}
+
+The SPA is configured to reach the API at the URL baked in during the Docker image build.
+To verify, check the browser's network tab for API calls to the configured VITE_API_BASE_URL.

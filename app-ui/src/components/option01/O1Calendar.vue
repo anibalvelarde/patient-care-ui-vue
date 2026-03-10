@@ -100,7 +100,6 @@ export default defineComponent({
   emits: ['date-selected'],
   setup(props, { emit }) {
     const today = new Date();
-    const baseDate = ref(new Date(today));
 
     const getWeekDays = (startDate: Date) => {
       const days = [];

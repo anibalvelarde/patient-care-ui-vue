@@ -32,7 +32,7 @@ export default defineComponent({
         // Assign filtered appointments to the respective ref arrays
         amAppointments.value = amApps;
         pmAppointments.value = pmApps;
-      } catch (error) {
+      } catch {
         console.error("Error fetching appointments.");
       }
     };
