@@ -53,12 +53,29 @@ const [first, ...middleParts] = (rest || '').split(' ');
 ## Verification Checklist
 
 - [x] `npx vue-tsc --noEmit` — type-check passes
-- [ ] `npm run dev` — dev server starts, navigate to `/patients`
-- [ ] Patient list loads from API
-- [ ] "Add Patient" opens form modal, submit creates via POST
-- [ ] Edit button opens pre-populated form, submit updates via PUT
-- [ ] Toggle active/inactive sends PUT with flipped `activeStatus`
+- [x] `npm run dev` — dev server starts, navigate to `/patients`
+- [x] Patient list loads from API
+- [x] "Add Patient" opens form modal, submit creates via POST
+- [x] Edit button opens pre-populated form, submit updates via PUT
+- [x] Toggle active/inactive sends PUT with flipped `activeStatus`
 - [ ] Search filters client-side by name, MRN, email, phone
 - [ ] Active/Inactive/All tabs filter correctly
 - [ ] Navbar "Patients" link highlighted, "Dashboard" navigates to `/`
 - [ ] Mobile responsive — table becomes cards on small screens
+
+## Where We Left Off (2026-03-12)
+
+**Status**: Patient CRUD is working end-to-end (list, add, edit verified manually).
+
+**Next up: Caretaker Management**
+
+Requirements captured:
+1. When adding/editing a patient, user should be able to associate a caretaker (select from list)
+2. If caretaker isn't in the list, "create new" flow is needed inline
+3. Patient CAN be saved without a caretaker (optional at creation)
+4. Patient CANNOT post new therapy sessions unless a caretaker is defined
+
+**Before starting caretaker work:**
+- Discover what caretaker API endpoints exist in `patient-care-api`
+- Determine how patient-caretaker association is stored (field on patient? separate table?)
+- Plan the UI: caretaker picker in PatientFormModal + standalone Caretakers page + session-booking guard
