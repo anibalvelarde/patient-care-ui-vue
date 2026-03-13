@@ -15,19 +15,19 @@
 
         <!-- Desktop Nav Links -->
         <div class="hidden md:flex items-center space-x-1">
-          <a
+          <router-link
             v-for="item in navItems"
             :key="item.label"
-            href="#"
+            :to="item.to"
             :class="[
               'px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150',
-              item.active
+              isActive(item.to)
                 ? 'bg-blue-50 text-blue-700'
                 : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100',
             ]"
           >
             {{ item.label }}
-          </a>
+          </router-link>
         </div>
 
         <!-- Right side -->
@@ -67,40 +67,48 @@
 
     <!-- Mobile Nav -->
     <div v-if="mobileMenuOpen" class="md:hidden border-t border-slate-200 bg-white px-4 py-3 space-y-1">
-      <a
+      <router-link
         v-for="item in navItems"
         :key="item.label"
-        href="#"
+        :to="item.to"
         :class="[
           'block px-4 py-2 rounded-lg text-sm font-medium',
-          item.active
+          isActive(item.to)
             ? 'bg-blue-50 text-blue-700'
             : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50',
         ]"
+        @click="mobileMenuOpen = false"
       >
         {{ item.label }}
-      </a>
+      </router-link>
     </div>
   </nav>
 </template>
 
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
+import { useRoute } from 'vue-router';
 
 export default defineComponent({
   name: 'O1Navbar',
   setup() {
+    const route = useRoute();
     const mobileMenuOpen = ref(false);
 
     const navItems = [
-      { label: 'Dashboard', active: true },
-      { label: 'Patients', active: false },
-      { label: 'Therapists', active: false },
-      { label: 'Caretakers', active: false },
-      { label: 'Reports', active: false },
+      { label: 'Dashboard', to: '/' },
+      { label: 'Patients', to: '/patients' },
+      { label: 'Therapists', to: '#' },
+      { label: 'Caretakers', to: '#' },
+      { label: 'Reports', to: '#' },
     ];
 
-    return { mobileMenuOpen, navItems };
+    const isActive = (to: string) => {
+      if (to === '/') return route.path === '/';
+      return route.path.startsWith(to);
+    };
+
+    return { mobileMenuOpen, navItems, isActive };
   },
 });
 </script>
