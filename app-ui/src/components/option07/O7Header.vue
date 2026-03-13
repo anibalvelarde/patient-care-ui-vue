@@ -16,7 +16,7 @@
       <div class="flex items-center gap-3">
         <span class="text-[10px] text-stone-400 bg-stone-100 px-2.5 py-1 rounded-full font-medium">Front Desk</span>
         <router-link
-          to="/"
+          to="/design-options"
           class="px-2.5 py-1 rounded-full text-[10px] font-medium text-stone-400 border border-stone-200 hover:border-amber-300 hover:text-amber-700 transition-colors"
         >
           <font-awesome-icon :icon="['fas', 'arrow-left']" class="mr-0.5" />

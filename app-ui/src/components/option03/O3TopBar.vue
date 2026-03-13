@@ -46,7 +46,7 @@
       </div>
 
       <router-link
-        to="/"
+        to="/design-options"
         class="ml-2 px-2.5 py-1 rounded-lg text-[10px] font-medium text-slate-400 border border-slate-700 hover:border-slate-500 hover:text-slate-200 transition-colors"
       >
         <font-awesome-icon :icon="['fas', 'arrow-left']" class="mr-1" />

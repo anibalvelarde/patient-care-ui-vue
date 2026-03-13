@@ -5,18 +5,18 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'compare',
+      name: 'dashboard',
+      component: () => import('../views/Option01View.vue'),
+    },
+    {
+      path: '/design-options',
+      name: 'design-options',
       component: () => import('../views/CompareView.vue'),
     },
     {
       path: '/current',
       name: 'current',
       component: () => import('../views/CurrentView.vue'),
-    },
-    {
-      path: '/option-01',
-      name: 'option-01',
-      component: () => import('../views/Option01View.vue'),
     },
     {
       path: '/option-02',

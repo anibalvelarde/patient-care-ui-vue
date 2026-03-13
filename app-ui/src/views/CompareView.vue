@@ -28,7 +28,7 @@
 
         <!-- Option 01 -->
         <router-link
-          to="/option-01"
+          to="/"
           class="group block bg-white rounded-xl border-2 border-blue-200 hover:border-blue-400 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden"
         >
           <div class="bg-gradient-to-br from-blue-600 to-teal-500 px-6 py-10 text-center">

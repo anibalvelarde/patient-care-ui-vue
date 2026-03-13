@@ -5,10 +5,10 @@
         &copy; {{ currentYear }} Neurocorp Therapy Center. All rights reserved.
       </p>
       <router-link
-        to="/"
+        to="/design-options"
         class="text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors"
       >
-        &larr; Back to Options
+        Design Options
       </router-link>
     </div>
   </footer>
