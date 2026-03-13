@@ -8,7 +8,7 @@
     </div>
     <Footer class="flex-shrink-0" />
     <router-link
-      to="/"
+      to="/design-options"
       class="fixed top-4 right-4 z-50 bg-white text-gray-700 border border-gray-300 text-xs font-medium px-3 py-1.5 rounded-lg shadow hover:bg-gray-50 transition-colors"
     >
       &larr; Back to Options

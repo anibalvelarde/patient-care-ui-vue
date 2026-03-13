@@ -8,7 +8,7 @@ export abstract class HttpClientBase {
   
     protected getBaseUrlFromConfig(): string {
       const appConfig = (window as unknown as Record<string, unknown>).__APP_CONFIG__ as Record<string, string> | undefined;
-      return appConfig?.apiBaseUrl || import.meta.env.VITE_API_BASE_URL || "http://localhost:5245";
+      return import.meta.env.VITE_API_BASE_URL || appConfig?.apiBaseUrl || "http://localhost:5245";
     }
   
     protected async get<T>(url: string): Promise<T> {

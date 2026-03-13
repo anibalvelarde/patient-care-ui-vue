@@ -28,7 +28,7 @@
     <!-- Bottom -->
     <div class="flex flex-col items-center pb-6 space-y-2">
       <router-link
-        to="/"
+        to="/design-options"
         class="w-12 h-12 rounded-xl flex flex-col items-center justify-center text-violet-300 hover:bg-white/10 hover:text-white transition-all duration-150"
         title="Back to Options"
       >

@@ -49,7 +49,7 @@
     <div class="flex items-center gap-2">
       <span class="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded font-medium">Front Desk</span>
       <router-link
-        to="/"
+        to="/design-options"
         class="px-2 py-0.5 rounded text-[10px] font-medium text-gray-400 border border-gray-200 hover:border-rose-300 hover:text-rose-600 transition-colors"
       >
         <font-awesome-icon :icon="['fas', 'arrow-left']" class="mr-0.5" />
