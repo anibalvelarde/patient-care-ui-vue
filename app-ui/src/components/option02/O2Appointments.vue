@@ -205,7 +205,6 @@ export default defineComponent({
       activeTab,
       tabs,
       highlightedEl,
-      highlightedSessionId: computed(() => props.highlightedSessionId),
     };
   },
 });

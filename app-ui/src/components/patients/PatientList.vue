@@ -147,7 +147,7 @@ export default defineComponent({
       return list;
     });
 
-    return { search, activeFilter, tabs, filteredPatients, onTabClick, pastDuePatients: computed(() => props.pastDuePatients) };
+    return { search, activeFilter, tabs, filteredPatients, onTabClick };
   },
 });
 </script>
