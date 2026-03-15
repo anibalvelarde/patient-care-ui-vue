@@ -1,22 +1,28 @@
 <template>
   <div class="min-h-screen bg-slate-50 font-sans">
-    <O1Navbar />
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div class="mb-6">
-        <h1 class="text-2xl font-bold text-slate-800">Patient Management</h1>
-        <p class="text-sm text-slate-500 mt-1">View and manage patient records</p>
+    <O2MobileNav />
+    <div class="flex flex-1">
+      <O2Sidebar />
+      <div class="flex-1 flex flex-col">
+      <O2Header />
+      <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+        <div class="mb-6">
+          <h1 class="text-2xl font-bold text-slate-800">Patient Management</h1>
+          <p class="text-sm text-slate-500 mt-1">View and manage patient records</p>
+        </div>
+        <PatientList
+          :patients="patients"
+          :loading="loading"
+          :error="error"
+          @add="openAdd"
+          @edit="openEdit"
+          @toggle-active="toggleActive"
+          @retry="loadPatients"
+        />
+      </main>
+        <O2Footer />
       </div>
-      <PatientList
-        :patients="patients"
-        :loading="loading"
-        :error="error"
-        @add="openAdd"
-        @edit="openEdit"
-        @toggle-active="toggleActive"
-        @retry="loadPatients"
-      />
-    </main>
-    <O1Footer />
+    </div>
 
     <PatientFormModal
       :visible="modalVisible"
@@ -29,8 +35,10 @@
 
 <script lang="ts">
 import { defineComponent, ref, onMounted } from 'vue';
-import O1Navbar from '../components/option01/O1Navbar.vue';
-import O1Footer from '../components/option01/O1Footer.vue';
+import O2MobileNav from '../components/option02/O2MobileNav.vue';
+import O2Sidebar from '../components/option02/O2Sidebar.vue';
+import O2Header from '../components/option02/O2Header.vue';
+import O2Footer from '../components/option02/O2Footer.vue';
 import PatientList from '../components/patients/PatientList.vue';
 import PatientFormModal from '../components/patients/PatientFormModal.vue';
 import { PatientsHttpClient } from '../services/PatientsHttpClient';
@@ -38,7 +46,7 @@ import type { Patient } from '../interfaces/Patient';
 
 export default defineComponent({
   name: 'PatientsView',
-  components: { O1Navbar, O1Footer, PatientList, PatientFormModal },
+  components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, PatientList, PatientFormModal },
   setup() {
     const client = new PatientsHttpClient();
     const patients = ref<Patient[]>([]);

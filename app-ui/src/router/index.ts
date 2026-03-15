@@ -6,7 +6,7 @@ const router = createRouter({
     {
       path: '/',
       name: 'dashboard',
-      component: () => import('../views/Option01View.vue'),
+      component: () => import('../views/Option02View.vue'),
     },
     {
       path: '/patients',
@@ -24,9 +24,9 @@ const router = createRouter({
       component: () => import('../views/CurrentView.vue'),
     },
     {
-      path: '/option-02',
-      name: 'option-02',
-      component: () => import('../views/Option02View.vue'),
+      path: '/option-01',
+      name: 'option-01',
+      component: () => import('../views/Option01View.vue'),
     },
     {
       path: '/option-03',

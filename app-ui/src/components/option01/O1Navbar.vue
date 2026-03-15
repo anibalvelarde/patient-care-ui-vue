@@ -96,15 +96,16 @@ export default defineComponent({
     const mobileMenuOpen = ref(false);
 
     const navItems = [
-      { label: 'Dashboard', to: '/' },
-      { label: 'Patients', to: '/patients' },
+      { label: 'Dashboard', to: '/option-01' },
+      { label: 'Patients', to: '#' },
       { label: 'Therapists', to: '#' },
       { label: 'Caretakers', to: '#' },
       { label: 'Reports', to: '#' },
     ];
 
     const isActive = (to: string) => {
-      if (to === '/') return route.path === '/';
+      if (to === '#') return false;
+      if (to === '/option-01') return route.path === '/option-01';
       return route.path.startsWith(to);
     };
 
