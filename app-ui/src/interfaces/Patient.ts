@@ -36,4 +36,10 @@ export interface PatientUpdateRequest {
   phoneNumber: string;
   gender: string;
   activeStatus: boolean;
+  medicalRecordNumber?: string;
+}
+
+// Temporary MRN helper
+export function isTemporaryMrn(mrn: string): boolean {
+  return !mrn || mrn.toUpperCase().startsWith('TEMP-');
 }

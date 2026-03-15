@@ -29,7 +29,36 @@
       :patient="editingPatient"
       @close="modalVisible = false"
       @saved="onSaved"
+      @created-temp-mrn="onCreatedTempMrn"
     />
+
+    <!-- Temp MRN creation banner -->
+    <teleport to="body">
+      <div
+        v-if="tempMrnBanner"
+        class="fixed top-4 right-4 z-50 max-w-sm bg-amber-50 border border-amber-300 rounded-xl shadow-lg p-4"
+      >
+        <div class="flex items-start space-x-3">
+          <svg class="w-5 h-5 text-amber-500 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.168 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg>
+          <div class="flex-1">
+            <p class="text-sm font-medium text-amber-800">Temporary MRN Assigned</p>
+            <p class="text-xs text-amber-700 mt-1">
+              <span class="font-mono font-semibold">{{ tempMrnBanner }}</span> was assigned as a temporary MRN. The patient is inactive until a permanent MRN is provided.
+            </p>
+          </div>
+          <button
+            class="p-1 rounded text-amber-400 hover:text-amber-600"
+            @click="tempMrnBanner = ''"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </teleport>
   </div>
 </template>
 
@@ -43,6 +72,7 @@ import PatientList from '../components/patients/PatientList.vue';
 import PatientFormModal from '../components/patients/PatientFormModal.vue';
 import { PatientsHttpClient } from '../services/PatientsHttpClient';
 import type { Patient } from '../interfaces/Patient';
+import { isTemporaryMrn } from '../interfaces/Patient';
 
 export default defineComponent({
   name: 'PatientsView',
@@ -54,6 +84,7 @@ export default defineComponent({
     const error = ref('');
     const modalVisible = ref(false);
     const editingPatient = ref<Patient | null>(null);
+    const tempMrnBanner = ref('');
 
     const loadPatients = async () => {
       loading.value = true;
@@ -78,6 +109,11 @@ export default defineComponent({
     };
 
     const toggleActive = async (patient: Patient) => {
+      // Guard: cannot activate a patient with a temporary MRN
+      if (!patient.isActive && isTemporaryMrn(patient.medicalRecordNumber)) {
+        error.value = 'Cannot activate a patient with a temporary MRN. Edit the patient to assign a permanent MRN first.';
+        return;
+      }
       try {
         const parsed = parseName(patient.patientName);
         await client.updatePatient(patient.patientId, {
@@ -100,6 +136,11 @@ export default defineComponent({
       loadPatients();
     };
 
+    const onCreatedTempMrn = (patient: Patient) => {
+      tempMrnBanner.value = patient.medicalRecordNumber;
+      setTimeout(() => { tempMrnBanner.value = ''; }, 8000);
+    };
+
     onMounted(loadPatients);
 
     return {
@@ -108,11 +149,13 @@ export default defineComponent({
       error,
       modalVisible,
       editingPatient,
+      tempMrnBanner,
       loadPatients,
       openAdd,
       openEdit,
       toggleActive,
       onSaved,
+      onCreatedTempMrn,
     };
   },
 });
