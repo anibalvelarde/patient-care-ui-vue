@@ -33,16 +33,21 @@
           :class="[
             'px-4 py-1.5 rounded-md text-sm font-medium transition-colors',
             activeFilter === tab.value
-              ? 'bg-white text-slate-800 shadow-sm'
+              ? tab.value === 'delinquent'
+                ? 'bg-white text-amber-700 shadow-sm'
+                : 'bg-white text-slate-800 shadow-sm'
               : 'text-slate-500 hover:text-slate-700',
           ]"
-          @click="activeFilter = tab.value"
+          @click="onTabClick(tab.value)"
         >
           {{ tab.label }}
         </button>
       </div>
-      <span class="text-sm text-slate-500">
+      <span v-if="activeFilter !== 'delinquent'" class="text-sm text-slate-500">
         {{ filteredPatients.length }} patient{{ filteredPatients.length !== 1 ? 's' : '' }}
+      </span>
+      <span v-else class="text-sm text-amber-600">
+        {{ pastDuePatients.length }} patient{{ pastDuePatients.length !== 1 ? 's' : '' }} past due
       </span>
     </div>
 
@@ -63,7 +68,14 @@
       </button>
     </div>
 
-    <!-- Table -->
+    <!-- Delinquent tab -->
+    <DelinquentTable
+      v-else-if="activeFilter === 'delinquent'"
+      :patients="pastDuePatients"
+      :search="search"
+    />
+
+    <!-- Standard patient table -->
     <PatientTable
       v-else
       :patients="filteredPatients"
@@ -74,28 +86,44 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed, type PropType } from 'vue';
+import { defineComponent, ref, computed, onMounted, type PropType } from 'vue';
 import type { Patient } from '../../interfaces/Patient';
+import type { DelinquentPatient } from '../../interfaces/Delinquency';
 import PatientTable from './PatientTable.vue';
+import DelinquentTable from './DelinquentTable.vue';
 
 export default defineComponent({
   name: 'PatientList',
-  components: { PatientTable },
+  components: { PatientTable, DelinquentTable },
   props: {
     patients: { type: Array as PropType<Patient[]>, required: true },
+    pastDuePatients: { type: Array as PropType<DelinquentPatient[]>, default: () => [] },
+    initialTab: { type: String as PropType<'all' | 'active' | 'inactive' | 'delinquent'>, default: 'all' },
     loading: { type: Boolean, default: false },
     error: { type: String, default: '' },
   },
-  emits: ['add', 'edit', 'toggle-active', 'retry'],
-  setup(props) {
+  emits: ['add', 'edit', 'toggle-active', 'retry', 'tab-change'],
+  setup(props, { emit }) {
     const search = ref('');
-    const activeFilter = ref<'all' | 'active' | 'inactive'>('all');
+    const activeFilter = ref<'all' | 'active' | 'inactive' | 'delinquent'>(props.initialTab);
+
+    onMounted(() => {
+      if (props.initialTab !== 'all') {
+        emit('tab-change', props.initialTab);
+      }
+    });
 
     const tabs = [
       { label: 'All', value: 'all' as const },
       { label: 'Active', value: 'active' as const },
       { label: 'Inactive', value: 'inactive' as const },
+      { label: 'Delinquent', value: 'delinquent' as const },
     ];
+
+    const onTabClick = (value: 'all' | 'active' | 'inactive' | 'delinquent') => {
+      activeFilter.value = value;
+      emit('tab-change', value);
+    };
 
     const filteredPatients = computed(() => {
       let list = props.patients;
@@ -119,7 +147,7 @@ export default defineComponent({
       return list;
     });
 
-    return { search, activeFilter, tabs, filteredPatients };
+    return { search, activeFilter, tabs, filteredPatients, onTabClick };
   },
 });
 </script>

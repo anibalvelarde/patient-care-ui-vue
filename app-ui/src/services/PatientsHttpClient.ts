@@ -1,6 +1,7 @@
 // services/PatientsHttpClient.ts
 import { HttpClientBase } from './HttpClientBase';
 import type { Patient, PatientCreateRequest, PatientUpdateRequest } from '../interfaces/Patient';
+import type { DelinquentPatient } from '../interfaces/Delinquency';
 
 export class PatientsHttpClient extends HttpClientBase {
   async getPatients(): Promise<Patient[]> {
@@ -17,5 +18,9 @@ export class PatientsHttpClient extends HttpClientBase {
 
   async updatePatient(id: number, data: PatientUpdateRequest): Promise<void> {
     return this.put(`/api/patients/${id}`, data);
+  }
+
+  async getPastDuePatients(): Promise<DelinquentPatient[]> {
+    return this.get<DelinquentPatient[]>('/api/patients/pastdue');
   }
 }

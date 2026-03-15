@@ -30,9 +30,12 @@
         <div
           v-for="appt in visibleAppointments"
           :key="appt.sessionId"
+          :ref="(el) => { if (el && appt.sessionId === highlightedSessionId) highlightedEl = el as HTMLElement; }"
           :class="[
             'flex items-center px-5 py-3 gap-4 transition-colors',
-            appt.isPastDue ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50',
+            appt.sessionId === highlightedSessionId
+              ? 'ring-2 ring-amber-400 bg-amber-50'
+              : appt.isPastDue ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50',
           ]"
         >
           <!-- Time -->
@@ -104,7 +107,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, watch, computed, onMounted } from 'vue';
+import { defineComponent, ref, watch, computed, onMounted, nextTick } from 'vue';
 import { Appointment } from '../../interfaces/Appointment';
 import { SessionsHttpClient } from '../../services/SessionsHttpClient';
 import { library } from '@fortawesome/fontawesome-svg-core';
@@ -127,12 +130,17 @@ export default defineComponent({
       type: String,
       required: true,
     },
+    highlightedSessionId: {
+      type: Number,
+      default: null,
+    },
   },
   emits: ['appointments-loaded'],
   setup(props, { emit }) {
     const sessionsHttpClient = new SessionsHttpClient();
     const allAppointments = ref<Appointment[]>([]);
     const activeTab = ref<'all' | 'am' | 'pm'>('all');
+    const highlightedEl = ref<HTMLElement | null>(null);
 
     const determineTime = (app: Appointment): 'AM' | 'PM' => {
       if (app.time) {
@@ -147,6 +155,10 @@ export default defineComponent({
         const appointments = await sessionsHttpClient.getSessions(date);
         allAppointments.value = appointments;
         emit('appointments-loaded', appointments);
+        if (props.highlightedSessionId) {
+          await nextTick();
+          highlightedEl.value?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       } catch (error) {
         console.error('Error fetching appointments:', error);
         allAppointments.value = [];
@@ -192,6 +204,7 @@ export default defineComponent({
       visibleAppointments,
       activeTab,
       tabs,
+      highlightedEl,
     };
   },
 });
