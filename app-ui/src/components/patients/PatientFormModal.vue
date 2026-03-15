@@ -200,10 +200,23 @@ function formatDobForInput(dob: string): string {
   if (!dob) return '';
   const d = new Date(dob);
   if (isNaN(d.getTime())) return dob;
-  const yyyy = d.getFullYear();
+  const yyyy = String(d.getFullYear()).padStart(4, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
+}
+
+function formatDobForApi(dob: string): string {
+  if (!dob) return '';
+  // HTML date inputs give yyyy-MM-dd; .NET API needs DateTime format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dob)) return `${dob}T00:00:00`;
+  // Handle full datetime strings — reparse to ensure 4-digit year
+  const d = new Date(dob);
+  if (isNaN(d.getTime())) return dob;
+  const yyyy = String(d.getFullYear()).padStart(4, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}T00:00:00`;
 }
 
 export default defineComponent({
@@ -289,7 +302,7 @@ export default defineComponent({
             firstName: form.firstName,
             middleName: form.middleName || undefined,
             lastName: form.lastName,
-            dateOfBirth: form.dateOfBirth,
+            dateOfBirth: formatDobForApi(form.dateOfBirth),
             email: form.email,
             phoneNumber: form.phoneNumber,
             gender: form.gender,
@@ -320,7 +333,7 @@ export default defineComponent({
             firstName: form.firstName,
             middleName: form.middleName || undefined,
             lastName: form.lastName,
-            dateOfBirth: form.dateOfBirth,
+            dateOfBirth: formatDobForApi(form.dateOfBirth),
             email: form.email,
             phoneNumber: form.phoneNumber,
             gender: form.gender,
