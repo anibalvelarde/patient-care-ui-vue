@@ -40,7 +40,8 @@ export abstract class HttpClientBase {
         body: JSON.stringify(body)
       });
       if (!response.ok) {
-        throw new Error("An unexpected error occurred while creating data.");
+        const message = await this.extractErrorMessage(response, "An unexpected error occurred while creating data.");
+        throw new Error(message);
       }
       return response.json();
     }
@@ -55,7 +56,17 @@ export abstract class HttpClientBase {
         body: JSON.stringify(body)
       });
       if (!response.ok) {
-        throw new Error("An unexpected error occurred while updating data.");
+        const message = await this.extractErrorMessage(response, "An unexpected error occurred while updating data.");
+        throw new Error(message);
+      }
+    }
+
+    private async extractErrorMessage(response: Response, fallback: string): Promise<string> {
+      try {
+        const text = await response.text();
+        return text || fallback;
+      } catch {
+        return fallback;
       }
     }
   }

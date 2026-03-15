@@ -105,25 +105,55 @@
               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Auto-generated if blank"
             />
+            <p class="mt-1 text-xs text-slate-400">
+              Leave blank to assign a temporary MRN. Patient will be inactive until a permanent MRN is provided.
+            </p>
           </div>
 
-          <div v-if="isEdit" class="flex items-center space-x-3">
-            <label class="text-sm font-medium text-slate-700">Active Status</label>
-            <button
-              type="button"
-              :class="[
-                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                form.activeStatus ? 'bg-blue-600' : 'bg-slate-300',
-              ]"
-              @click="form.activeStatus = !form.activeStatus"
-            >
-              <span
-                :class="[
-                  'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
-                  form.activeStatus ? 'translate-x-6' : 'translate-x-1',
-                ]"
+          <div v-if="isEdit">
+            <label class="block text-sm font-medium text-slate-700 mb-1">MRN</label>
+            <div v-if="hasTemporaryMrn">
+              <input
+                v-model="form.medicalRecordNumber"
+                type="text"
+                class="w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                placeholder="Enter permanent MRN"
               />
-            </button>
+              <p class="mt-1 text-xs text-amber-600">
+                This patient has a temporary MRN. Assign a permanent MRN to enable activation.
+              </p>
+            </div>
+            <div v-else>
+              <p class="px-3 py-2 text-sm text-slate-600 bg-slate-50 rounded-lg border border-slate-200">
+                {{ form.medicalRecordNumber }}
+              </p>
+            </div>
+          </div>
+
+          <div v-if="isEdit" class="space-y-1">
+            <div class="flex items-center space-x-3">
+              <label class="text-sm font-medium text-slate-700">Active Status</label>
+              <button
+                type="button"
+                :class="[
+                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                  cannotActivate ? 'bg-slate-200 cursor-not-allowed' :
+                  form.activeStatus ? 'bg-blue-600' : 'bg-slate-300',
+                ]"
+                :disabled="cannotActivate"
+                @click="cannotActivate || (form.activeStatus = !form.activeStatus)"
+              >
+                <span
+                  :class="[
+                    'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                    form.activeStatus ? 'translate-x-6' : 'translate-x-1',
+                  ]"
+                />
+              </button>
+            </div>
+            <p v-if="cannotActivate" class="text-xs text-amber-600">
+              Cannot activate with a temporary MRN. Enter a permanent MRN above first.
+            </p>
           </div>
 
           <!-- Error message -->
@@ -156,8 +186,9 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, reactive, ref, watch, type PropType } from 'vue';
+import { defineComponent, reactive, ref, computed, watch, type PropType } from 'vue';
 import type { Patient } from '../../interfaces/Patient';
+import { isTemporaryMrn } from '../../interfaces/Patient';
 
 function parseName(patientName: string) {
   const [last, rest] = patientName.split(', ');
@@ -181,7 +212,7 @@ export default defineComponent({
     visible: { type: Boolean, required: true },
     patient: { type: Object as PropType<Patient | null>, default: null },
   },
-  emits: ['close', 'saved'],
+  emits: ['close', 'saved', 'created-temp-mrn'],
   setup(props, { emit }) {
     const saving = ref(false);
     const error = ref('');
@@ -200,6 +231,9 @@ export default defineComponent({
 
     const isEdit = ref(false);
 
+    const hasTemporaryMrn = computed(() => isEdit.value && isTemporaryMrn(form.medicalRecordNumber));
+    const cannotActivate = computed(() => hasTemporaryMrn.value && !form.activeStatus);
+
     watch(
       () => props.visible,
       (val) => {
@@ -215,6 +249,7 @@ export default defineComponent({
           form.email = props.patient.email;
           form.phoneNumber = props.patient.phoneNumber;
           form.gender = props.patient.gender;
+          form.medicalRecordNumber = props.patient.medicalRecordNumber || '';
           form.activeStatus = props.patient.isActive;
         } else {
           isEdit.value = false;
@@ -240,9 +275,17 @@ export default defineComponent({
       error.value = '';
       try {
         if (isEdit.value && props.patient) {
+          // Validate: cannot activate with temporary MRN still in place
+          if (form.activeStatus && isTemporaryMrn(form.medicalRecordNumber)) {
+            error.value = 'Cannot activate a patient with a temporary MRN. Assign a permanent MRN first.';
+            saving.value = false;
+            return;
+          }
           const { PatientsHttpClient } = await import('../../services/PatientsHttpClient');
           const client = new PatientsHttpClient();
-          await client.updatePatient(props.patient.patientId, {
+          const originalMrn = props.patient.medicalRecordNumber || '';
+          const assigningPermanentMrn = isTemporaryMrn(originalMrn) && form.medicalRecordNumber && !isTemporaryMrn(form.medicalRecordNumber);
+          const baseFields = {
             firstName: form.firstName,
             middleName: form.middleName || undefined,
             lastName: form.lastName,
@@ -250,12 +293,30 @@ export default defineComponent({
             email: form.email,
             phoneNumber: form.phoneNumber,
             gender: form.gender,
-            activeStatus: form.activeStatus,
-          });
+          };
+
+          if (assigningPermanentMrn && form.activeStatus) {
+            // Two-step: first assign permanent MRN (keep inactive), then activate
+            await client.updatePatient(props.patient.patientId, {
+              ...baseFields,
+              activeStatus: false,
+              medicalRecordNumber: form.medicalRecordNumber,
+            });
+            await client.updatePatient(props.patient.patientId, {
+              ...baseFields,
+              activeStatus: true,
+            });
+          } else {
+            await client.updatePatient(props.patient.patientId, {
+              ...baseFields,
+              activeStatus: form.activeStatus,
+              medicalRecordNumber: assigningPermanentMrn ? form.medicalRecordNumber : undefined,
+            });
+          }
         } else {
           const { PatientsHttpClient } = await import('../../services/PatientsHttpClient');
           const client = new PatientsHttpClient();
-          await client.createPatient({
+          const created = await client.createPatient({
             firstName: form.firstName,
             middleName: form.middleName || undefined,
             lastName: form.lastName,
@@ -265,6 +326,9 @@ export default defineComponent({
             gender: form.gender,
             medicalRecordNumber: form.medicalRecordNumber || undefined,
           });
+          if (isTemporaryMrn(created.medicalRecordNumber)) {
+            emit('created-temp-mrn', created);
+          }
         }
         emit('saved');
         emit('close');
@@ -275,7 +339,7 @@ export default defineComponent({
       }
     };
 
-    return { form, isEdit, saving, error, handleSubmit };
+    return { form, isEdit, saving, error, hasTemporaryMrn, cannotActivate, handleSubmit };
   },
 });
 </script>
