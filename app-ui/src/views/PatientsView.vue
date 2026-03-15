@@ -135,7 +135,7 @@ export default defineComponent({
           firstName: parsed.firstName,
           middleName: parsed.middleName || undefined,
           lastName: parsed.lastName,
-          dateOfBirth: formatDobForApi(patient.dateOfBirth),
+          dateOfBirth: patient.dateOfBirth,
           email: patient.email,
           phoneNumber: patient.phoneNumber,
           gender: patient.gender,
@@ -202,13 +202,4 @@ function parseName(patientName: string) {
   return { firstName: first || '', middleName: middleParts.join(' '), lastName: last || '' };
 }
 
-function formatDobForApi(dob: string): string {
-  if (!dob) return '';
-  const d = new Date(dob);
-  if (isNaN(d.getTime())) return dob;
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
 </script>
