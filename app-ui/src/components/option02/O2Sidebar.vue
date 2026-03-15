@@ -9,12 +9,14 @@
 
     <!-- Nav Items -->
     <nav class="flex-1 flex flex-col items-center py-6 space-y-2">
-      <button
+      <component
         v-for="item in navItems"
         :key="item.label"
+        :is="item.to.startsWith('/') ? 'router-link' : 'button'"
+        :to="item.to.startsWith('/') ? item.to : undefined"
         :class="[
           'w-12 h-12 rounded-xl flex flex-col items-center justify-center transition-all duration-150',
-          item.active
+          isActive(item.to)
             ? 'bg-white/20 text-white'
             : 'text-violet-300 hover:bg-white/10 hover:text-white',
         ]"
@@ -22,7 +24,7 @@
       >
         <font-awesome-icon :icon="['fas', item.icon]" class="text-lg" />
         <span class="text-[9px] mt-0.5 font-medium">{{ item.label }}</span>
-      </button>
+      </component>
     </nav>
 
     <!-- Bottom -->
@@ -41,6 +43,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import { useRoute } from 'vue-router';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import {
@@ -59,16 +62,23 @@ export default defineComponent({
   name: 'O2Sidebar',
   components: { FontAwesomeIcon },
   setup() {
+    const route = useRoute();
+
     const navItems = [
-      { label: 'Dashboard', icon: 'chart-pie', active: true },
-      { label: 'Patients', icon: 'users', active: false },
-      { label: 'Therapists', icon: 'user-md', active: false },
-      { label: 'Schedule', icon: 'calendar-check', active: false },
-      { label: 'Billing', icon: 'credit-card', active: false },
-      { label: 'Reports', icon: 'file-alt', active: false },
+      { label: 'Dashboard', icon: 'chart-pie', to: '/' },
+      { label: 'Patients', icon: 'users', to: '/patients' },
+      { label: 'Therapists', icon: 'user-md', to: '#' },
+      { label: 'Schedule', icon: 'calendar-check', to: '#' },
+      { label: 'Billing', icon: 'credit-card', to: '#' },
+      { label: 'Reports', icon: 'file-alt', to: '#' },
     ];
 
-    return { navItems };
+    const isActive = (to: string) => {
+      if (to === '#') return false;
+      return route.path === to;
+    };
+
+    return { navItems, isActive };
   },
 });
 </script>

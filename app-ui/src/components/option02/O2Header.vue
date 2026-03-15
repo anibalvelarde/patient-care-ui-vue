@@ -13,12 +13,17 @@
       <button
         v-for="action in quickActions"
         :key="action.label"
+        :disabled="action.disabled"
+        :title="action.disabled ? 'Coming soon' : action.label"
         :class="[
           'hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-          action.primary
-            ? 'bg-violet-600 text-white hover:bg-violet-700 shadow-sm'
-            : 'text-gray-500 border border-gray-200 hover:bg-gray-50',
+          action.disabled
+            ? 'opacity-50 cursor-not-allowed bg-gray-100 text-gray-400 border border-gray-200'
+            : action.primary
+              ? 'bg-violet-600 text-white hover:bg-violet-700 shadow-sm'
+              : 'text-gray-500 border border-gray-200 hover:bg-gray-50',
         ]"
+        @click="handleAction(action)"
       >
         <font-awesome-icon :icon="['fas', action.icon]" />
         {{ action.label }}
@@ -42,12 +47,17 @@
     <button
       v-for="action in quickActions"
       :key="action.label"
+      :disabled="action.disabled"
+      :title="action.disabled ? 'Coming soon' : action.label"
       :class="[
         'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors',
-        action.primary
-          ? 'bg-violet-600 text-white hover:bg-violet-700'
-          : 'text-gray-500 border border-gray-200 hover:bg-gray-50',
+        action.disabled
+          ? 'opacity-50 cursor-not-allowed bg-gray-100 text-gray-400 border border-gray-200'
+          : action.primary
+            ? 'bg-violet-600 text-white hover:bg-violet-700'
+            : 'text-gray-500 border border-gray-200 hover:bg-gray-50',
       ]"
+      @click="handleAction(action)"
     >
       <font-awesome-icon :icon="['fas', action.icon]" />
       {{ action.label }}
@@ -57,6 +67,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import { useRouter } from 'vue-router';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import {
@@ -82,13 +93,22 @@ export default defineComponent({
       day: 'numeric',
     });
 
+    const router = useRouter();
+
     const quickActions = [
-      { label: 'New Appointment', icon: 'calendar-plus', primary: true },
-      { label: 'Add Patient', icon: 'user-plus', primary: false },
-      { label: 'Payment', icon: 'money-bill', primary: false },
+      { label: 'New Appointment', icon: 'calendar-plus', primary: true, disabled: true },
+      { label: 'Add Patient', icon: 'user-plus', primary: false, disabled: false },
+      { label: 'Payment', icon: 'money-bill', primary: false, disabled: true },
     ];
 
-    return { greeting, todayFormatted, quickActions };
+    const handleAction = (action: { label: string; disabled: boolean }) => {
+      if (action.disabled) return;
+      if (action.label === 'Add Patient') {
+        router.push('/patients');
+      }
+    };
+
+    return { greeting, todayFormatted, quickActions, handleAction };
   },
 });
 </script>

@@ -28,8 +28,8 @@
 
         <!-- Option 01 -->
         <router-link
-          to="/"
-          class="group block bg-white rounded-xl border-2 border-blue-200 hover:border-blue-400 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden"
+          to="/option-01"
+          class="group block bg-white rounded-xl border-2 border-gray-200 hover:border-blue-400 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden"
         >
           <div class="bg-gradient-to-br from-blue-600 to-teal-500 px-6 py-10 text-center">
             <span class="text-4xl">🏥</span>
@@ -45,10 +45,10 @@
           </div>
         </router-link>
 
-        <!-- Option 02 -->
+        <!-- Option 02 (current) -->
         <router-link
-          to="/option-02"
-          class="group block bg-white rounded-xl border-2 border-violet-200 hover:border-violet-400 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden"
+          to="/"
+          class="group block bg-white rounded-xl border-2 border-violet-400 hover:border-violet-500 shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden ring-2 ring-violet-200"
         >
           <div class="bg-gradient-to-br from-violet-700 to-indigo-500 px-6 py-10 text-center">
             <span class="text-4xl">📊</span>
