@@ -12,12 +12,15 @@
         </div>
         <PatientList
           :patients="patients"
+          :initial-tab="initialTab"
           :loading="loading"
           :error="error"
+          :past-due-patients="pastDuePatients"
           @add="openAdd"
           @edit="openEdit"
           @toggle-active="toggleActive"
           @retry="loadPatients"
+          @tab-change="onTabChange"
         />
       </main>
         <O2Footer />
@@ -63,7 +66,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted } from 'vue';
+import { defineComponent, ref, computed, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import O2MobileNav from '../components/option02/O2MobileNav.vue';
 import O2Sidebar from '../components/option02/O2Sidebar.vue';
 import O2Header from '../components/option02/O2Header.vue';
@@ -73,18 +77,29 @@ import PatientFormModal from '../components/patients/PatientFormModal.vue';
 import { PatientsHttpClient } from '../services/PatientsHttpClient';
 import type { Patient } from '../interfaces/Patient';
 import { isTemporaryMrn } from '../interfaces/Patient';
+import type { DelinquentPatient } from '../interfaces/Delinquency';
 
 export default defineComponent({
   name: 'PatientsView',
   components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, PatientList, PatientFormModal },
   setup() {
+    const route = useRoute();
     const client = new PatientsHttpClient();
+
+    const validTabs = ['all', 'active', 'inactive', 'delinquent'] as const;
+    type TabValue = typeof validTabs[number];
+    const initialTab = computed<TabValue>(() => {
+      const tab = route.query.tab as string | undefined;
+      return tab && (validTabs as readonly string[]).includes(tab) ? tab as TabValue : 'all';
+    });
     const patients = ref<Patient[]>([]);
     const loading = ref(false);
     const error = ref('');
     const modalVisible = ref(false);
     const editingPatient = ref<Patient | null>(null);
     const tempMrnBanner = ref('');
+    const pastDuePatients = ref<DelinquentPatient[]>([]);
+    const pastDueLoaded = ref(false);
 
     const loadPatients = async () => {
       loading.value = true;
@@ -127,13 +142,31 @@ export default defineComponent({
           activeStatus: !patient.isActive,
         });
         await loadPatients();
+        pastDueLoaded.value = false;
       } catch (e: unknown) {
         error.value = e instanceof Error ? e.message : 'Failed to update patient status.';
       }
     };
 
+    const loadPastDuePatients = async () => {
+      if (pastDueLoaded.value) return;
+      try {
+        pastDuePatients.value = await client.getPastDuePatients();
+        pastDueLoaded.value = true;
+      } catch (e: unknown) {
+        error.value = e instanceof Error ? e.message : 'Failed to load delinquent patients.';
+      }
+    };
+
+    const onTabChange = (tab: string) => {
+      if (tab === 'delinquent') {
+        loadPastDuePatients();
+      }
+    };
+
     const onSaved = () => {
       loadPatients();
+      pastDueLoaded.value = false;
     };
 
     const onCreatedTempMrn = (patient: Patient) => {
@@ -150,12 +183,15 @@ export default defineComponent({
       modalVisible,
       editingPatient,
       tempMrnBanner,
+      pastDuePatients,
+      initialTab,
       loadPatients,
       openAdd,
       openEdit,
       toggleActive,
       onSaved,
       onCreatedTempMrn,
+      onTabChange,
     };
   },
 });

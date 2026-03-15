@@ -6,6 +6,18 @@
       <div class="flex-1 flex flex-col min-w-0">
         <O2Header />
         <main class="flex-1 p-6 overflow-y-auto">
+          <!-- Back to delinquent review banner -->
+          <router-link
+            v-if="cameFromDelinquent"
+            to="/patients?tab=delinquent"
+            class="mb-4 flex items-center space-x-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700 hover:bg-amber-100 transition-colors w-fit"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span class="font-medium">Back to Delinquent Review</span>
+          </router-link>
+
           <O2StatsBar :appointments="allAppointments" />
           <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
             <div class="xl:col-span-1">
@@ -17,6 +29,7 @@
             <div class="xl:col-span-2">
               <O2Appointments
                 :selectedDate="selectedDate"
+                :highlightedSessionId="highlightedSessionId"
                 @appointments-loaded="onAppointmentsLoaded"
               />
             </div>
@@ -29,7 +42,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue';
+import { defineComponent, ref, onMounted, computed } from 'vue';
+import { useRoute } from 'vue-router';
 import { Appointment } from '../interfaces/Appointment';
 import O2MobileNav from '../components/option02/O2MobileNav.vue';
 import O2Sidebar from '../components/option02/O2Sidebar.vue';
@@ -51,8 +65,27 @@ export default defineComponent({
     O2Footer,
   },
   setup() {
+    const route = useRoute();
     const selectedDate = ref<string>(new Date().toLocaleDateString('en-US'));
     const allAppointments = ref<Appointment[]>([]);
+
+    const highlightedSessionId = computed(() => {
+      const val = route.query.highlightSession;
+      return val ? Number(val) : undefined;
+    });
+
+    const cameFromDelinquent = computed(() => !!route.query.highlightSession);
+
+    onMounted(() => {
+      const dateParam = route.query.date as string | undefined;
+      if (dateParam) {
+        // Convert yyyy-MM-dd to en-US locale string
+        const d = new Date(dateParam + 'T00:00:00');
+        if (!isNaN(d.getTime())) {
+          selectedDate.value = d.toLocaleDateString('en-US');
+        }
+      }
+    });
 
     const updateSelectedDate = (date: string) => {
       selectedDate.value = date;
@@ -65,6 +98,8 @@ export default defineComponent({
     return {
       selectedDate,
       allAppointments,
+      highlightedSessionId,
+      cameFromDelinquent,
       updateSelectedDate,
       onAppointmentsLoaded,
     };

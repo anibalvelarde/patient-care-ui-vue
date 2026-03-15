@@ -4,6 +4,7 @@ Thumbs.db
 
 # User directories and files
 logs/**
+*.png
 
 # Editor directories and files
 .idea/
