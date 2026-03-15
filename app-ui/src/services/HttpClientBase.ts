@@ -30,6 +30,33 @@ export abstract class HttpClientBase {
       return response.json();
     }
   
-    // Add other HTTP methods (POST, PUT, DELETE) as needed
+    protected async post<T>(url: string, body: unknown): Promise<T> {
+      const fullUrl = this.baseUrl + url;
+      const response = await fetch(fullUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        throw new Error("An unexpected error occurred while creating data.");
+      }
+      return response.json();
+    }
+
+    protected async put(url: string, body: unknown): Promise<void> {
+      const fullUrl = this.baseUrl + url;
+      const response = await fetch(fullUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        throw new Error("An unexpected error occurred while updating data.");
+      }
+    }
   }
   
