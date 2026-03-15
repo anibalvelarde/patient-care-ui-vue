@@ -2,6 +2,9 @@
 .DS_Store
 Thumbs.db
 
+# User directories and files
+logs/**
+
 # Editor directories and files
 .idea/
 .vscode/
