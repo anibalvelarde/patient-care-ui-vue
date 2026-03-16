@@ -86,6 +86,7 @@
             >
               <font-awesome-icon :icon="['fas', 'exclamation-circle']" class="text-[9px]" />
               Past Due
+              <span class="text-red-500">&middot; {{ formatCurrency(appt.amountDue) }}</span>
             </span>
             <span
               v-else
@@ -109,6 +110,7 @@
 <script lang="ts">
 import { defineComponent, ref, watch, computed, onMounted, nextTick } from 'vue';
 import { Appointment } from '../../interfaces/Appointment';
+import { formatCurrency } from '../../utils/formatCurrency';
 import { SessionsHttpClient } from '../../services/SessionsHttpClient';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -205,6 +207,7 @@ export default defineComponent({
       activeTab,
       tabs,
       highlightedEl,
+      formatCurrency,
     };
   },
 });
