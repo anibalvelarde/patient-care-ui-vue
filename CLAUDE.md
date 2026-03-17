@@ -88,3 +88,18 @@ The app fetches appointment data from the `patient-care-api` (.NET 8 REST API):
 - **Styling**: All styling via Tailwind utility classes — no separate CSS files for option components
 - **Original UI**: Components in `headers/`, `sidebars/`, etc. are preserved untouched
 - **Target user**: Front-desk staff (role badge shown in UI)
+
+## Coordinator Context
+
+This project is part of a multi-repo system managed by a coordinator instance at `../patient-care-super/`.
+
+- **Coordinator guide**: `../patient-care-super/CLAUDE.md`
+- **API contracts**: `../patient-care-super/_contracts/`
+- **Active plans**: `../patient-care-super/planning/active/`
+
+### Dependency Position
+
+API changes must land before yours. You are the **final consumer** in the dependency chain. When making changes:
+1. DB layer (`../patient-care-db/`) applies schema changes first
+2. API layer (`../patient-care-api/`) updates endpoints and contracts
+3. You update TypeScript types, HTTP clients, and components to match
