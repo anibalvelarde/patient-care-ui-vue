@@ -1,31 +1,25 @@
-# Pick Up Task from Coordinator
+# Pickup Task from Coordinator
 
-Read the active plan files from the coordinator to pick up your portion of a cross-cutting task.
+You are receiving an implementation plan from the **coordinator instance** (`patient-care-super`). This plan was created after cross-project analysis and describes work scoped to the **UI layer**.
 
-## Steps
+## Instructions
 
-1. List available plans:
+1. **Read the plan.** The user will provide it — either pasted inline or as a file path. Read the full plan carefully.
+2. **Review your conventions.** Re-read `CLAUDE.md` in this repo to ensure you follow UI project conventions (Vue 3 Composition API, TypeScript, Tailwind CSS, component patterns).
+3. **Check contracts.** If the plan references `_contracts/` files in the coordinator repo, read them to understand the API request/response shapes your service clients must match.
+4. **Create a feature branch.** Use the branch name specified in the plan, or derive one from the task (e.g., `feature/<short-description>`). Never commit directly to main.
+5. **Implement.** Execute only the UI-layer steps from the plan. Do not attempt work designated for DB or API layers.
+6. **Follow existing patterns.** When the plan says "pattern reference: `SomeComponent.vue`", read that file first and replicate its structure, styling, and conventions.
+7. **Verify.** Run the verification steps specified in the plan. At minimum:
+   ```bash
+   cd app-ui && npx vue-tsc --noEmit
+   cd app-ui && npm run lint
    ```
-   ls ../patient-care-super/planning/active/
-   ```
+8. **Commit.** Stage and commit your changes with a clear message describing what was done.
+9. **Report back.** Summarize what you implemented, what you verified, and any issues or open questions for the coordinator.
 
-2. Read the plan file(s) to understand:
-   - What is the overall goal?
-   - What is the **UI layer's** responsibility in this plan?
-   - What has already been completed in DB and API layers?
+## Important
 
-3. Read the coordinator's CLAUDE.md if you need broader context:
-   ```
-   ../patient-care-super/CLAUDE.md
-   ```
-
-4. Check relevant API contracts for the response shapes you need to consume:
-   ```
-   ../patient-care-super/_contracts/
-   ```
-
-5. Summarize what you need to do and confirm with the user before implementing.
-
-## Reminder
-
-You are the **final consumer** in the chain. API changes must land before yours. After implementing, run `npx vue-tsc --noEmit && npm run lint` from `app-ui/` to verify. Follow component naming conventions (`O{N}` prefix) and use Tailwind utility classes.
+- Only implement work scoped to this layer (views, components, services, interfaces, routing).
+- If the plan references DB or API work, ignore those sections — other specialist instances handle them.
+- If something in the plan is unclear or seems wrong, ask the user before proceeding.
