@@ -16,7 +16,26 @@ You are receiving an implementation plan from the **coordinator instance** (`pat
    cd app-ui && npm run lint
    ```
 8. **Commit.** Stage and commit your changes with a clear message describing what was done.
-9. **Report back.** Summarize what you implemented, what you verified, and any issues or open questions for the coordinator.
+9. **Record completion.** Append a `## Completion` section to the plan file in `../patient-care-super/planning/active/`:
+   ```markdown
+   ## Completion — UI
+
+   - **Date**: YYYY-MM-DD
+   - **Layer**: UI
+   - **Branch**: `feature/branch-name`
+   - **Verification**:
+     - vue-tsc: PASS/FAIL
+     - eslint: PASS/FAIL
+   - **Files**: N created, M modified
+   - **Open items**: (any issues, caveats, or next-layer dependencies to note — or "None")
+   ```
+10. **Archive the plan.** Move the plan file from `../patient-care-super/planning/active/` to `../patient-care-super/planning/completed/` and add a one-line entry to `../patient-care-super/planning/archive.md`:
+    ```
+    | YYYY-MM-DD | Plan title | Outcome summary | `feature/branch-name` |
+    ```
+    Leave these changes uncommitted — the coordinator or user will review and commit them.
+    If other layers in the plan still need implementation, leave the plan in `active/` instead.
+11. **Report back.** Summarize what you implemented, what you verified, and any issues or open questions for the coordinator.
 
 ## Important
 
