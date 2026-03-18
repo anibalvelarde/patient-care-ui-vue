@@ -67,7 +67,7 @@ export default defineComponent({
     const navItems = [
       { label: 'Dashboard', icon: 'chart-pie', to: '/' },
       { label: 'Patients', icon: 'users', to: '/patients' },
-      { label: 'Therapists', icon: 'user-md', to: '#' },
+      { label: 'Therapists', icon: 'user-md', to: '/therapists' },
       { label: 'Schedule', icon: 'calendar-check', to: '#' },
       { label: 'Billing', icon: 'credit-card', to: '#' },
       { label: 'Reports', icon: 'file-alt', to: '#' },
