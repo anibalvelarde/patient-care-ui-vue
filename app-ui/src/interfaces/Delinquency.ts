@@ -32,3 +32,5 @@ export interface DelinquentPatient {
   amountPaidSoFar: number;
   delinquency: DelinquentSession[];
 }
+
+export type DelinquentTherapist = DelinquentPatient;
