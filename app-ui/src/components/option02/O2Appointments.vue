@@ -57,6 +57,33 @@
             <p class="text-xs text-gray-400 truncate">
               {{ appt.therapyTypes }} &middot; {{ appt.therapist }}
             </p>
+            <!-- Mobile financial summary -->
+            <p class="md:hidden text-[10px] mt-0.5 truncate">
+              <span class="text-gray-500">{{ formatCurrency(appt.amount) }} billed</span>
+              <span class="text-gray-300"> &middot; </span>
+              <span v-if="appt.isPastDue" class="text-red-600 font-medium">{{ formatCurrency(appt.amountDue) }} due</span>
+              <span v-else class="text-green-600 font-medium">{{ formatCurrency(appt.amountPaid) }} paid</span>
+            </p>
+          </div>
+
+          <!-- Financial columns (desktop) -->
+          <div class="hidden md:flex items-center gap-1 flex-shrink-0">
+            <div class="w-16 text-right">
+              <p class="text-xs font-medium text-gray-600">{{ formatCurrency(appt.amount) }}</p>
+              <p class="text-[10px] text-gray-400">Billed</p>
+            </div>
+            <div class="w-16 text-right">
+              <p class="text-xs font-medium text-gray-600">-{{ formatCurrency(appt.discount) }}</p>
+              <p class="text-[10px] text-gray-400">Discount</p>
+            </div>
+            <div class="w-16 text-right">
+              <p class="text-xs font-medium text-green-600">{{ formatCurrency(appt.amountPaid) }}</p>
+              <p class="text-[10px] text-gray-400">Paid</p>
+            </div>
+            <div class="w-16 text-right">
+              <p :class="['text-xs font-medium', appt.amountDue > 0 ? 'text-red-600' : 'text-gray-400']">{{ formatCurrency(appt.amountDue) }}</p>
+              <p class="text-[10px] text-gray-400">Due</p>
+            </div>
           </div>
 
           <!-- Notes tooltip -->
