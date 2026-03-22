@@ -69,6 +69,7 @@
       :caretakers="filteredCaretakers"
       @edit="(c) => $emit('edit', c)"
       @toggle-active="(c) => $emit('toggle-active', c)"
+      @view-patients="(c) => $emit('view-patients', c)"
     />
   </div>
 </template>
@@ -87,7 +88,7 @@ export default defineComponent({
     loading: { type: Boolean, default: false },
     error: { type: String, default: '' },
   },
-  emits: ['add', 'edit', 'toggle-active', 'retry', 'tab-change'],
+  emits: ['add', 'edit', 'toggle-active', 'retry', 'tab-change', 'view-patients'],
   setup(props, { emit }) {
     const search = ref('');
     const activeFilter = ref<'all' | 'active' | 'inactive'>(props.initialTab);

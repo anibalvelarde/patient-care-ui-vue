@@ -20,6 +20,15 @@
           @toggle-active="toggleActive"
           @retry="loadCaretakers"
           @tab-change="onTabChange"
+          @view-patients="viewPatients"
+        />
+
+        <CaretakerPatientsList
+          v-if="selectedCaretaker"
+          :caretaker="selectedCaretaker"
+          class="mt-6"
+          @close="selectedCaretaker = null"
+          @updated="onPatientsUpdated"
         />
       </main>
         <O2Footer />
@@ -44,12 +53,13 @@ import O2Header from '../components/option02/O2Header.vue';
 import O2Footer from '../components/option02/O2Footer.vue';
 import CaretakerList from '../components/caretakers/CaretakerList.vue';
 import CaretakerFormModal from '../components/caretakers/CaretakerFormModal.vue';
+import CaretakerPatientsList from '../components/caretakers/CaretakerPatientsList.vue';
 import { CaretakersHttpClient } from '../services/CaretakersHttpClient';
 import type { Caretaker } from '../interfaces/Caretaker';
 
 export default defineComponent({
   name: 'CaretakersView',
-  components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, CaretakerList, CaretakerFormModal },
+  components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, CaretakerList, CaretakerFormModal, CaretakerPatientsList },
   setup() {
     const route = useRoute();
     const client = new CaretakersHttpClient();
@@ -65,6 +75,7 @@ export default defineComponent({
     const error = ref('');
     const modalVisible = ref(false);
     const editingCaretaker = ref<Caretaker | null>(null);
+    const selectedCaretaker = ref<Caretaker | null>(null);
 
     const loadCaretakers = async () => {
       loading.value = true;
@@ -111,6 +122,14 @@ export default defineComponent({
       // No delinquent tab for caretakers — nothing extra to load
     };
 
+    const viewPatients = (caretaker: Caretaker) => {
+      selectedCaretaker.value = caretaker;
+    };
+
+    const onPatientsUpdated = () => {
+      loadCaretakers();
+    };
+
     const onSaved = () => {
       loadCaretakers();
     };
@@ -123,11 +142,14 @@ export default defineComponent({
       error,
       modalVisible,
       editingCaretaker,
+      selectedCaretaker,
       initialTab,
       loadCaretakers,
       openAdd,
       openEdit,
       toggleActive,
+      viewPatients,
+      onPatientsUpdated,
       onSaved,
       onTabChange,
     };

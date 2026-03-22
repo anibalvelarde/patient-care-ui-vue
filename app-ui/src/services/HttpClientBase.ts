@@ -61,6 +61,20 @@ export abstract class HttpClientBase {
       }
     }
 
+    protected async delete(url: string): Promise<void> {
+      const fullUrl = this.baseUrl + url;
+      const response = await fetch(fullUrl, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+      if (!response.ok) {
+        const message = await this.extractErrorMessage(response, "An unexpected error occurred while deleting data.");
+        throw new Error(message);
+      }
+    }
+
     private async extractErrorMessage(response: Response, fallback: string): Promise<string> {
       try {
         const text = await response.text();

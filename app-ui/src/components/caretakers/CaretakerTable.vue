@@ -46,6 +46,15 @@
           <td class="px-4 py-3 text-right">
             <div class="flex items-center justify-end space-x-2">
               <button
+                class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                title="View patients"
+                @click="$emit('view-patients', caretaker)"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+              <button
                 class="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                 title="Edit caretaker"
                 @click="$emit('edit', caretaker)"
@@ -106,6 +115,12 @@
       </div>
       <div class="flex items-center justify-end space-x-2 border-t border-slate-100 pt-2">
         <button
+          class="px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
+          @click="$emit('view-patients', caretaker)"
+        >
+          Patients
+        </button>
+        <button
           class="px-3 py-1.5 rounded-lg text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors"
           @click="$emit('edit', caretaker)"
         >
@@ -135,7 +150,7 @@ export default defineComponent({
   props: {
     caretakers: { type: Array as PropType<Caretaker[]>, required: true },
   },
-  emits: ['edit', 'toggle-active'],
+  emits: ['edit', 'toggle-active', 'view-patients'],
   setup(props) {
     const sortKey = ref('caretakerName');
     const sortAsc = ref(true);
