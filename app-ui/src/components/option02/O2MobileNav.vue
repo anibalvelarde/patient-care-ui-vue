@@ -86,7 +86,7 @@ export default defineComponent({
       { label: 'Therapists', icon: 'user-md', to: '/therapists' },
       { label: 'Caretakers', icon: 'hand-holding-heart', to: '/caretakers' },
       { label: 'Schedule', icon: 'calendar-check', to: '#' },
-      { label: 'Billing', icon: 'credit-card', to: '#' },
+      { label: 'Billing', icon: 'credit-card', to: '/payments' },
       { label: 'Reports', icon: 'file-alt', to: '#' },
     ];
 
