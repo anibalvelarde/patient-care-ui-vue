@@ -98,25 +98,38 @@
             </div>
           </div>
 
-          <!-- Status badge -->
-          <div class="flex-shrink-0">
-            <span
+          <!-- Status badge (clickable) -->
+          <div class="flex-shrink-0 flex items-center gap-1">
+            <button
+              v-if="appt.amountDue > 0 && !appt.isPaidOff"
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer transition-colors"
+              title="Record payment for this session"
+              @click.stop="$emit('pay', appt)"
+            >
+              <font-awesome-icon :icon="['fas', 'credit-card']" class="text-[9px]" />
+              Pay
+            </button>
+            <button
               v-if="appt.isPaidOff"
-              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-700"
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-700 hover:bg-green-200 cursor-pointer transition-colors"
+              title="View payment details"
+              @click.stop="$emit('view-payments', appt)"
             >
               <font-awesome-icon :icon="['fas', 'check-circle']" class="text-[9px]" />
               Paid
-            </span>
-            <span
+            </button>
+            <button
               v-else-if="appt.isPastDue"
-              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-700"
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-700 hover:bg-red-200 cursor-pointer transition-colors"
+              title="View payment details"
+              @click.stop="$emit('view-payments', appt)"
             >
               <font-awesome-icon :icon="['fas', 'exclamation-circle']" class="text-[9px]" />
               Past Due
               <span class="text-red-500">&middot; {{ formatCurrency(appt.amountDue) }}</span>
-            </span>
+            </button>
             <span
-              v-else
+              v-else-if="!appt.isPaidOff && appt.amountDue <= 0"
               class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-500"
             >
               Pending
@@ -147,9 +160,10 @@ import {
   faCheckCircle,
   faExclamationCircle,
   faCalendarDay,
+  faCreditCard,
 } from '@fortawesome/free-solid-svg-icons';
 
-library.add(faList, faStickyNote, faCheckCircle, faExclamationCircle, faCalendarDay);
+library.add(faList, faStickyNote, faCheckCircle, faExclamationCircle, faCalendarDay, faCreditCard);
 
 export default defineComponent({
   name: 'O2Appointments',
@@ -163,8 +177,12 @@ export default defineComponent({
       type: Number,
       default: null,
     },
+    refreshKey: {
+      type: Number,
+      default: 0,
+    },
   },
-  emits: ['appointments-loaded'],
+  emits: ['appointments-loaded', 'view-payments', 'pay'],
   setup(props, { emit }) {
     const sessionsHttpClient = new SessionsHttpClient();
     const allAppointments = ref<Appointment[]>([]);
@@ -223,6 +241,13 @@ export default defineComponent({
       () => props.selectedDate,
       (newDate) => {
         fetchAppointments(newDate);
+      }
+    );
+
+    watch(
+      () => props.refreshKey,
+      () => {
+        fetchAppointments(props.selectedDate);
       }
     );
 

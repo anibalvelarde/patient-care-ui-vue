@@ -30,7 +30,10 @@
               <O2Appointments
                 :selectedDate="selectedDate"
                 :highlightedSessionId="highlightedSessionId"
+                :refresh-key="appointmentRefreshKey"
                 @appointments-loaded="onAppointmentsLoaded"
+                @view-payments="onViewPayments"
+                @pay="onPay"
               />
             </div>
           </div>
@@ -38,6 +41,20 @@
         <O2Footer />
       </div>
     </div>
+
+    <SessionPaymentsModal
+      :visible="paymentsModalVisible"
+      :session="paymentsModalSession"
+      @close="paymentsModalVisible = false"
+    />
+
+    <PaymentFormModal
+      :visible="payFormVisible"
+      :payment="null"
+      :pre-selected-caretaker-id="preSelectedCaretakerId"
+      @close="payFormVisible = false"
+      @saved="onPaymentSaved"
+    />
   </div>
 </template>
 
@@ -52,6 +69,9 @@ import O2StatsBar from '../components/option02/O2StatsBar.vue';
 import O2Calendar from '../components/option02/O2Calendar.vue';
 import O2Appointments from '../components/option02/O2Appointments.vue';
 import O2Footer from '../components/option02/O2Footer.vue';
+import SessionPaymentsModal from '../components/payments/SessionPaymentsModal.vue';
+import PaymentFormModal from '../components/payments/PaymentFormModal.vue';
+import { PatientsHttpClient } from '../services/PatientsHttpClient';
 
 export default defineComponent({
   name: 'Option02View',
@@ -63,11 +83,25 @@ export default defineComponent({
     O2Calendar,
     O2Appointments,
     O2Footer,
+    SessionPaymentsModal,
+    PaymentFormModal,
   },
   setup() {
     const route = useRoute();
+    const patientsClient = new PatientsHttpClient();
     const selectedDate = ref<string>(new Date().toLocaleDateString('en-US'));
     const allAppointments = ref<Appointment[]>([]);
+
+    // Session payments modal state
+    const paymentsModalVisible = ref(false);
+    const paymentsModalSession = ref<Appointment | null>(null);
+
+    // Payment form modal state
+    const payFormVisible = ref(false);
+    const preSelectedCaretakerId = ref(0);
+
+    // Refresh key to force O2Appointments re-fetch
+    const appointmentRefreshKey = ref(0);
 
     const highlightedSessionId = computed(() => {
       const val = route.query.highlightSession;
@@ -95,6 +129,32 @@ export default defineComponent({
       allAppointments.value = appointments;
     };
 
+    const onViewPayments = (appt: Appointment) => {
+      paymentsModalSession.value = appt;
+      paymentsModalVisible.value = true;
+    };
+
+    const onPay = async (appt: Appointment) => {
+      // Look up patient's primary caretakers
+      preSelectedCaretakerId.value = 0;
+      try {
+        const patient = await patientsClient.getPatient(appt.patientId);
+        const primaryCaretakers = (patient.caretakers || []).filter(
+          (c) => c.isPrimaryCaretaker
+        );
+        if (primaryCaretakers.length === 1) {
+          preSelectedCaretakerId.value = primaryCaretakers[0].caretakerId;
+        }
+      } catch {
+        // If lookup fails, user can select manually
+      }
+      payFormVisible.value = true;
+    };
+
+    const onPaymentSaved = () => {
+      appointmentRefreshKey.value++;
+    };
+
     return {
       selectedDate,
       allAppointments,
@@ -102,6 +162,14 @@ export default defineComponent({
       cameFromDelinquent,
       updateSelectedDate,
       onAppointmentsLoaded,
+      onViewPayments,
+      onPay,
+      onPaymentSaved,
+      paymentsModalVisible,
+      paymentsModalSession,
+      payFormVisible,
+      preSelectedCaretakerId,
+      appointmentRefreshKey,
     };
   },
 });

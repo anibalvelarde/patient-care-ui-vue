@@ -35,7 +35,18 @@
             </td>
             <td class="px-4 py-3 text-sm font-medium text-amber-700">${{ dp.pastDueTotalAmount.toFixed(2) }}</td>
             <td class="px-4 py-3 text-sm text-slate-600">${{ dp.amountPaidSoFar.toFixed(2) }}</td>
-            <td class="px-4 py-3 text-sm font-semibold text-red-600">${{ (dp.pastDueTotalAmount - dp.amountPaidSoFar).toFixed(2) }}</td>
+            <td class="px-4 py-3 text-sm font-semibold text-red-600">
+              <div class="flex items-center justify-between">
+                <span>${{ (dp.pastDueTotalAmount - dp.amountPaidSoFar).toFixed(2) }}</span>
+                <button
+                  class="ml-2 inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                  title="Record payment for this patient"
+                  @click.stop="$emit('pay', dp)"
+                >
+                  Record Payment
+                </button>
+              </div>
+            </td>
           </tr>
           <!-- Expanded session detail rows -->
           <template v-if="expanded.has(dp.party.id)">
@@ -145,6 +156,7 @@ export default defineComponent({
     patients: { type: Array as PropType<DelinquentPatient[]>, required: true },
     search: { type: String, default: '' },
   },
+  emits: ['pay'],
   setup(props) {
     const expanded = ref<Set<number>>(new Set());
 

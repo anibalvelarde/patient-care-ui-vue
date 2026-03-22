@@ -22,6 +22,7 @@
           @retry="loadPatients"
           @tab-change="onTabChange"
           @view-caretakers="viewCaretakers"
+          @pay-delinquent="onPayDelinquent"
         />
 
         <PatientCaretakerPanel
@@ -42,6 +43,14 @@
       @close="modalVisible = false"
       @saved="onSaved"
       @created-temp-mrn="onCreatedTempMrn"
+    />
+
+    <PaymentFormModal
+      :visible="payFormVisible"
+      :payment="null"
+      :pre-selected-caretaker-id="preSelectedCaretakerId"
+      @close="payFormVisible = false"
+      @saved="onPaymentSaved"
     />
 
     <!-- Temp MRN creation banner -->
@@ -84,6 +93,7 @@ import O2Footer from '../components/option02/O2Footer.vue';
 import PatientList from '../components/patients/PatientList.vue';
 import PatientFormModal from '../components/patients/PatientFormModal.vue';
 import PatientCaretakerPanel from '../components/patients/PatientCaretakerPanel.vue';
+import PaymentFormModal from '../components/payments/PaymentFormModal.vue';
 import { PatientsHttpClient } from '../services/PatientsHttpClient';
 import type { Patient } from '../interfaces/Patient';
 import { isTemporaryMrn } from '../interfaces/Patient';
@@ -91,7 +101,7 @@ import type { DelinquentPatient } from '../interfaces/Delinquency';
 
 export default defineComponent({
   name: 'PatientsView',
-  components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, PatientList, PatientFormModal, PatientCaretakerPanel },
+  components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, PatientList, PatientFormModal, PatientCaretakerPanel, PaymentFormModal },
   setup() {
     const route = useRoute();
     const client = new PatientsHttpClient();
@@ -111,6 +121,8 @@ export default defineComponent({
     const pastDuePatients = ref<DelinquentPatient[]>([]);
     const pastDueLoaded = ref(false);
     const selectedPatient = ref<Patient | null>(null);
+    const payFormVisible = ref(false);
+    const preSelectedCaretakerId = ref(0);
 
     const loadPatients = async () => {
       loading.value = true;
@@ -188,6 +200,27 @@ export default defineComponent({
       pastDueLoaded.value = false;
     };
 
+    const onPayDelinquent = async (dp: DelinquentPatient) => {
+      preSelectedCaretakerId.value = 0;
+      try {
+        const patient = await client.getPatient(dp.party.id);
+        const primaryCaretakers = (patient.caretakers || []).filter(
+          (c) => c.isPrimaryCaretaker
+        );
+        if (primaryCaretakers.length === 1) {
+          preSelectedCaretakerId.value = primaryCaretakers[0].caretakerId;
+        }
+      } catch {
+        // If lookup fails, user can select manually
+      }
+      payFormVisible.value = true;
+    };
+
+    const onPaymentSaved = () => {
+      pastDueLoaded.value = false;
+      loadPastDuePatients();
+    };
+
     const onCreatedTempMrn = (patient: Patient) => {
       tempMrnBanner.value = patient.medicalRecordNumber;
       setTimeout(() => { tempMrnBanner.value = ''; }, 8000);
@@ -214,6 +247,10 @@ export default defineComponent({
       onSaved,
       onCreatedTempMrn,
       onTabChange,
+      payFormVisible,
+      preSelectedCaretakerId,
+      onPayDelinquent,
+      onPaymentSaved,
     };
   },
 });
