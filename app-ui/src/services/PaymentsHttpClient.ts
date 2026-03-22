@@ -6,6 +6,7 @@ import type {
   PaymentCreateRequest,
   PaymentUpdateRequest,
   UnpaidSessionSummary,
+  SessionPaymentDetail,
 } from '../interfaces/Payment';
 
 export class PaymentsHttpClient extends HttpClientBase {
@@ -38,5 +39,9 @@ export class PaymentsHttpClient extends HttpClientBase {
 
   async getUnpaidSessions(caretakerId: number): Promise<UnpaidSessionSummary[]> {
     return this.get<UnpaidSessionSummary[]>(`/api/caretakers/${caretakerId}/unpaid-sessions`);
+  }
+
+  async getSessionPayments(sessionId: number): Promise<SessionPaymentDetail[]> {
+    return this.get<SessionPaymentDetail[]>(`/api/sessions/${sessionId}/payments`);
   }
 }

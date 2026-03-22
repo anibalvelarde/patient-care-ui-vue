@@ -240,6 +240,7 @@ export default defineComponent({
   props: {
     visible: { type: Boolean, required: true },
     payment: { type: Object as PropType<PaymentRecord | null>, default: null },
+    preSelectedCaretakerId: { type: Number, default: 0 },
   },
   emits: ['close', 'saved'],
   setup(props, { emit }) {
@@ -429,7 +430,7 @@ export default defineComponent({
           }
         } else {
           isEdit.value = false;
-          form.caretakerId = 0;
+          form.caretakerId = props.preSelectedCaretakerId || 0;
           form.amount = 0;
           form.paymentDate = new Date().toISOString().split('T')[0];
           form.paymentTypeId = 0;

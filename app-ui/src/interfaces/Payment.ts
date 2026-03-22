@@ -51,6 +51,18 @@ export interface PaymentUpdateRequest {
   sessionAllocations: SessionAllocationItem[]
 }
 
+export interface SessionPaymentDetail {
+  sessionPaymentId: number
+  paymentId: number
+  amountAllocated: number
+  paymentDate: string
+  paymentTotalAmount: number
+  caretakerId: number
+  caretakerName: string
+  paymentType: PaymentTypeInfo
+  checkNumber: string | null
+}
+
 export interface UnpaidSessionSummary {
   sessionId: number
   sessionDate: string
