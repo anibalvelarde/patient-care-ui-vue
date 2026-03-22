@@ -73,6 +73,7 @@
       v-else-if="activeFilter === 'delinquent'"
       :patients="pastDuePatients"
       :search="search"
+      @pay="(dp) => $emit('pay-delinquent', dp)"
     />
 
     <!-- Standard patient table -->
@@ -103,7 +104,7 @@ export default defineComponent({
     loading: { type: Boolean, default: false },
     error: { type: String, default: '' },
   },
-  emits: ['add', 'edit', 'toggle-active', 'retry', 'tab-change', 'view-caretakers'],
+  emits: ['add', 'edit', 'toggle-active', 'retry', 'tab-change', 'view-caretakers', 'pay-delinquent'],
   setup(props, { emit }) {
     const search = ref('');
     const activeFilter = ref<'all' | 'active' | 'inactive' | 'delinquent'>(props.initialTab);
