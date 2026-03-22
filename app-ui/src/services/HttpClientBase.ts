@@ -43,7 +43,9 @@ export abstract class HttpClientBase {
         const message = await this.extractErrorMessage(response, "An unexpected error occurred while creating data.");
         throw new Error(message);
       }
-      return response.json();
+      const text = await response.text();
+      if (!text) return undefined as T;
+      return JSON.parse(text) as T;
     }
 
     protected async put(url: string, body: unknown): Promise<void> {

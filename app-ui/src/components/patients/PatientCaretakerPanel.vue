@@ -1,5 +1,11 @@
 <template>
-  <div class="bg-white rounded-xl border border-slate-200 shadow-lg p-6">
+  <Teleport to="body">
+    <div class="fixed inset-0 z-50 overflow-hidden">
+      <!-- Backdrop -->
+      <div class="fixed inset-0 bg-black/50 transition-opacity" @click="$emit('close')"></div>
+      <!-- Panel -->
+      <div class="fixed inset-y-0 right-0 flex max-w-md w-full">
+        <div class="relative w-full bg-white shadow-xl overflow-y-auto p-6">
     <!-- Header -->
     <div class="flex items-center justify-between mb-4">
       <h3 class="text-lg font-semibold text-slate-800">
@@ -144,7 +150,20 @@
 
     <!-- Error message -->
     <p v-if="errorMsg" class="text-sm text-red-600 mt-3">{{ errorMsg }}</p>
-  </div>
+
+    <!-- Close button -->
+    <div class="border-t border-slate-200 pt-4 mt-4">
+      <button
+        class="w-full px-4 py-2 rounded-lg text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
+        @click="$emit('close')"
+      >
+        Close
+      </button>
+    </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script lang="ts">
@@ -172,7 +191,7 @@ export default defineComponent({
     const showAddForm = ref(false);
     const addCaretakerId = ref(0);
     const addRelationship = ref<string | null>(null);
-    const addIsPrimary = ref(false);
+    const addIsPrimary = ref(true);
 
     const availableCaretakers = computed(() => {
       const linkedIds = new Set(linkedCaretakers.value.map((lc) => lc.caretakerId));
@@ -232,7 +251,7 @@ export default defineComponent({
       showAddForm.value = false;
       addCaretakerId.value = 0;
       addRelationship.value = null;
-      addIsPrimary.value = false;
+      addIsPrimary.value = true;
     };
 
     onMounted(loadData);
