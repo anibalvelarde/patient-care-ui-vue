@@ -43,7 +43,9 @@ export abstract class HttpClientBase {
         const message = await this.extractErrorMessage(response, "An unexpected error occurred while creating data.");
         throw new Error(message);
       }
-      return response.json();
+      const text = await response.text();
+      if (!text) return undefined as T;
+      return JSON.parse(text) as T;
     }
 
     protected async put(url: string, body: unknown): Promise<void> {
@@ -57,6 +59,20 @@ export abstract class HttpClientBase {
       });
       if (!response.ok) {
         const message = await this.extractErrorMessage(response, "An unexpected error occurred while updating data.");
+        throw new Error(message);
+      }
+    }
+
+    protected async delete(url: string): Promise<void> {
+      const fullUrl = this.baseUrl + url;
+      const response = await fetch(fullUrl, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+      if (!response.ok) {
+        const message = await this.extractErrorMessage(response, "An unexpected error occurred while deleting data.");
         throw new Error(message);
       }
     }

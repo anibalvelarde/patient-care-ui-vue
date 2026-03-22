@@ -42,6 +42,16 @@
           <td class="px-4 py-3 text-sm text-slate-600">{{ patient.gender }}</td>
           <td class="px-4 py-3 text-sm text-slate-600">{{ patient.email }}</td>
           <td class="px-4 py-3 text-sm text-slate-600">{{ patient.phoneNumber }}</td>
+          <td class="px-4 py-3 text-sm">
+            <span
+              v-if="primaryCaretakerName(patient)"
+              class="text-slate-600"
+            >{{ primaryCaretakerName(patient) }}</span>
+            <span
+              v-else
+              class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700"
+            >None</span>
+          </td>
           <td class="px-4 py-3">
             <span
               :class="[
@@ -56,6 +66,15 @@
           </td>
           <td class="px-4 py-3 text-right">
             <div class="flex items-center justify-end space-x-2">
+              <button
+                class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                title="View caretakers"
+                @click="$emit('view-caretakers', patient)"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
               <button
                 class="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                 title="Edit patient"
@@ -85,7 +104,7 @@
           </td>
         </tr>
         <tr v-if="sortedPatients.length === 0">
-          <td colspan="8" class="px-4 py-12 text-center text-sm text-slate-400">
+          <td colspan="9" class="px-4 py-12 text-center text-sm text-slate-400">
             No patients found.
           </td>
         </tr>
@@ -124,8 +143,19 @@
         <div><span class="font-medium">Gender:</span> {{ patient.gender }}</div>
         <div><span class="font-medium">Email:</span> {{ patient.email }}</div>
         <div><span class="font-medium">Phone:</span> {{ patient.phoneNumber }}</div>
+        <div class="col-span-2">
+          <span class="font-medium">Primary Caretaker:</span>
+          <span v-if="primaryCaretakerName(patient)">{{ primaryCaretakerName(patient) }}</span>
+          <span v-else class="text-amber-600">None</span>
+        </div>
       </div>
       <div class="flex items-center justify-end space-x-2 border-t border-slate-100 pt-2">
+        <button
+          class="px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
+          @click="$emit('view-caretakers', patient)"
+        >
+          Caretakers
+        </button>
         <button
           class="px-3 py-1.5 rounded-lg text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors"
           @click="$emit('edit', patient)"
@@ -163,7 +193,7 @@ export default defineComponent({
   props: {
     patients: { type: Array as PropType<Patient[]>, required: true },
   },
-  emits: ['edit', 'toggle-active'],
+  emits: ['edit', 'toggle-active', 'view-caretakers'],
   setup(props) {
     const sortKey = ref('patientName');
     const sortAsc = ref(true);
@@ -175,6 +205,7 @@ export default defineComponent({
       { key: 'gender', label: 'Gender' },
       { key: 'email', label: 'Email' },
       { key: 'phoneNumber', label: 'Phone' },
+      { key: 'primaryCaretaker', label: 'Primary Caretaker' },
       { key: 'isActive', label: 'Status' },
     ];
 
@@ -190,8 +221,17 @@ export default defineComponent({
     const sortedPatients = computed(() => {
       const list = [...props.patients];
       list.sort((a, b) => {
-        const aVal = (a as unknown as Record<string, unknown>)[sortKey.value];
-        const bVal = (b as unknown as Record<string, unknown>)[sortKey.value];
+        let aVal: unknown;
+        let bVal: unknown;
+        if (sortKey.value === 'primaryCaretaker') {
+          const aPrimary = a.caretakers?.find((c) => c.isPrimaryCaretaker);
+          const bPrimary = b.caretakers?.find((c) => c.isPrimaryCaretaker);
+          aVal = aPrimary ? aPrimary.caretakerName : '';
+          bVal = bPrimary ? bPrimary.caretakerName : '';
+        } else {
+          aVal = (a as unknown as Record<string, unknown>)[sortKey.value];
+          bVal = (b as unknown as Record<string, unknown>)[sortKey.value];
+        }
         if (typeof aVal === 'string' && typeof bVal === 'string') {
           return sortAsc.value ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
         }
@@ -210,7 +250,12 @@ export default defineComponent({
       return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
     };
 
-    return { columns, sortKey, sortAsc, sortedPatients, toggleSort, formatDate, isTemporaryMrn };
+    const primaryCaretakerName = (patient: Patient): string => {
+      const primary = patient.caretakers?.find((c) => c.isPrimaryCaretaker);
+      return primary ? primary.caretakerName : '';
+    };
+
+    return { columns, sortKey, sortAsc, sortedPatients, toggleSort, formatDate, isTemporaryMrn, primaryCaretakerName };
   },
 });
 </script>

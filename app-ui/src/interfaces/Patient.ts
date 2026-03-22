@@ -12,6 +12,14 @@ export interface Patient {
   gender: string;
   isActive: boolean;
   createdTimestamp: string;
+  caretakers?: PatientCaretakerSummary[];
+}
+
+export interface PatientCaretakerSummary {
+  caretakerId: number;
+  caretakerName: string;
+  isPrimaryCaretaker: boolean;
+  relationshipToPatient: string | null;
 }
 
 // Maps to API's PatientProfileRequest (POST)

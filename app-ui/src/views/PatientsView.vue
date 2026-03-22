@@ -21,6 +21,15 @@
           @toggle-active="toggleActive"
           @retry="loadPatients"
           @tab-change="onTabChange"
+          @view-caretakers="viewCaretakers"
+        />
+
+        <PatientCaretakerPanel
+          v-if="selectedPatient"
+          :patient="selectedPatient"
+          class="mt-6"
+          @close="selectedPatient = null"
+          @updated="onCaretakersUpdated"
         />
       </main>
         <O2Footer />
@@ -74,6 +83,7 @@ import O2Header from '../components/option02/O2Header.vue';
 import O2Footer from '../components/option02/O2Footer.vue';
 import PatientList from '../components/patients/PatientList.vue';
 import PatientFormModal from '../components/patients/PatientFormModal.vue';
+import PatientCaretakerPanel from '../components/patients/PatientCaretakerPanel.vue';
 import { PatientsHttpClient } from '../services/PatientsHttpClient';
 import type { Patient } from '../interfaces/Patient';
 import { isTemporaryMrn } from '../interfaces/Patient';
@@ -81,7 +91,7 @@ import type { DelinquentPatient } from '../interfaces/Delinquency';
 
 export default defineComponent({
   name: 'PatientsView',
-  components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, PatientList, PatientFormModal },
+  components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, PatientList, PatientFormModal, PatientCaretakerPanel },
   setup() {
     const route = useRoute();
     const client = new PatientsHttpClient();
@@ -100,6 +110,7 @@ export default defineComponent({
     const tempMrnBanner = ref('');
     const pastDuePatients = ref<DelinquentPatient[]>([]);
     const pastDueLoaded = ref(false);
+    const selectedPatient = ref<Patient | null>(null);
 
     const loadPatients = async () => {
       loading.value = true;
@@ -164,6 +175,14 @@ export default defineComponent({
       }
     };
 
+    const viewCaretakers = (patient: Patient) => {
+      selectedPatient.value = patient;
+    };
+
+    const onCaretakersUpdated = () => {
+      loadPatients();
+    };
+
     const onSaved = () => {
       loadPatients();
       pastDueLoaded.value = false;
@@ -182,6 +201,7 @@ export default defineComponent({
       error,
       modalVisible,
       editingPatient,
+      selectedPatient,
       tempMrnBanner,
       pastDuePatients,
       initialTab,
@@ -189,6 +209,8 @@ export default defineComponent({
       openAdd,
       openEdit,
       toggleActive,
+      viewCaretakers,
+      onCaretakersUpdated,
       onSaved,
       onCreatedTempMrn,
       onTabChange,

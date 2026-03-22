@@ -9,7 +9,7 @@
         <input
           v-model="search"
           type="text"
-          placeholder="Search patients..."
+          placeholder="Search caretakers..."
           class="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
       </div>
@@ -20,7 +20,7 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
-        <span>Add Patient</span>
+        <span>Add Caretaker</span>
       </button>
     </div>
 
@@ -33,9 +33,7 @@
           :class="[
             'px-4 py-1.5 rounded-md text-sm font-medium transition-colors',
             activeFilter === tab.value
-              ? tab.value === 'delinquent'
-                ? 'bg-white text-amber-700 shadow-sm'
-                : 'bg-white text-slate-800 shadow-sm'
+              ? 'bg-white text-slate-800 shadow-sm'
               : 'text-slate-500 hover:text-slate-700',
           ]"
           @click="onTabClick(tab.value)"
@@ -43,18 +41,15 @@
           {{ tab.label }}
         </button>
       </div>
-      <span v-if="activeFilter !== 'delinquent'" class="text-sm text-slate-500">
-        {{ filteredPatients.length }} patient{{ filteredPatients.length !== 1 ? 's' : '' }}
-      </span>
-      <span v-else class="text-sm text-amber-600">
-        {{ pastDuePatients.length }} patient{{ pastDuePatients.length !== 1 ? 's' : '' }} past due
+      <span class="text-sm text-slate-500">
+        {{ filteredCaretakers.length }} caretaker{{ filteredCaretakers.length !== 1 ? 's' : '' }}
       </span>
     </div>
 
     <!-- Loading state -->
     <div v-if="loading" class="text-center py-12">
       <div class="inline-block w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-      <p class="mt-2 text-sm text-slate-500">Loading patients...</p>
+      <p class="mt-2 text-sm text-slate-500">Loading caretakers...</p>
     </div>
 
     <!-- Error state -->
@@ -68,45 +63,35 @@
       </button>
     </div>
 
-    <!-- Delinquent tab -->
-    <DelinquentTable
-      v-else-if="activeFilter === 'delinquent'"
-      :patients="pastDuePatients"
-      :search="search"
-    />
-
-    <!-- Standard patient table -->
-    <PatientTable
+    <!-- Standard caretaker table -->
+    <CaretakerTable
       v-else
-      :patients="filteredPatients"
-      @edit="(p) => $emit('edit', p)"
-      @toggle-active="(p) => $emit('toggle-active', p)"
-      @view-caretakers="(p) => $emit('view-caretakers', p)"
+      :caretakers="filteredCaretakers"
+      @edit="(c) => $emit('edit', c)"
+      @toggle-active="(c) => $emit('toggle-active', c)"
+      @view-patients="(c) => $emit('view-patients', c)"
     />
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent, ref, computed, onMounted, type PropType } from 'vue';
-import type { Patient } from '../../interfaces/Patient';
-import type { DelinquentPatient } from '../../interfaces/Delinquency';
-import PatientTable from './PatientTable.vue';
-import DelinquentTable from './DelinquentTable.vue';
+import type { Caretaker } from '../../interfaces/Caretaker';
+import CaretakerTable from './CaretakerTable.vue';
 
 export default defineComponent({
-  name: 'PatientList',
-  components: { PatientTable, DelinquentTable },
+  name: 'CaretakerList',
+  components: { CaretakerTable },
   props: {
-    patients: { type: Array as PropType<Patient[]>, required: true },
-    pastDuePatients: { type: Array as PropType<DelinquentPatient[]>, default: () => [] },
-    initialTab: { type: String as PropType<'all' | 'active' | 'inactive' | 'delinquent'>, default: 'all' },
+    caretakers: { type: Array as PropType<Caretaker[]>, required: true },
+    initialTab: { type: String as PropType<'all' | 'active' | 'inactive'>, default: 'all' },
     loading: { type: Boolean, default: false },
     error: { type: String, default: '' },
   },
-  emits: ['add', 'edit', 'toggle-active', 'retry', 'tab-change', 'view-caretakers'],
+  emits: ['add', 'edit', 'toggle-active', 'retry', 'tab-change', 'view-patients'],
   setup(props, { emit }) {
     const search = ref('');
-    const activeFilter = ref<'all' | 'active' | 'inactive' | 'delinquent'>(props.initialTab);
+    const activeFilter = ref<'all' | 'active' | 'inactive'>(props.initialTab);
 
     onMounted(() => {
       if (props.initialTab !== 'all') {
@@ -118,37 +103,36 @@ export default defineComponent({
       { label: 'All', value: 'all' as const },
       { label: 'Active', value: 'active' as const },
       { label: 'Inactive', value: 'inactive' as const },
-      { label: 'Delinquent', value: 'delinquent' as const },
     ];
 
-    const onTabClick = (value: 'all' | 'active' | 'inactive' | 'delinquent') => {
+    const onTabClick = (value: 'all' | 'active' | 'inactive') => {
       activeFilter.value = value;
       emit('tab-change', value);
     };
 
-    const filteredPatients = computed(() => {
-      let list = props.patients;
+    const filteredCaretakers = computed(() => {
+      let list = props.caretakers;
 
       if (activeFilter.value === 'active') {
-        list = list.filter((p) => p.isActive);
+        list = list.filter((c) => c.isActive);
       } else if (activeFilter.value === 'inactive') {
-        list = list.filter((p) => !p.isActive);
+        list = list.filter((c) => !c.isActive);
       }
 
       const q = search.value.trim().toLowerCase();
       if (q) {
-        list = list.filter((p) =>
-          p.patientName.toLowerCase().includes(q) ||
-          p.medicalRecordNumber.toLowerCase().includes(q) ||
-          p.email.toLowerCase().includes(q) ||
-          p.phoneNumber.includes(q)
+        list = list.filter((c) =>
+          c.caretakerName.toLowerCase().includes(q) ||
+          c.email.toLowerCase().includes(q) ||
+          c.phoneNumber.includes(q) ||
+          c.notes.toLowerCase().includes(q)
         );
       }
 
       return list;
     });
 
-    return { search, activeFilter, tabs, filteredPatients, onTabClick };
+    return { search, activeFilter, tabs, filteredCaretakers, onTabClick };
   },
 });
 </script>
