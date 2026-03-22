@@ -64,13 +64,14 @@ import {
   faChartPie,
   faUsers,
   faUserMd,
+  faHandHoldingHeart,
   faCalendarCheck,
   faCreditCard,
   faFileAlt,
   faArrowLeft,
 } from '@fortawesome/free-solid-svg-icons';
 
-library.add(faChartPie, faUsers, faUserMd, faCalendarCheck, faCreditCard, faFileAlt, faArrowLeft);
+library.add(faChartPie, faUsers, faUserMd, faHandHoldingHeart, faCalendarCheck, faCreditCard, faFileAlt, faArrowLeft);
 
 export default defineComponent({
   name: 'O2MobileNav',
@@ -83,6 +84,7 @@ export default defineComponent({
       { label: 'Dashboard', icon: 'chart-pie', to: '/' },
       { label: 'Patients', icon: 'users', to: '/patients' },
       { label: 'Therapists', icon: 'user-md', to: '/therapists' },
+      { label: 'Caretakers', icon: 'hand-holding-heart', to: '/caretakers' },
       { label: 'Schedule', icon: 'calendar-check', to: '#' },
       { label: 'Billing', icon: 'credit-card', to: '#' },
       { label: 'Reports', icon: 'file-alt', to: '#' },

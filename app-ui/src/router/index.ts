@@ -19,6 +19,11 @@ const router = createRouter({
       component: () => import('../views/TherapistsView.vue'),
     },
     {
+      path: '/caretakers',
+      name: 'caretakers',
+      component: () => import('../views/CaretakersView.vue'),
+    },
+    {
       path: '/design-options',
       name: 'design-options',
       component: () => import('../views/CompareView.vue'),
