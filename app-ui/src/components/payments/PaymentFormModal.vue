@@ -104,10 +104,14 @@
         <!-- Step 2: Session Allocation -->
         <div v-if="step === 2" class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           <!-- Summary bar -->
-          <div class="bg-blue-50 rounded-lg p-3 flex items-center justify-between text-sm">
-            <span class="text-blue-800">Payment: <strong>{{ formatCurrency(form.amount) }}</strong></span>
-            <span class="text-blue-800">Allocated: <strong>{{ formatCurrency(totalAllocated) }}</strong></span>
-            <span :class="remaining >= 0 ? 'text-blue-800' : 'text-red-600'">
+          <div :class="isFullyAllocated ? 'bg-green-50' : 'bg-blue-50'" class="rounded-lg p-3 flex items-center justify-between text-sm">
+            <span :class="isFullyAllocated ? 'text-green-800' : 'text-blue-800'">Payment: <strong>{{ formatCurrency(form.amount) }}</strong></span>
+            <span :class="isFullyAllocated ? 'text-green-800' : 'text-blue-800'">Allocated: <strong>{{ formatCurrency(totalAllocated) }}</strong></span>
+            <span v-if="isFullyAllocated" class="text-green-700 font-medium flex items-center">
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+              Fully Allocated
+            </span>
+            <span v-else :class="remaining < 0 ? 'text-red-600' : 'text-amber-600'">
               Remaining: <strong>{{ formatCurrency(remaining) }}</strong>
             </span>
           </div>
@@ -148,6 +152,15 @@
               <div class="flex items-center space-x-2">
                 <span class="text-xs text-slate-400">Therapist: {{ session.therapistName }}</span>
                 <div class="flex-1"></div>
+                <label class="flex items-center space-x-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    :checked="isFullAllocation(session.sessionId, session.amountDue)"
+                    class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
+                    @change="toggleFullAllocation(session.sessionId, session.amountDue, ($event.target as HTMLInputElement).checked)"
+                  />
+                  <span class="text-xs text-slate-500">Full</span>
+                </label>
                 <label class="text-xs text-slate-500">Allocate:</label>
                 <div class="relative w-28">
                   <span class="absolute inset-y-0 left-0 pl-2 flex items-center text-slate-400 text-xs">$</span>
@@ -201,8 +214,9 @@
             <button
               v-if="step === 2"
               type="button"
-              :disabled="saving"
+              :disabled="saving || !isFullyAllocated"
               class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+              :title="!isFullyAllocated ? 'Payment must be fully allocated before saving' : ''"
               @click="handleSubmit"
             >
               {{ saving ? 'Saving...' : 'Save Payment' }}
@@ -263,6 +277,10 @@ export default defineComponent({
 
     const remaining = computed(() => form.amount - totalAllocated.value);
 
+    const isFullyAllocated = computed(() =>
+      form.amount > 0 && Math.abs(totalAllocated.value - form.amount) < 0.005
+    );
+
     const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
 
     const getAllocation = (sessionId: number): number => allocations[sessionId] || 0;
@@ -270,6 +288,14 @@ export default defineComponent({
     const setAllocation = (sessionId: number, value: string) => {
       const num = parseFloat(value) || 0;
       allocations[sessionId] = num;
+    };
+
+    const isFullAllocation = (sessionId: number, amountDue: number): boolean => {
+      return Math.abs((allocations[sessionId] || 0) - amountDue) < 0.005 && amountDue > 0;
+    };
+
+    const toggleFullAllocation = (sessionId: number, amountDue: number, checked: boolean) => {
+      allocations[sessionId] = checked ? parseFloat(amountDue.toFixed(2)) : 0;
     };
 
     const autoAllocateOldest = () => {
@@ -293,7 +319,7 @@ export default defineComponent({
           caretakersClient.getCaretakers(),
           paymentsClient.getPaymentTypes(),
         ]);
-        caretakers.value = cts;
+        caretakers.value = cts.sort((a, b) => a.caretakerName.localeCompare(b.caretakerName));
         paymentTypes.value = pts;
       } catch (e: unknown) {
         error.value = e instanceof Error ? e.message : 'Failed to load reference data.';
@@ -341,8 +367,8 @@ export default defineComponent({
     const handleSubmit = async () => {
       error.value = '';
 
-      if (totalAllocated.value > form.amount) {
-        error.value = `Total allocations ($${totalAllocated.value.toFixed(2)}) exceed payment amount ($${form.amount.toFixed(2)}).`;
+      if (!isFullyAllocated.value) {
+        error.value = `Payment must be fully allocated. Allocated: $${totalAllocated.value.toFixed(2)}, Payment: $${form.amount.toFixed(2)}.`;
         return;
       }
 
@@ -428,9 +454,12 @@ export default defineComponent({
       isCheckType,
       totalAllocated,
       remaining,
+      isFullyAllocated,
       formatCurrency,
       getAllocation,
       setAllocation,
+      isFullAllocation,
+      toggleFullAllocation,
       autoAllocateOldest,
       onCaretakerChange,
       goToStep2,
