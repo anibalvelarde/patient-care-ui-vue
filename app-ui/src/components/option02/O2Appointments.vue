@@ -177,6 +177,10 @@ export default defineComponent({
       type: Number,
       default: null,
     },
+    refreshKey: {
+      type: Number,
+      default: 0,
+    },
   },
   emits: ['appointments-loaded', 'view-payments', 'pay'],
   setup(props, { emit }) {
@@ -237,6 +241,13 @@ export default defineComponent({
       () => props.selectedDate,
       (newDate) => {
         fetchAppointments(newDate);
+      }
+    );
+
+    watch(
+      () => props.refreshKey,
+      () => {
+        fetchAppointments(props.selectedDate);
       }
     );
 

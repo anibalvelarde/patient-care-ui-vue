@@ -104,16 +104,24 @@
         <!-- Step 2: Session Allocation -->
         <div v-if="step === 2" class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           <!-- Summary bar -->
-          <div :class="isFullyAllocated ? 'bg-green-50' : 'bg-blue-50'" class="rounded-lg p-3 flex items-center justify-between text-sm">
-            <span :class="isFullyAllocated ? 'text-green-800' : 'text-blue-800'">Payment: <strong>{{ formatCurrency(form.amount) }}</strong></span>
-            <span :class="isFullyAllocated ? 'text-green-800' : 'text-blue-800'">Allocated: <strong>{{ formatCurrency(totalAllocated) }}</strong></span>
-            <span v-if="isFullyAllocated" class="text-green-700 font-medium flex items-center">
-              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-              Fully Allocated
-            </span>
-            <span v-else :class="remaining < 0 ? 'text-red-600' : 'text-amber-600'">
-              Remaining: <strong>{{ formatCurrency(remaining) }}</strong>
-            </span>
+          <div :class="isFullyAllocated ? 'bg-green-50' : isOverAllocated ? 'bg-red-50' : 'bg-blue-50'" class="rounded-lg p-3 text-sm">
+            <div class="flex items-center justify-between">
+              <span :class="isFullyAllocated ? 'text-green-800' : isOverAllocated ? 'text-red-800' : 'text-blue-800'">Payment: <strong>{{ formatCurrency(form.amount) }}</strong></span>
+              <span :class="isFullyAllocated ? 'text-green-800' : isOverAllocated ? 'text-red-800' : 'text-blue-800'">Allocated: <strong>{{ formatCurrency(totalAllocated) }}</strong></span>
+              <span v-if="isFullyAllocated" class="text-green-700 font-medium flex items-center">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                Fully Allocated
+              </span>
+              <span v-else :class="remaining < 0 ? 'text-red-600' : 'text-amber-600'">
+                Remaining: <strong>{{ formatCurrency(remaining) }}</strong>
+              </span>
+            </div>
+            <div v-if="isOverAllocated" class="mt-2 flex items-start space-x-2 text-red-700">
+              <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span class="text-xs">You have overallocated by <strong>{{ formatCurrency(Math.abs(remaining)) }}</strong>. Reduce allocations on one or more sessions to match the payment amount.</span>
+            </div>
           </div>
 
           <div class="flex items-center justify-between">
@@ -280,6 +288,10 @@ export default defineComponent({
 
     const isFullyAllocated = computed(() =>
       form.amount > 0 && Math.abs(totalAllocated.value - form.amount) < 0.005
+    );
+
+    const isOverAllocated = computed(() =>
+      totalAllocated.value > form.amount + 0.005
     );
 
     const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
@@ -456,6 +468,7 @@ export default defineComponent({
       totalAllocated,
       remaining,
       isFullyAllocated,
+      isOverAllocated,
       formatCurrency,
       getAllocation,
       setAllocation,

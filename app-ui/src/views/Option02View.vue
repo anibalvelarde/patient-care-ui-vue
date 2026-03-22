@@ -30,6 +30,7 @@
               <O2Appointments
                 :selectedDate="selectedDate"
                 :highlightedSessionId="highlightedSessionId"
+                :refresh-key="appointmentRefreshKey"
                 @appointments-loaded="onAppointmentsLoaded"
                 @view-payments="onViewPayments"
                 @pay="onPay"
@@ -99,6 +100,9 @@ export default defineComponent({
     const payFormVisible = ref(false);
     const preSelectedCaretakerId = ref(0);
 
+    // Refresh key to force O2Appointments re-fetch
+    const appointmentRefreshKey = ref(0);
+
     const highlightedSessionId = computed(() => {
       const val = route.query.highlightSession;
       return val ? Number(val) : undefined;
@@ -148,10 +152,7 @@ export default defineComponent({
     };
 
     const onPaymentSaved = () => {
-      // Refresh appointments after payment
-      const dateEl = selectedDate.value;
-      selectedDate.value = '';
-      selectedDate.value = dateEl;
+      appointmentRefreshKey.value++;
     };
 
     return {
@@ -168,6 +169,7 @@ export default defineComponent({
       paymentsModalSession,
       payFormVisible,
       preSelectedCaretakerId,
+      appointmentRefreshKey,
     };
   },
 });
