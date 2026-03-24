@@ -109,7 +109,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed, onMounted } from 'vue';
+import { defineComponent, ref, computed, watch, onMounted } from 'vue';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faCalendar } from '@fortawesome/free-solid-svg-icons';
@@ -222,6 +222,18 @@ export default defineComponent({
       weekDays.value = getWeekDays(d);
       emit('date-selected', date);
     };
+
+    // Sync calendar view when selectedDate changes (e.g., Jump to Dashboard from Delinquent)
+    watch(() => props.selectedDate, (newDate) => {
+      if (newDate) {
+        const d = new Date(newDate);
+        if (!isNaN(d.getTime())) {
+          viewMonth.value = d.getMonth();
+          viewYear.value = d.getFullYear();
+          weekDays.value = getWeekDays(d);
+        }
+      }
+    }, { immediate: true });
 
     onMounted(() => {
       emit('date-selected', props.selectedDate);

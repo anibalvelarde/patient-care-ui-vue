@@ -59,7 +59,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted, computed } from 'vue';
+import { defineComponent, ref, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { Appointment } from '../interfaces/Appointment';
 import O2MobileNav from '../components/option02/O2MobileNav.vue';
@@ -110,16 +110,18 @@ export default defineComponent({
 
     const cameFromDelinquent = computed(() => !!route.query.highlightSession);
 
-    onMounted(() => {
-      const dateParam = route.query.date as string | undefined;
+    // Sync selectedDate from route query — handles both initial load and
+    // subsequent navigations (e.g., clicking Dashboard resets to today)
+    watch(() => route.query.date, (dateParam) => {
       if (dateParam) {
-        // Convert yyyy-MM-dd to en-US locale string
-        const d = new Date(dateParam + 'T00:00:00');
+        const d = new Date((dateParam as string) + 'T00:00:00');
         if (!isNaN(d.getTime())) {
           selectedDate.value = d.toLocaleDateString('en-US');
         }
+      } else if (route.path === '/') {
+        selectedDate.value = new Date().toLocaleDateString('en-US');
       }
-    });
+    }, { immediate: true });
 
     const updateSelectedDate = (date: string) => {
       selectedDate.value = date;
