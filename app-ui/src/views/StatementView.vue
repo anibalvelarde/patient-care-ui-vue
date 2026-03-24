@@ -11,12 +11,34 @@
             <p class="text-sm text-slate-500 mt-1">Generate account statements for caretakers</p>
           </div>
 
-          <div class="mb-6">
+          <!-- Selection controls (hidden when statement is displayed) -->
+          <div v-if="!statement && !loading" class="mb-6">
             <StatementControls
               :caretakers="caretakers"
               :loading="loading"
               @generate="onGenerate"
             />
+          </div>
+
+          <!-- Back bar (shown when statement is displayed) -->
+          <div v-if="(statement || loading) && !error" class="mb-6 print:hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 px-6 py-3 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span v-if="statement" class="text-sm text-slate-600">
+                  Viewing statement for <span class="font-semibold text-slate-900">{{ statement.caretakerName }}</span>
+                </span>
+                <span v-else class="text-sm text-slate-500">Generating statement...</span>
+              </div>
+              <button
+                class="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200"
+                @click="onBack"
+              >
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                Back
+              </button>
+            </div>
           </div>
 
           <!-- Loading -->
@@ -29,8 +51,19 @@
           </div>
 
           <!-- Error -->
-          <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <p class="text-sm text-red-700">{{ error }}</p>
+          <div v-if="error" class="mb-6">
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p class="text-sm text-red-700">{{ error }}</p>
+            </div>
+            <button
+              class="mt-3 inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200"
+              @click="onBack"
+            >
+              <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+              Back
+            </button>
           </div>
 
           <!-- Statement -->
@@ -74,10 +107,12 @@ export default defineComponent({
     const loadCaretakers = async () => {
       try {
         const list = await caretakersClient.getCaretakers();
-        caretakers.value = list.map((c) => ({
-          caretakerId: c.caretakerId,
-          caretakerName: c.caretakerName,
-        }));
+        caretakers.value = list
+          .map((c) => ({
+            caretakerId: c.caretakerId,
+            caretakerName: c.caretakerName,
+          }))
+          .sort((a, b) => a.caretakerName.localeCompare(b.caretakerName));
       } catch (e: unknown) {
         error.value = e instanceof Error ? e.message : 'Failed to load caretakers.';
       }
@@ -96,9 +131,15 @@ export default defineComponent({
       }
     };
 
+    const onBack = () => {
+      statement.value = null;
+      error.value = '';
+      loading.value = false;
+    };
+
     onMounted(loadCaretakers);
 
-    return { caretakers, statement, loading, error, onGenerate };
+    return { caretakers, statement, loading, error, onGenerate, onBack };
   },
 });
 </script>
