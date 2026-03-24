@@ -59,7 +59,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed } from 'vue';
+import { defineComponent, ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { Appointment } from '../interfaces/Appointment';
 import O2MobileNav from '../components/option02/O2MobileNav.vue';
@@ -89,20 +89,7 @@ export default defineComponent({
   setup() {
     const route = useRoute();
     const patientsClient = new PatientsHttpClient();
-    // Read route date param in setup (before child components mount)
-    // so the calendar initializes with the correct date immediately
-    const initDate = (() => {
-      const dateParam = route.query.date as string | undefined;
-      if (dateParam) {
-        const d = new Date(dateParam + 'T00:00:00');
-        if (!isNaN(d.getTime())) {
-          return d.toLocaleDateString('en-US');
-        }
-      }
-      return new Date().toLocaleDateString('en-US');
-    })();
-
-    const selectedDate = ref<string>(initDate);
+    const selectedDate = ref<string>(new Date().toLocaleDateString('en-US'));
     const allAppointments = ref<Appointment[]>([]);
 
     // Session payments modal state
@@ -122,6 +109,17 @@ export default defineComponent({
     });
 
     const cameFromDelinquent = computed(() => !!route.query.highlightSession);
+
+    onMounted(() => {
+      const dateParam = route.query.date as string | undefined;
+      if (dateParam) {
+        // Convert yyyy-MM-dd to en-US locale string
+        const d = new Date(dateParam + 'T00:00:00');
+        if (!isNaN(d.getTime())) {
+          selectedDate.value = d.toLocaleDateString('en-US');
+        }
+      }
+    });
 
     const updateSelectedDate = (date: string) => {
       selectedDate.value = date;
