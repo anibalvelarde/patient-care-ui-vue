@@ -87,7 +87,7 @@ export default defineComponent({
       { label: 'Caretakers', icon: 'hand-holding-heart', to: '/caretakers' },
       { label: 'Schedule', icon: 'calendar-check', to: '#' },
       { label: 'Billing', icon: 'credit-card', to: '/payments' },
-      { label: 'Reports', icon: 'file-alt', to: '#' },
+      { label: 'Statements', icon: 'file-alt', to: '/statements' },
     ];
 
     const isActive = (to: string) => {

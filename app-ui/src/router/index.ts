@@ -29,6 +29,11 @@ const router = createRouter({
       component: () => import('../views/PaymentsView.vue'),
     },
     {
+      path: '/statements',
+      name: 'statements',
+      component: () => import('../views/StatementView.vue'),
+    },
+    {
       path: '/design-options',
       name: 'design-options',
       component: () => import('../views/CompareView.vue'),
