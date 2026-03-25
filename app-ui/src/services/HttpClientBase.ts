@@ -63,6 +63,22 @@ export abstract class HttpClientBase {
       }
     }
 
+    protected async putWithResponse<T>(url: string, body: unknown): Promise<T> {
+      const fullUrl = this.baseUrl + url;
+      const response = await fetch(fullUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        const message = await this.extractErrorMessage(response, "An unexpected error occurred while updating data.");
+        throw new Error(message);
+      }
+      return response.json();
+    }
+
     protected async delete(url: string): Promise<void> {
       const fullUrl = this.baseUrl + url;
       const response = await fetch(fullUrl, {
