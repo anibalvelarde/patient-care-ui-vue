@@ -16,6 +16,10 @@ export class SessionsHttpClient extends HttpClientBase {
     return this.post<Appointment>('/api/Sessions', data);
   }
 
+  async updateSession(id: number, data: Record<string, unknown>): Promise<void> {
+    return this.put(`/api/Sessions/${id}`, data);
+  }
+
   async getStatuses(): Promise<AppointmentStatusInfo[]> {
     return this.get<AppointmentStatusInfo[]>('/api/Sessions/statuses');
   }
