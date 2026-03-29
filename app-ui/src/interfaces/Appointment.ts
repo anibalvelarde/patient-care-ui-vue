@@ -19,6 +19,8 @@ export interface Appointment {
     appointmentStatusId: number;
     statusName: string;
     isConfirmed: boolean;
+    siteId: number | null;
+    siteName: string | null;
 }
 
 export interface AppointmentStatusInfo {
@@ -40,6 +42,7 @@ export interface SessionEventRequest {
     isPaidOff: boolean;
     notes: string;
     appointmentStatusId: number;
+    siteId?: number;
 }
 
 export interface ConfirmationRequest {

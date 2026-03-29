@@ -39,6 +39,11 @@ const router = createRouter({
       component: () => import('../views/AppointmentsView.vue'),
     },
     {
+      path: '/admin',
+      name: 'admin',
+      component: () => import('../views/AdminView.vue'),
+    },
+    {
       path: '/design-options',
       name: 'design-options',
       component: () => import('../views/CompareView.vue'),

@@ -29,6 +29,20 @@
 
     <!-- Bottom -->
     <div class="flex flex-col items-center pb-6 space-y-2">
+      <div class="w-10 border-t border-violet-800 mb-1"></div>
+      <router-link
+        to="/admin"
+        :class="[
+          'w-12 h-12 rounded-xl flex flex-col items-center justify-center transition-all duration-150',
+          isActive('/admin')
+            ? 'bg-white/20 text-white'
+            : 'text-violet-300 hover:bg-white/10 hover:text-white',
+        ]"
+        title="Admin"
+      >
+        <font-awesome-icon :icon="['fas', 'gear']" class="text-lg" />
+        <span class="text-[9px] mt-0.5 font-medium">Admin</span>
+      </router-link>
       <router-link
         to="/design-options"
         class="w-12 h-12 rounded-xl flex flex-col items-center justify-center text-violet-300 hover:bg-white/10 hover:text-white transition-all duration-150"
@@ -54,10 +68,11 @@ import {
   faCalendarCheck,
   faCreditCard,
   faFileAlt,
+  faGear,
   faArrowLeft,
 } from '@fortawesome/free-solid-svg-icons';
 
-library.add(faChartPie, faUsers, faUserMd, faHandHoldingHeart, faCalendarCheck, faCreditCard, faFileAlt, faArrowLeft);
+library.add(faChartPie, faUsers, faUserMd, faHandHoldingHeart, faCalendarCheck, faCreditCard, faFileAlt, faGear, faArrowLeft);
 
 export default defineComponent({
   name: 'O2Sidebar',
