@@ -44,6 +44,20 @@
       <font-awesome-icon :icon="['fas', item.icon]" class="w-5" />
       <span>{{ item.label }}</span>
     </component>
+    <div class="border-t border-violet-800 my-1"></div>
+    <router-link
+      to="/admin"
+      :class="[
+        'flex items-center space-x-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+        isActive('/admin')
+          ? 'bg-white/20 text-white'
+          : 'text-violet-300 hover:bg-white/10 hover:text-white',
+      ]"
+      @click="mobileOpen = false"
+    >
+      <font-awesome-icon :icon="['fas', 'gear']" class="w-5" />
+      <span>Admin</span>
+    </router-link>
     <router-link
       to="/design-options"
       class="flex items-center space-x-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-violet-300 hover:bg-white/10 hover:text-white transition-colors"
@@ -68,10 +82,11 @@ import {
   faCalendarCheck,
   faCreditCard,
   faFileAlt,
+  faGear,
   faArrowLeft,
 } from '@fortawesome/free-solid-svg-icons';
 
-library.add(faChartPie, faUsers, faUserMd, faHandHoldingHeart, faCalendarCheck, faCreditCard, faFileAlt, faArrowLeft);
+library.add(faChartPie, faUsers, faUserMd, faHandHoldingHeart, faCalendarCheck, faCreditCard, faFileAlt, faGear, faArrowLeft);
 
 export default defineComponent({
   name: 'O2MobileNav',
