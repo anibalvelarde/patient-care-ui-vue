@@ -34,73 +34,24 @@
                 />
               </div>
 
-              <!-- Appointment Statuses -->
-              <div v-else-if="activeSection === 'appointment-statuses'">
-                <LookupTableManager
-                  title="Appointment Statuses"
-                  subtitle="Status workflow for therapy sessions"
-                  add-button-label="Add Status"
-                  :columns="apptStatusColumns"
-                  id-key="appointmentStatusId"
-                  :items="(apptStatuses.items.value as unknown as Record<string, unknown>[])"
-                  :loading="apptStatuses.loading.value"
-                  :error="apptStatuses.error.value"
-                  @add="apptStatuses.openAdd"
-                  @edit="apptStatuses.openEdit"
-                  @retry="apptStatuses.loadItems"
-                />
-              </div>
-
-              <!-- Payment Types -->
-              <div v-else-if="activeSection === 'payment-types'">
-                <LookupTableManager
-                  title="Payment Types"
-                  subtitle="Accepted payment methods"
-                  add-button-label="Add Payment Type"
-                  :columns="paymentTypeColumns"
-                  id-key="paymentTypeId"
-                  :items="(paymentTypes.items.value as unknown as Record<string, unknown>[])"
-                  :loading="paymentTypes.loading.value"
-                  :error="paymentTypes.error.value"
-                  @add="paymentTypes.openAdd"
-                  @edit="paymentTypes.openEdit"
-                  @retry="paymentTypes.loadItems"
-                />
-              </div>
-
-              <!-- Role Types -->
-              <div v-else-if="activeSection === 'role-types'">
-                <LookupTableManager
-                  title="Role Types"
-                  subtitle="System user role classifications"
-                  add-button-label="Add Role"
-                  :columns="roleTypeColumns"
-                  id-key="roleId"
-                  :items="(roleTypes.items.value as unknown as Record<string, unknown>[])"
-                  :loading="roleTypes.loading.value"
-                  :error="roleTypes.error.value"
-                  @add="roleTypes.openAdd"
-                  @edit="roleTypes.openEdit"
-                  @retry="roleTypes.loadItems"
-                />
-              </div>
-
-              <!-- Specialty Types -->
-              <div v-else-if="activeSection === 'specialty-types'">
-                <LookupTableManager
-                  title="Specialty Types"
-                  subtitle="Therapy specializations offered at the clinic"
-                  add-button-label="Add Specialty"
-                  :columns="specialtyTypeColumns"
-                  id-key="specialtyId"
-                  :items="(specialtyTypes.items.value as unknown as Record<string, unknown>[])"
-                  :loading="specialtyTypes.loading.value"
-                  :error="specialtyTypes.error.value"
-                  @add="specialtyTypes.openAdd"
-                  @edit="specialtyTypes.openEdit"
-                  @retry="specialtyTypes.loadItems"
-                />
-              </div>
+              <!-- Lookup Tables (all share unified columns) -->
+              <template v-for="section in lookupSections" :key="section.key">
+                <div v-if="activeSection === section.key">
+                  <LookupTableManager
+                    :title="section.title"
+                    :subtitle="section.subtitle"
+                    :add-button-label="section.addButtonLabel"
+                    :columns="lookupColumns"
+                    id-key="id"
+                    :items="(crudMap[section.key].items.value as unknown as Record<string, unknown>[])"
+                    :loading="crudMap[section.key].loading.value"
+                    :error="crudMap[section.key].error.value"
+                    @add="crudMap[section.key].openAdd"
+                    @edit="crudMap[section.key].openEdit"
+                    @retry="crudMap[section.key].loadItems"
+                  />
+                </div>
+              </template>
             </div>
           </div>
         </main>
@@ -145,12 +96,7 @@ import { SitesHttpClient } from '../services/SitesHttpClient';
 import { LookupHttpClient } from '../services/LookupHttpClient';
 import { useLookupCrud } from '../composables/useLookupCrud';
 import type { Site } from '../interfaces/Site';
-import type {
-  AppointmentStatusItem,
-  PaymentTypeItem,
-  RoleTypeItem,
-  SpecialtyTypeItem,
-} from '../interfaces/Lookups';
+import type { LookupItem } from '../interfaces/Lookups';
 
 export default defineComponent({
   name: 'AdminView',
@@ -189,48 +135,52 @@ export default defineComponent({
 
     onMounted(loadSites);
 
-    // ── Appointment Statuses ────────────────────────────────────
-    const apptStatuses = useLookupCrud<AppointmentStatusItem>(
-      () => lookupClient.getAppointmentStatuses(),
-      (data) => lookupClient.createAppointmentStatus({ statusName: data.statusName, statusDescription: data.statusDescription }),
-      (id, data) => lookupClient.updateAppointmentStatus(id, { statusName: data.statusName, statusDescription: data.statusDescription }),
-    );
-    const apptStatusColumns: ColumnDef[] = [
-      { key: 'statusName', label: 'Status Name', primary: true },
-      { key: 'statusDescription', label: 'Description' },
-    ];
-
-    // ── Payment Types ───────────────────────────────────────────
-    const paymentTypes = useLookupCrud<PaymentTypeItem>(
-      () => lookupClient.getPaymentTypes(),
-      (data) => lookupClient.createPaymentType({ abbreviation: data.abbreviation, name: data.name }),
-      (id, data) => lookupClient.updatePaymentType(id, { abbreviation: data.abbreviation, name: data.name }),
-    );
-    const paymentTypeColumns: ColumnDef[] = [
+    // ── Unified lookup columns & fields ─────────────────────────
+    const lookupColumns: ColumnDef[] = [
       { key: 'abbreviation', label: 'Abbreviation', primary: true },
       { key: 'name', label: 'Name' },
+      { key: 'description', label: 'Description' },
+      { key: 'sortOrder', label: 'Sort Order' },
     ];
 
-    // ── Role Types ──────────────────────────────────────────────
-    const roleTypes = useLookupCrud<RoleTypeItem>(
-      () => lookupClient.getRoleTypes(),
-      (data) => lookupClient.createRoleType({ roleName: data.roleName }),
-      (id, data) => lookupClient.updateRoleType(id, { roleName: data.roleName }),
-    );
-    const roleTypeColumns: ColumnDef[] = [
-      { key: 'roleName', label: 'Role Name', primary: true },
+    const lookupFields: FieldDef[] = [
+      { key: 'abbreviation', label: 'Abbreviation', required: true, maxLength: 50 },
+      { key: 'name', label: 'Name', required: true, maxLength: 75 },
+      { key: 'description', label: 'Description', maxLength: 200 },
+      { key: 'sortOrder', label: 'Sort Order', type: 'number' },
     ];
 
-    // ── Specialty Types ─────────────────────────────────────────
-    const specialtyTypes = useLookupCrud<SpecialtyTypeItem>(
-      () => lookupClient.getSpecialtyTypes(),
-      (data) => lookupClient.createSpecialtyType({ abbreviation: data.abbreviation, name: data.name }),
-      (id, data) => lookupClient.updateSpecialtyType(id, { abbreviation: data.abbreviation, name: data.name }),
-    );
-    const specialtyTypeColumns: ColumnDef[] = [
-      { key: 'abbreviation', label: 'Abbreviation', primary: true },
-      { key: 'name', label: 'Specialty Name' },
+    // ── Lookup section metadata ─────────────────────────────────
+    const lookupSections = [
+      { key: 'appointment-statuses', title: 'Appointment Statuses', subtitle: 'Status workflow for therapy sessions', addButtonLabel: 'Add Status', addTitle: 'Add Status', editTitle: 'Edit Status' },
+      { key: 'payment-types', title: 'Payment Types', subtitle: 'Accepted payment methods', addButtonLabel: 'Add Payment Type', addTitle: 'Add Payment Type', editTitle: 'Edit Payment Type' },
+      { key: 'role-types', title: 'Role Types', subtitle: 'System user role classifications', addButtonLabel: 'Add Role', addTitle: 'Add Role', editTitle: 'Edit Role' },
+      { key: 'specialty-types', title: 'Specialty Types', subtitle: 'Therapy specializations offered at the clinic', addButtonLabel: 'Add Specialty', addTitle: 'Add Specialty', editTitle: 'Edit Specialty' },
     ];
+
+    /** Convert form string data to typed request payload */
+    const toPayload = (data: Record<string, string>) => {
+      const payload: Record<string, unknown> = {};
+      if (data.abbreviation?.trim()) payload.abbreviation = data.abbreviation.trim();
+      if (data.name?.trim()) payload.name = data.name.trim();
+      if (data.description?.trim()) payload.description = data.description.trim();
+      if (data.sortOrder !== undefined && data.sortOrder !== '') payload.sortOrder = Number(data.sortOrder);
+      return payload;
+    };
+
+    // ── Create one crud instance per table ──────────────────────
+    const makeCrud = (tableName: string) =>
+      useLookupCrud<LookupItem>(
+        () => lookupClient.getAll(tableName),
+        (data) => lookupClient.create(tableName, toPayload(data) as { abbreviation: string; name: string }),
+        (id, data) => lookupClient.update(tableName, id, toPayload(data)),
+      );
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const crudMap: Record<string, ReturnType<typeof useLookupCrud<any>>> = {};
+    for (const section of lookupSections) {
+      crudMap[section.key] = makeCrud(section.key);
+    }
 
     // ── Lookup modal orchestration ──────────────────────────────
     const lookupModalVisible = ref(false);
@@ -240,62 +190,16 @@ export default defineComponent({
     const lookupModalEditId = ref<number | undefined>(undefined);
     const lookupModalSaveHandler = ref<((data: Record<string, string>, id?: number) => Promise<void>) | null>(null);
 
-    const fieldDefs: Record<string, { addTitle: string; editTitle: string; fields: FieldDef[]; idKey: string }> = {
-      'appointment-statuses': {
-        addTitle: 'Add Status',
-        editTitle: 'Edit Status',
-        fields: [
-          { key: 'statusName', label: 'Status Name', required: true, maxLength: 50 },
-          { key: 'statusDescription', label: 'Description', maxLength: 200 },
-        ],
-        idKey: 'appointmentStatusId',
-      },
-      'payment-types': {
-        addTitle: 'Add Payment Type',
-        editTitle: 'Edit Payment Type',
-        fields: [
-          { key: 'abbreviation', label: 'Abbreviation', required: true, maxLength: 50 },
-          { key: 'name', label: 'Name', required: true, maxLength: 50 },
-        ],
-        idKey: 'paymentTypeId',
-      },
-      'role-types': {
-        addTitle: 'Add Role',
-        editTitle: 'Edit Role',
-        fields: [
-          { key: 'roleName', label: 'Role Name', required: true, maxLength: 50 },
-        ],
-        idKey: 'roleId',
-      },
-      'specialty-types': {
-        addTitle: 'Add Specialty',
-        editTitle: 'Edit Specialty',
-        fields: [
-          { key: 'abbreviation', label: 'Abbreviation', required: true, maxLength: 50 },
-          { key: 'name', label: 'Specialty Name', required: true, maxLength: 75 },
-        ],
-        idKey: 'specialtyId',
-      },
-    };
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const crudMap: Record<string, ReturnType<typeof useLookupCrud<any>>> = {
-      'appointment-statuses': apptStatuses,
-      'payment-types': paymentTypes,
-      'role-types': roleTypes,
-      'specialty-types': specialtyTypes,
-    };
-
     // Override the openAdd/openEdit on each crud instance to open the shared modal
-    for (const [sectionKey, crud] of Object.entries(crudMap)) {
-      const def = fieldDefs[sectionKey];
+    for (const section of lookupSections) {
+      const crud = crudMap[section.key];
       const originalOpenAdd = crud.openAdd;
       const originalOpenEdit = crud.openEdit;
 
       crud.openAdd = () => {
         originalOpenAdd();
-        lookupModalTitle.value = def.addTitle;
-        lookupModalFields.value = def.fields;
+        lookupModalTitle.value = section.addTitle;
+        lookupModalFields.value = lookupFields;
         lookupModalInitialValues.value = null;
         lookupModalEditId.value = undefined;
         lookupModalSaveHandler.value = crud.handleSave;
@@ -305,13 +209,13 @@ export default defineComponent({
       crud.openEdit = (item: unknown) => {
         originalOpenEdit(item);
         const record = item as Record<string, unknown>;
-        lookupModalTitle.value = def.editTitle;
-        lookupModalFields.value = def.fields;
+        lookupModalTitle.value = section.editTitle;
+        lookupModalFields.value = lookupFields;
         lookupModalInitialValues.value = {};
-        for (const field of def.fields) {
+        for (const field of lookupFields) {
           lookupModalInitialValues.value[field.key] = String(record[field.key] ?? '');
         }
-        lookupModalEditId.value = record[def.idKey] as number;
+        lookupModalEditId.value = record.id as number;
         lookupModalSaveHandler.value = crud.handleSave;
         lookupModalVisible.value = true;
       };
@@ -334,10 +238,7 @@ export default defineComponent({
       sites, siteLoading, siteError, siteModalVisible, editingSite,
       loadSites, openSiteAdd, openSiteEdit, onSiteSaved,
       // Lookup tables
-      apptStatuses, apptStatusColumns,
-      paymentTypes, paymentTypeColumns,
-      roleTypes, roleTypeColumns,
-      specialtyTypes, specialtyTypeColumns,
+      lookupSections, lookupColumns, crudMap,
       // Modal
       lookupModalVisible, lookupModalTitle, lookupModalFields,
       lookupModalInitialValues, handleLookupSubmit,

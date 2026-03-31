@@ -27,7 +27,7 @@
             </label>
             <input
               v-model="formData[field.key]"
-              type="text"
+              :type="field.type || 'text'"
               :required="field.required"
               :maxlength="field.maxLength"
               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
@@ -70,6 +70,7 @@ export interface FieldDef {
   label: string;
   required?: boolean;
   maxLength?: number;
+  type?: string;
 }
 
 export default defineComponent({
