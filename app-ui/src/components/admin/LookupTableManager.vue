@@ -62,10 +62,11 @@
             :key="col.key"
             class="px-6 py-3 text-sm"
             :class="col.primary ? 'text-slate-800 font-medium' : 'text-slate-600'"
+            :title="col.primary ? getTimestampTooltip(item) : undefined"
           >
             {{ (item as Record<string, unknown>)[col.key] }}
           </td>
-          <td class="px-6 py-3 text-right">
+          <td class="px-6 py-3 text-right" :title="getTimestampTooltip(item)">
             <button
               class="text-slate-400 hover:text-violet-600 transition-colors"
               @click="$emit('edit', item)"
@@ -107,7 +108,16 @@ export default defineComponent({
     const getItemId = (item: Record<string, unknown>): unknown => {
       return item[props.idKey];
     };
-    return { getItemId };
+    const getTimestampTooltip = (item: Record<string, unknown>): string | undefined => {
+      const created = item.createdTimestamp as string | undefined;
+      const updated = item.lastUpdatedTimestamp as string | undefined;
+      if (!created && !updated) return undefined;
+      const parts: string[] = [];
+      if (created) parts.push(`Created: ${created}`);
+      if (updated) parts.push(`Last Updated: ${updated}`);
+      return parts.join('\n');
+    };
+    return { getItemId, getTimestampTooltip };
   },
 });
 </script>
