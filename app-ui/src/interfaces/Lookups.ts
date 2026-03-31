@@ -6,6 +6,8 @@ export interface LookupItem {
   name: string;
   description: string | null;
   sortOrder: number;
+  createdTimestamp: string;
+  lastUpdatedTimestamp: string;
 }
 
 export interface LookupCreateRequest {

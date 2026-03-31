@@ -73,6 +73,7 @@
       :title="lookupModalTitle"
       :fields="lookupModalFields"
       :initial-values="lookupModalInitialValues"
+      :readonly-fields="lookupModalReadonlyFields"
       @close="lookupModalVisible = false"
       @submit="handleLookupSubmit"
     />
@@ -188,6 +189,7 @@ export default defineComponent({
     const lookupModalFields = ref<FieldDef[]>([]);
     const lookupModalInitialValues = ref<Record<string, string> | null>(null);
     const lookupModalEditId = ref<number | undefined>(undefined);
+    const lookupModalReadonlyFields = ref<{ label: string; value: string }[]>([]);
     const lookupModalSaveHandler = ref<((data: Record<string, string>, id?: number) => Promise<void>) | null>(null);
 
     // Override the openAdd/openEdit on each crud instance to open the shared modal
@@ -202,6 +204,7 @@ export default defineComponent({
         lookupModalFields.value = lookupFields;
         lookupModalInitialValues.value = null;
         lookupModalEditId.value = undefined;
+        lookupModalReadonlyFields.value = [];
         lookupModalSaveHandler.value = crud.handleSave;
         lookupModalVisible.value = true;
       };
@@ -216,6 +219,10 @@ export default defineComponent({
           lookupModalInitialValues.value[field.key] = String(record[field.key] ?? '');
         }
         lookupModalEditId.value = record.id as number;
+        lookupModalReadonlyFields.value = [
+          { label: 'Created', value: String(record.createdTimestamp ?? '') },
+          { label: 'Last Updated', value: String(record.lastUpdatedTimestamp ?? '') },
+        ];
         lookupModalSaveHandler.value = crud.handleSave;
         lookupModalVisible.value = true;
       };
@@ -241,7 +248,7 @@ export default defineComponent({
       lookupSections, lookupColumns, crudMap,
       // Modal
       lookupModalVisible, lookupModalTitle, lookupModalFields,
-      lookupModalInitialValues, handleLookupSubmit,
+      lookupModalInitialValues, lookupModalReadonlyFields, handleLookupSubmit,
     };
   },
 });
