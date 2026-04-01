@@ -1,5 +1,12 @@
 // interfaces/Therapist.ts
 
+// Maps to API's TherapistSpecialtyItem response
+export interface TherapistSpecialtyItem {
+  specialtyId: number;
+  abbreviation: string;
+  name: string;
+}
+
 // Maps to API's TherapistProfile response
 export interface Therapist {
   therapistId: number;
@@ -11,6 +18,7 @@ export interface Therapist {
   phoneNumber: string;
   createdTimestamp: string;
   isActive: boolean;
+  specialties: TherapistSpecialtyItem[];
 }
 
 // Maps to API's TherapistProfileRequest (POST)
@@ -24,6 +32,7 @@ export interface TherapistCreateRequest {
   gender: string;
   feePerSession: number;
   feePctPerSession: number;
+  specialtyIds: number[];
 }
 
 // Maps to API's TherapistProfileUpdateRequest (PUT)
@@ -38,4 +47,5 @@ export interface TherapistUpdateRequest {
   feePerSession: number;
   feePctPerSession: number;
   activeStatus: boolean;
+  specialtyIds?: number[];
 }

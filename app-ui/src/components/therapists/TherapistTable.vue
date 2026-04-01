@@ -26,7 +26,17 @@
           :key="therapist.therapistId"
           class="hover:bg-slate-50 transition-colors"
         >
-          <td class="px-4 py-3 text-sm font-medium text-slate-800">{{ therapist.therapistName }}</td>
+          <td class="px-4 py-3">
+            <div class="flex items-center flex-wrap gap-1.5">
+              <span class="text-sm font-medium text-slate-800">{{ therapist.therapistName }}</span>
+              <span
+                v-for="s in therapist.specialties"
+                :key="s.specialtyId"
+                :title="s.name"
+                class="bg-medical-100 text-medical-700 text-xs font-medium px-2 py-0.5 rounded-full"
+              >{{ s.abbreviation }}</span>
+            </div>
+          </td>
           <td class="px-4 py-3 text-sm text-slate-600">{{ therapist.email }}</td>
           <td class="px-4 py-3 text-sm text-slate-600">{{ therapist.phoneNumber }}</td>
           <td class="px-4 py-3 text-sm text-slate-600">${{ therapist.feePerSession.toFixed(2) }}</td>
@@ -86,6 +96,14 @@
       <div class="flex items-start justify-between mb-2">
         <div>
           <p class="text-sm font-semibold text-slate-800">{{ therapist.therapistName }}</p>
+          <div v-if="therapist.specialties?.length" class="flex flex-wrap gap-1 mt-1">
+            <span
+              v-for="s in therapist.specialties"
+              :key="s.specialtyId"
+              :title="s.name"
+              class="bg-medical-100 text-medical-700 text-xs font-medium px-2 py-0.5 rounded-full"
+            >{{ s.abbreviation }}</span>
+          </div>
         </div>
         <span
           :class="[
