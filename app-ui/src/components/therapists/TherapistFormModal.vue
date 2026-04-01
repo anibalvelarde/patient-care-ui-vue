@@ -76,16 +76,6 @@
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium text-slate-700 mb-1">Date of Birth *</label>
-                  <input
-                    v-model="form.dateOfBirth"
-                    type="date"
-                    required
-                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
                   <label class="block text-sm font-medium text-slate-700 mb-1">Email *</label>
                   <input
                     v-model="form.email"
@@ -103,20 +93,6 @@
                     required
                     class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-slate-700 mb-1">Gender *</label>
-                  <select
-                    v-model="form.gender"
-                    required
-                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="" disabled>Select gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
@@ -259,17 +235,6 @@ function parseName(therapistName: string) {
   return { firstName: first || '', middleName: middleParts.join(' '), lastName: last || '' };
 }
 
-function formatDobForApi(dob: string): string {
-  if (!dob) return '';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dob)) return `${dob}T00:00:00`;
-  const d = new Date(dob);
-  if (isNaN(d.getTime())) return dob;
-  const yyyy = String(d.getFullYear()).padStart(4, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}T00:00:00`;
-}
-
 export default defineComponent({
   name: 'TherapistFormModal',
   props: {
@@ -293,10 +258,8 @@ export default defineComponent({
       firstName: '',
       middleName: '',
       lastName: '',
-      dateOfBirth: '',
       email: '',
       phoneNumber: '',
-      gender: '',
       feePerSession: 0,
       feePctPerSession: 0,
       activeStatus: true,
@@ -348,10 +311,8 @@ export default defineComponent({
           form.firstName = parsed.firstName;
           form.middleName = parsed.middleName;
           form.lastName = parsed.lastName;
-          form.dateOfBirth = '';
           form.email = props.therapist.email;
           form.phoneNumber = props.therapist.phoneNumber;
-          form.gender = '';
           form.feePerSession = props.therapist.feePerSession;
           form.feePctPerSession = props.therapist.feePctPerSession;
           form.activeStatus = props.therapist.isActive;
@@ -363,10 +324,8 @@ export default defineComponent({
           form.firstName = '';
           form.middleName = '';
           form.lastName = '';
-          form.dateOfBirth = '';
           form.email = '';
           form.phoneNumber = '';
-          form.gender = '';
           form.feePerSession = 0;
           form.feePctPerSession = 0;
           form.activeStatus = true;
@@ -376,7 +335,7 @@ export default defineComponent({
     );
 
     const handleSubmit = async () => {
-      if (!form.firstName || !form.lastName || !form.dateOfBirth || !form.email || !form.phoneNumber || !form.gender) {
+      if (!form.firstName || !form.lastName || !form.email || !form.phoneNumber) {
         error.value = 'Please fill in all required fields.';
         return;
       }
@@ -396,10 +355,8 @@ export default defineComponent({
             firstName: form.firstName,
             middleName: form.middleName || undefined,
             lastName: form.lastName,
-            dateOfBirth: formatDobForApi(form.dateOfBirth),
             email: form.email,
             phoneNumber: form.phoneNumber,
-            gender: form.gender,
             feePerSession: form.feePerSession,
             feePctPerSession: form.feePctPerSession,
             activeStatus: form.activeStatus,
@@ -410,10 +367,8 @@ export default defineComponent({
             firstName: form.firstName,
             middleName: form.middleName || undefined,
             lastName: form.lastName,
-            dateOfBirth: formatDobForApi(form.dateOfBirth),
             email: form.email,
             phoneNumber: form.phoneNumber,
-            gender: form.gender,
             feePerSession: form.feePerSession,
             feePctPerSession: form.feePctPerSession,
             specialtyIds,

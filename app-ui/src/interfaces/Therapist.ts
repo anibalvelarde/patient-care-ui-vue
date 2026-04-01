@@ -26,10 +26,8 @@ export interface TherapistCreateRequest {
   firstName: string;
   middleName?: string;
   lastName: string;
-  dateOfBirth: string;
   email: string;
   phoneNumber: string;
-  gender: string;
   feePerSession: number;
   feePctPerSession: number;
   specialtyIds: number[];
@@ -40,10 +38,8 @@ export interface TherapistUpdateRequest {
   firstName: string;
   middleName?: string;
   lastName: string;
-  dateOfBirth: string;
   email: string;
   phoneNumber: string;
-  gender: string;
   feePerSession: number;
   feePctPerSession: number;
   activeStatus: boolean;
