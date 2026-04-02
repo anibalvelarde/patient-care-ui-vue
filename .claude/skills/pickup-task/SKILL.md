@@ -1,44 +1,42 @@
+---
+name: pickup-task
+description: Accept and implement a UI-layer plan from the coordinator
+user-invocable: true
+---
+
 # Pickup Task from Coordinator
 
-You are receiving an implementation plan from the **coordinator instance** (`patient-care-super`). This plan was created after cross-project analysis and describes work scoped to the **UI layer**.
+You are receiving a plan scoped to the **UI layer**.
 
-## Instructions
+## Steps
 
-1. **Read the plan.** The user will provide it — either pasted inline or as a file path. Read the full plan carefully.
-2. **Review your conventions.** Re-read `CLAUDE.md` in this repo to ensure you follow UI project conventions (Vue 3 Composition API, TypeScript, Tailwind CSS, component patterns).
-3. **Check contracts.** If the plan references `_contracts/` files in the coordinator repo, read them to understand the API request/response shapes your service clients must match.
-4. **Create a feature branch.** Use the branch name specified in the plan, or derive one from the task (e.g., `feature/<short-description>`). Never commit directly to main.
-5. **Implement.** Execute only the UI-layer steps from the plan. Do not attempt work designated for DB or API layers.
-6. **Follow existing patterns.** When the plan says "pattern reference: `SomeComponent.vue`", read that file first and replicate its structure, styling, and conventions.
-7. **Verify.** Run the verification steps specified in the plan. At minimum:
+1. **Read the plan.** User provides it inline or as a file path.
+2. **Review conventions.** Re-read `CLAUDE.md` (Vue 3 Composition API, TypeScript, Tailwind, component patterns).
+3. **Check contracts.** Read `../patient-care-super/_contracts/` for API response shapes to match.
+4. **Check for existing branch:** `git branch -a | grep -E "feature/|fix/"` — reuse if one exists.
+5. **Create branch** if needed: `feature/<desc>` or `fix/<desc>`. Never commit to main.
+6. **Kanban** — Move related card to DOING:
+   ```bash
+   curl -s --max-time 2 -X POST http://openclaw:8082/api/move \
+     -H "Content-Type: application/json" -d '{"cardId": <ID>, "columnId": 4}'
+   ```
+7. **Implement.** Only UI-layer steps. Follow existing patterns when referenced.
+8. **Verify:**
    ```bash
    cd app-ui && npx vue-tsc --noEmit
    cd app-ui && npm run lint
    ```
-8. **Commit.** Stage and commit your changes with a clear message describing what was done.
-9. **Record completion.** Append a `## Completion` section to the plan file in `../patient-care-super/planning/active/`:
-   ```markdown
-   ## Completion — UI
-
-   - **Date**: YYYY-MM-DD
-   - **Layer**: UI
-   - **Branch**: `feature/branch-name`
-   - **Verification**:
-     - vue-tsc: PASS/FAIL
-     - eslint: PASS/FAIL
-   - **Files**: N created, M modified
-   - **Open items**: (any issues, caveats, or next-layer dependencies to note — or "None")
-   ```
-10. **Archive the plan.** Move the plan file from `../patient-care-super/planning/active/` to `../patient-care-super/planning/completed/` and add a one-line entry to `../patient-care-super/planning/archive.md`:
+9. **Test artifact:** Produce user-facing test scenarios describing workflows to verify.
+10. **Commit** with a clear message.
+11. **Record completion.** Append to the plan file in `../patient-care-super/planning/active/`:
+    ```markdown
+    ## Completion — UI
+    - **Date**: YYYY-MM-DD
+    - **Branch**: `feature/branch-name`
+    - **Verification**: vue-tsc: PASS/FAIL | eslint: PASS/FAIL
+    - **Files**: N created, M modified
+    - **Test artifact**: [test scenarios]
+    - **Open items**: None
     ```
-    | YYYY-MM-DD | Plan title | Outcome summary | `feature/branch-name` |
-    ```
-    Leave these changes uncommitted — the coordinator or user will review and commit them.
-    If other layers in the plan still need implementation, leave the plan in `active/` instead.
-11. **Report back.** Summarize what you implemented, what you verified, and any issues or open questions for the coordinator.
-
-## Important
-
-- Only implement work scoped to this layer (views, components, services, interfaces, routing).
-- If the plan references DB or API work, ignore those sections — other specialist instances handle them.
-- If something in the plan is unclear or seems wrong, ask the user before proceeding.
+    If other layers pending, leave in `active/`. If all done, move to `completed/` + add to `archive.md` (uncommitted).
+12. **Report back.** Summarize implementation, verification, and open questions.

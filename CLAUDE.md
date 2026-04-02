@@ -4,18 +4,9 @@
 
 A Vue 3 single-page application for the Neurocorp Therapy Center front-desk patient care workflow. Displays daily appointment schedules with session details, payment status, and therapist assignments. The app currently hosts a **UI design comparison framework** with 7+ design options on a single branch, all sharing the same data layer.
 
-## Default Behavior
+## Cross-Project Context
 
-When starting a new conversation or after a `/clear`, follow this sequence before doing any work:
-
-1. **Enter plan mode first.** For any non-trivial request (bug fix, new feature, refactor), enter plan mode before writing code. Only skip planning for single-line fixes, typos, or questions.
-2. **Orient yourself.** Quickly review:
-   - This file (`CLAUDE.md`) for project conventions
-   - `docs/architecture.md` for system design context
-   - `docs/adr/` for architectural decisions already made
-   - `git log --oneline -10` for recent changes and active work
-3. **Confirm the task.** Summarize your understanding of what the user wants and your proposed approach before implementing. Ask clarifying questions if the request is ambiguous.
-4. **Run verification after changes.** Always run `npx vue-tsc --noEmit` and `npm run lint` from `app-ui/` before considering work complete.
+Part of NeuroCorp multi-project system. See `../CLAUDE.md` for system map, dependency ordering, branch workflow, and kanban integration. Always produce user-facing test scenarios for new/modified UI features.
 
 ## Architecture
 
@@ -89,17 +80,3 @@ The app fetches appointment data from the `patient-care-api` (.NET 8 REST API):
 - **Original UI**: Components in `headers/`, `sidebars/`, etc. are preserved untouched
 - **Target user**: Front-desk staff (role badge shown in UI)
 
-## Coordinator Context
-
-This project is part of a multi-repo system managed by a coordinator instance at `../patient-care-super/`.
-
-- **Coordinator guide**: `../patient-care-super/CLAUDE.md`
-- **API contracts**: `../patient-care-super/_contracts/`
-- **Active plans**: `../patient-care-super/planning/active/`
-
-### Dependency Position
-
-API changes must land before yours. You are the **final consumer** in the dependency chain. When making changes:
-1. DB layer (`../patient-care-db/`) applies schema changes first
-2. API layer (`../patient-care-api/`) updates endpoints and contracts
-3. You update TypeScript types, HTTP clients, and components to match

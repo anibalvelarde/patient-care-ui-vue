@@ -1,43 +1,35 @@
-# Release Skill
+---
+name: release
+description: Validate UI release readiness
+user-invocable: true
+---
 
-## When to Use
-Before merging a feature branch to `main` or preparing a release build.
+# Release — UI
 
-## Pre-Release Checklist
-
-### Build & Type Safety
+## Build & Type Safety
 - [ ] `npm install` completes without errors
-- [ ] `npx vue-tsc --noEmit` passes with no type errors
-- [ ] `npm run lint` passes with no violations
+- [ ] `npx vue-tsc --noEmit` passes
+- [ ] `npm run lint` passes
 - [ ] Dev server starts cleanly (`npm run dev`)
 
-### Route & Navigation Verification
-- [ ] All routes in `router/index.ts` resolve to existing view files
-- [ ] `CompareView.vue` has cards for every option with correct routes
+## Routes & Navigation
+- [ ] All routes in `router/index.ts` resolve to existing views
+- [ ] `CompareView.vue` has cards for every option
 - [ ] "Back to Options" link works on every option view
-- [ ] No dead routes or orphaned views
 
-### Component Integrity
-- [ ] Every option view fetches data via `SessionsHttpClient`
-- [ ] Date navigation (prev/next/today/jump) works across all options
-- [ ] Shared components (`JumpToDate`, etc.) function correctly in all options that use them
-- [ ] No broken imports or missing component registrations
+## Component Integrity
+- [ ] Every option view fetches via HTTP clients
+- [ ] Date navigation works across all options
+- [ ] Shared components function in all consuming options
 
-### Documentation
-- [ ] `UI-DESIGN-IDEAS.md` reflects current state (built vs. proposed)
-- [ ] `CLAUDE.md` is up to date with any new paths or conventions
-- [ ] `docs/architecture.md` reflects current component structure
-- [ ] New ADRs written for significant architectural decisions
-
-### Code Quality
-- [ ] No `console.log` statements (only `console.error` for caught exceptions)
-- [ ] No TODO/HACK/FIXME comments left unresolved
+## Code Quality
+- [ ] No `console.log` statements
+- [ ] No TODO/HACK/FIXME unresolved
 - [ ] No hardcoded URLs or credentials
 - [ ] No unused imports or dead code
-- [ ] Original UI components remain untouched
+- [ ] Original UI components untouched
 
-### Git Hygiene
-- [ ] All changes are committed
-- [ ] Commit messages are descriptive
-- [ ] Branch is up to date with `main` (rebase or merge)
-- [ ] No merge conflicts
+## Documentation
+- [ ] `UI-DESIGN-IDEAS.md` reflects current state
+- [ ] `CLAUDE.md` up to date
+- [ ] `docs/architecture.md` reflects current structure
