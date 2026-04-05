@@ -165,7 +165,7 @@
               class="overflow-hidden transition-all duration-200"
               :class="specialtiesSectionOpen ? 'max-h-96' : 'max-h-0'"
             >
-              <div class="px-4 py-4 space-y-2">
+              <div class="px-4 py-4 space-y-2 overflow-y-auto max-h-80">
                 <div v-if="loadingSpecialties" class="text-sm text-slate-400 py-2">
                   Loading specialties...
                 </div>
