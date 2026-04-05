@@ -93,7 +93,7 @@ export default defineComponent({
   setup(props, { emit }) {
     const saving = ref(false);
     const error = ref('');
-    const formData = reactive<Record<string, string>>({});
+    const formData = reactive<Record<string, string | number>>({});
 
     watch(
       () => props.visible,
@@ -109,7 +109,8 @@ export default defineComponent({
     const handleSubmit = async () => {
       // Validate required fields
       for (const field of props.fields) {
-        if (field.required && !formData[field.key]?.trim()) {
+        const val = formData[field.key];
+        if (field.required && (val === undefined || val === null || String(val).trim() === '')) {
           error.value = `${field.label} is required.`;
           return;
         }
@@ -118,11 +119,11 @@ export default defineComponent({
       saving.value = true;
       error.value = '';
       try {
-        const data: Record<string, string> = {};
+        const data: Record<string, string | number> = {};
         for (const field of props.fields) {
-          if (formData[field.key]?.trim()) {
-            data[field.key] = formData[field.key].trim();
-          }
+          const val = formData[field.key];
+          if (val === undefined || val === null || String(val).trim() === '') continue;
+          data[field.key] = field.type === 'number' ? Number(val) : String(val).trim();
         }
         emit('submit', data);
       } catch (e: unknown) {

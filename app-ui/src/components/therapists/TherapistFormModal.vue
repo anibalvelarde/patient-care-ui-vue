@@ -281,7 +281,6 @@ export default defineComponent({
     };
 
     const loadSpecialtyOptions = async () => {
-      if (specialtyOptions.value.length > 0) return;
       loadingSpecialties.value = true;
       try {
         const { LookupHttpClient } = await import('../../services/LookupHttpClient');
