@@ -96,7 +96,13 @@ export abstract class HttpClientBase {
     private async extractErrorMessage(response: Response, fallback: string): Promise<string> {
       try {
         const text = await response.text();
-        return text || fallback;
+        if (!text) return fallback;
+        try {
+          const json = JSON.parse(text);
+          return json.error || json.message || json.title || text;
+        } catch {
+          return text;
+        }
       } catch {
         return fallback;
       }
