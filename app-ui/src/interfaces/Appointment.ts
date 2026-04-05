@@ -21,6 +21,10 @@ export interface Appointment {
     isConfirmed: boolean;
     siteId: number | null;
     siteName: string | null;
+    specialtyTypeId: number | null;
+    specialtyAbbreviation: string | null;
+    specialtyName: string | null;
+    isDiscovery: boolean | null;
 }
 
 export interface AppointmentStatusInfo {
@@ -43,6 +47,7 @@ export interface SessionEventRequest {
     notes: string;
     appointmentStatusId: number;
     siteId?: number;
+    specialtyTypeId?: number;
 }
 
 export interface ConfirmationRequest {
