@@ -165,7 +165,7 @@
               class="overflow-hidden transition-all duration-200"
               :class="specialtiesSectionOpen ? 'max-h-96' : 'max-h-0'"
             >
-              <div class="px-4 py-4 space-y-2">
+              <div class="px-4 py-4 space-y-2 overflow-y-auto max-h-80">
                 <div v-if="loadingSpecialties" class="text-sm text-slate-400 py-2">
                   Loading specialties...
                 </div>
@@ -195,29 +195,30 @@
             </div>
           </div>
 
-          <!-- Error message -->
-          <div v-if="error" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {{ error }}
-          </div>
         </form>
 
         <!-- Footer -->
-        <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-end space-x-3">
-          <button
-            type="button"
-            class="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50"
-            @click="$emit('close')"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            :disabled="saving"
-            class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-            @click="handleSubmit"
-          >
-            {{ saving ? 'Saving...' : 'Save Therapist' }}
-          </button>
+        <div class="px-6 py-4 border-t border-slate-200 space-y-3">
+          <div v-if="error" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {{ error }}
+          </div>
+          <div class="flex items-center justify-end space-x-3">
+            <button
+              type="button"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50"
+              @click="$emit('close')"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              :disabled="saving || !!error"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+              @click="handleSubmit"
+            >
+              {{ saving ? 'Saving...' : 'Save Therapist' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -281,7 +282,6 @@ export default defineComponent({
     };
 
     const loadSpecialtyOptions = async () => {
-      if (specialtyOptions.value.length > 0) return;
       loadingSpecialties.value = true;
       try {
         const { LookupHttpClient } = await import('../../services/LookupHttpClient');
@@ -293,6 +293,9 @@ export default defineComponent({
         loadingSpecialties.value = false;
       }
     };
+
+    watch(form, () => { error.value = ''; }, { deep: true });
+    watch(selectedSpecialtyIds, () => { error.value = ''; specialtyError.value = ''; }, { deep: true });
 
     watch(
       () => props.visible,

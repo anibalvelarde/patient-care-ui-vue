@@ -96,9 +96,6 @@
             />
           </div>
 
-          <div v-if="error" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {{ error }}
-          </div>
         </div>
 
         <!-- Step 2: Session Allocation -->
@@ -186,13 +183,14 @@
             </div>
           </div>
 
-          <div v-if="error" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {{ error }}
-          </div>
         </div>
 
         <!-- Footer -->
-        <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+        <div class="px-6 py-4 border-t border-slate-200 space-y-3">
+          <div v-if="error" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {{ error }}
+          </div>
+          <div class="flex items-center justify-between">
           <div>
             <button
               v-if="step === 2"
@@ -222,13 +220,14 @@
             <button
               v-if="step === 2"
               type="button"
-              :disabled="saving || !isFullyAllocated"
+              :disabled="saving || !isFullyAllocated || !!error"
               class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
               :title="!isFullyAllocated ? 'Payment must be fully allocated before saving' : ''"
               @click="handleSubmit"
             >
               {{ saving ? 'Saving...' : 'Save Payment' }}
             </button>
+          </div>
           </div>
         </div>
       </div>
@@ -416,6 +415,8 @@ export default defineComponent({
         saving.value = false;
       }
     };
+
+    watch(form, () => { error.value = ''; }, { deep: true });
 
     watch(
       () => props.visible,

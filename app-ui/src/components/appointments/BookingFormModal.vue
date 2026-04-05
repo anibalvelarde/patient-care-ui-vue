@@ -36,7 +36,7 @@
             <label class="block text-sm font-medium text-slate-700 mb-1">Therapist</label>
             <select v-model="form.therapistId" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500">
               <option :value="0" disabled>Select therapist...</option>
-              <option v-for="t in therapists" :key="t.therapistId" :value="t.therapistId">
+              <option v-for="t in filteredTherapists" :key="t.therapistId" :value="t.therapistId">
                 {{ t.therapistName }}
               </option>
             </select>
@@ -60,7 +60,7 @@
               <label class="block text-sm font-medium text-slate-700 mb-1">Specialty Type</label>
               <select v-model="form.specialtyTypeId" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500">
                 <option :value="0" disabled>Select specialty...</option>
-                <option v-for="s in specialtyTypes" :key="s.id" :value="s.id">
+                <option v-for="s in filteredSpecialties" :key="s.id" :value="s.id">
                   {{ s.abbreviation }} — {{ s.name }}
                 </option>
               </select>
@@ -93,29 +93,30 @@
             <textarea v-model="form.notes" rows="2" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500" placeholder="Optional notes..."></textarea>
           </div>
 
-          <!-- Error -->
-          <div v-if="saveError" class="bg-red-50 border border-red-200 rounded-lg p-3">
-            <p class="text-sm text-red-700">{{ saveError }}</p>
-          </div>
         </div>
 
         <!-- Footer -->
-        <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-end space-x-3">
-          <button @click="$emit('close')" class="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors">
-            Cancel
-          </button>
-          <button
-            @click="handleSubmit"
-            :disabled="saving || !isValid"
-            :class="[
-              'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
-              saving || !isValid
-                ? 'bg-violet-300 text-white cursor-not-allowed'
-                : 'bg-violet-600 text-white hover:bg-violet-700',
-            ]"
-          >
-            {{ saving ? 'Saving...' : (isWalkIn ? 'Check In Walk-In' : 'Book Appointment') }}
-          </button>
+        <div class="px-6 py-4 border-t border-slate-200 space-y-3">
+          <div v-if="saveError" class="bg-red-50 border border-red-200 rounded-lg p-3">
+            <p class="text-sm text-red-700">{{ saveError }}</p>
+          </div>
+          <div class="flex items-center justify-end space-x-3">
+            <button @click="$emit('close')" class="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors">
+              Cancel
+            </button>
+            <button
+              @click="handleSubmit"
+              :disabled="saving || !isValid || !!saveError"
+              :class="[
+                'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+                saving || !isValid || !!saveError
+                  ? 'bg-violet-300 text-white cursor-not-allowed'
+                  : 'bg-violet-600 text-white hover:bg-violet-700',
+              ]"
+            >
+              {{ saving ? 'Saving...' : (isWalkIn ? 'Check In Walk-In' : 'Book Appointment') }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -169,6 +170,35 @@ export default defineComponent({
       notes: '',
     });
 
+    // Bidirectional filtering: specialty ↔ therapist
+    const filteredSpecialties = computed(() => {
+      if (form.value.therapistId <= 0) return specialtyTypes.value;
+      const therapist = therapists.value.find(t => t.therapistId === form.value.therapistId);
+      if (!therapist || therapist.specialties.length === 0) return specialtyTypes.value;
+      const qualifiedIds = new Set(therapist.specialties.map(s => s.specialtyId));
+      return specialtyTypes.value.filter(s => qualifiedIds.has(s.id));
+    });
+
+    const filteredTherapists = computed(() => {
+      if (form.value.specialtyTypeId <= 0) return therapists.value;
+      return therapists.value.filter(t =>
+        t.specialties.some(s => s.specialtyId === form.value.specialtyTypeId)
+      );
+    });
+
+    // Reset the other selection when it becomes invalid after filtering
+    watch(() => form.value.therapistId, () => {
+      if (form.value.specialtyTypeId > 0 && !filteredSpecialties.value.some(s => s.id === form.value.specialtyTypeId)) {
+        form.value.specialtyTypeId = 0;
+      }
+    });
+
+    watch(() => form.value.specialtyTypeId, () => {
+      if (form.value.therapistId > 0 && !filteredTherapists.value.some(t => t.therapistId === form.value.therapistId)) {
+        form.value.therapistId = 0;
+      }
+    });
+
     const isValid = computed(() => {
       return form.value.patientId > 0 && form.value.therapistId > 0 && form.value.specialtyTypeId > 0;
     });
@@ -199,6 +229,7 @@ export default defineComponent({
     };
 
     watch(() => form.value.patientId, checkCaretaker);
+    watch(form, () => { saveError.value = ''; }, { deep: true });
 
     watch(() => props.visible, (val) => {
       if (val) {
@@ -248,7 +279,7 @@ export default defineComponent({
       }
     };
 
-    return { form, patients, therapists, specialtyTypes, saving, saveError, caretakerWarning, isValid, handleSubmit };
+    return { form, patients, filteredTherapists, filteredSpecialties, saving, saveError, caretakerWarning, isValid, handleSubmit };
   },
 });
 </script>

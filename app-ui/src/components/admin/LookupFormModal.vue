@@ -41,28 +41,30 @@
             </div>
           </div>
 
-          <div v-if="error" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {{ error }}
-          </div>
         </form>
 
         <!-- Footer -->
-        <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-end space-x-3">
-          <button
-            type="button"
-            class="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50"
-            @click="$emit('close')"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            :disabled="saving"
-            class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-50"
-            @click="handleSubmit"
-          >
-            {{ saving ? 'Saving...' : 'Save' }}
-          </button>
+        <div class="px-6 py-4 border-t border-slate-200 space-y-3">
+          <div v-if="error" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {{ error }}
+          </div>
+          <div class="flex items-center justify-end space-x-3">
+            <button
+              type="button"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50"
+              @click="$emit('close')"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              :disabled="saving || !!error"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-50"
+              @click="handleSubmit"
+            >
+              {{ saving ? 'Saving...' : 'Save' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -93,7 +95,9 @@ export default defineComponent({
   setup(props, { emit }) {
     const saving = ref(false);
     const error = ref('');
-    const formData = reactive<Record<string, string>>({});
+    const formData = reactive<Record<string, string | number>>({});
+
+    watch(formData, () => { error.value = ''; }, { deep: true });
 
     watch(
       () => props.visible,
@@ -109,7 +113,8 @@ export default defineComponent({
     const handleSubmit = async () => {
       // Validate required fields
       for (const field of props.fields) {
-        if (field.required && !formData[field.key]?.trim()) {
+        const val = formData[field.key];
+        if (field.required && (val === undefined || val === null || String(val).trim() === '')) {
           error.value = `${field.label} is required.`;
           return;
         }
@@ -118,11 +123,11 @@ export default defineComponent({
       saving.value = true;
       error.value = '';
       try {
-        const data: Record<string, string> = {};
+        const data: Record<string, string | number> = {};
         for (const field of props.fields) {
-          if (formData[field.key]?.trim()) {
-            data[field.key] = formData[field.key].trim();
-          }
+          const val = formData[field.key];
+          if (val === undefined || val === null || String(val).trim() === '') continue;
+          data[field.key] = field.type === 'number' ? Number(val) : String(val).trim();
         }
         emit('submit', data);
       } catch (e: unknown) {
