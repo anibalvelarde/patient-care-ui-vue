@@ -173,7 +173,7 @@
             </button>
             <button
               type="button"
-              :disabled="saving"
+              :disabled="saving || !!error"
               class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
               @click="handleSubmit"
             >
@@ -247,6 +247,8 @@ export default defineComponent({
 
     const hasTemporaryMrn = computed(() => isEdit.value && isTemporaryMrn(form.medicalRecordNumber));
     const cannotActivate = computed(() => hasTemporaryMrn.value && !form.activeStatus);
+
+    watch(form, () => { error.value = ''; }, { deep: true });
 
     watch(
       () => props.visible,

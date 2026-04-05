@@ -220,7 +220,7 @@
             <button
               v-if="step === 2"
               type="button"
-              :disabled="saving || !isFullyAllocated"
+              :disabled="saving || !isFullyAllocated || !!error"
               class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
               :title="!isFullyAllocated ? 'Payment must be fully allocated before saving' : ''"
               @click="handleSubmit"
@@ -415,6 +415,8 @@ export default defineComponent({
         saving.value = false;
       }
     };
+
+    watch(form, () => { error.value = ''; }, { deep: true });
 
     watch(
       () => props.visible,

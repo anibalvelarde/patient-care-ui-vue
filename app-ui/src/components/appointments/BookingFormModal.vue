@@ -106,10 +106,10 @@
             </button>
             <button
               @click="handleSubmit"
-              :disabled="saving || !isValid"
+              :disabled="saving || !isValid || !!saveError"
               :class="[
                 'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
-                saving || !isValid
+                saving || !isValid || !!saveError
                   ? 'bg-violet-300 text-white cursor-not-allowed'
                   : 'bg-violet-600 text-white hover:bg-violet-700',
               ]"
@@ -229,6 +229,7 @@ export default defineComponent({
     };
 
     watch(() => form.value.patientId, checkCaretaker);
+    watch(form, () => { saveError.value = ''; }, { deep: true });
 
     watch(() => props.visible, (val) => {
       if (val) {
