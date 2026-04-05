@@ -60,9 +60,16 @@
               <label class="block text-sm font-medium text-slate-700 mb-1">Specialty Type</label>
               <select v-model="form.specialtyTypeId" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500">
                 <option :value="0" disabled>Select specialty...</option>
-                <option v-for="s in specialtyTypes" :key="s.id" :value="s.id">
-                  {{ s.abbreviation }} — {{ s.name }}
-                </option>
+                <optgroup v-if="qualifiedSpecialties.length > 0" label="Qualified">
+                  <option v-for="s in qualifiedSpecialties" :key="s.id" :value="s.id">
+                    {{ s.abbreviation }} — {{ s.name }}
+                  </option>
+                </optgroup>
+                <optgroup v-if="unqualifiedSpecialties.length > 0" :label="form.therapistId > 0 ? 'Not certified' : 'All specialties'">
+                  <option v-for="s in unqualifiedSpecialties" :key="s.id" :value="s.id">
+                    {{ s.abbreviation }} — {{ s.name }}
+                  </option>
+                </optgroup>
               </select>
             </div>
             <div>
@@ -169,6 +176,22 @@ export default defineComponent({
       notes: '',
     });
 
+    const selectedTherapistSpecialtyIds = computed(() => {
+      if (form.value.therapistId <= 0) return new Set<number>();
+      const therapist = therapists.value.find(t => t.therapistId === form.value.therapistId);
+      return new Set(therapist?.specialties.map(s => s.specialtyId) ?? []);
+    });
+
+    const qualifiedSpecialties = computed(() => {
+      if (selectedTherapistSpecialtyIds.value.size === 0) return [];
+      return specialtyTypes.value.filter(s => selectedTherapistSpecialtyIds.value.has(s.id));
+    });
+
+    const unqualifiedSpecialties = computed(() => {
+      if (selectedTherapistSpecialtyIds.value.size === 0) return specialtyTypes.value;
+      return specialtyTypes.value.filter(s => !selectedTherapistSpecialtyIds.value.has(s.id));
+    });
+
     const isValid = computed(() => {
       return form.value.patientId > 0 && form.value.therapistId > 0 && form.value.specialtyTypeId > 0;
     });
@@ -248,7 +271,7 @@ export default defineComponent({
       }
     };
 
-    return { form, patients, therapists, specialtyTypes, saving, saveError, caretakerWarning, isValid, handleSubmit };
+    return { form, patients, therapists, specialtyTypes, qualifiedSpecialties, unqualifiedSpecialties, saving, saveError, caretakerWarning, isValid, handleSubmit };
   },
 });
 </script>
