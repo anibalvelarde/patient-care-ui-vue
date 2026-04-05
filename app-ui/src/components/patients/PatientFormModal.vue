@@ -156,29 +156,30 @@
             </p>
           </div>
 
-          <!-- Error message -->
-          <div v-if="error" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {{ error }}
-          </div>
         </form>
 
         <!-- Footer -->
-        <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-end space-x-3">
-          <button
-            type="button"
-            class="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50"
-            @click="$emit('close')"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            :disabled="saving"
-            class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-            @click="handleSubmit"
-          >
-            {{ saving ? 'Saving...' : 'Save Patient' }}
-          </button>
+        <div class="px-6 py-4 border-t border-slate-200 space-y-3">
+          <div v-if="error" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {{ error }}
+          </div>
+          <div class="flex items-center justify-end space-x-3">
+            <button
+              type="button"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50"
+              @click="$emit('close')"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              :disabled="saving"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+              @click="handleSubmit"
+            >
+              {{ saving ? 'Saving...' : 'Save Patient' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>

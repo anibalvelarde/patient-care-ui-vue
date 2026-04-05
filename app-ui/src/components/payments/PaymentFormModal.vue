@@ -96,9 +96,6 @@
             />
           </div>
 
-          <div v-if="error" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {{ error }}
-          </div>
         </div>
 
         <!-- Step 2: Session Allocation -->
@@ -186,13 +183,14 @@
             </div>
           </div>
 
-          <div v-if="error" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {{ error }}
-          </div>
         </div>
 
         <!-- Footer -->
-        <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+        <div class="px-6 py-4 border-t border-slate-200 space-y-3">
+          <div v-if="error" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {{ error }}
+          </div>
+          <div class="flex items-center justify-between">
           <div>
             <button
               v-if="step === 2"
@@ -229,6 +227,7 @@
             >
               {{ saving ? 'Saving...' : 'Save Payment' }}
             </button>
+          </div>
           </div>
         </div>
       </div>
