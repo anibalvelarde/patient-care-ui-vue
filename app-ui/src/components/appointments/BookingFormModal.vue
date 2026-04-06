@@ -31,6 +31,19 @@
             </p>
           </div>
 
+          <!-- Discovery-first banner -->
+          <div v-if="needsDiscovery" class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <div class="flex items-start">
+              <svg class="w-4 h-4 text-amber-600 mr-2 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <span class="text-sm text-amber-800 font-medium">This patient needs a discovery session first.</span>
+                <span class="text-xs text-amber-600 block mt-1">Only discovery specialties are available for booking.</span>
+              </div>
+            </div>
+          </div>
+
           <!-- Therapist -->
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Therapist</label>
@@ -133,12 +146,14 @@ import type { SessionEventRequest } from '../../interfaces/Appointment';
 import type { Patient } from '../../interfaces/Patient';
 import type { Therapist } from '../../interfaces/Therapist';
 import type { LookupItem } from '../../interfaces/Lookups';
+import { isDiscoverySpecialty } from '../../interfaces/TreatmentPlan';
 
 export default defineComponent({
   name: 'BookingFormModal',
   props: {
     visible: { type: Boolean, required: true },
     isWalkIn: { type: Boolean, default: false },
+    preSelectPatientId: { type: Number, default: 0 },
   },
   emits: ['close', 'saved'],
   setup(props, { emit }) {
@@ -153,6 +168,7 @@ export default defineComponent({
     const saving = ref(false);
     const saveError = ref('');
     const caretakerWarning = ref(false);
+    const needsDiscovery = ref(false);
 
     const today = new Date().toISOString().split('T')[0];
     const nowTime = new Date().toTimeString().slice(0, 5);
@@ -170,20 +186,38 @@ export default defineComponent({
       notes: '',
     });
 
-    // Bidirectional filtering: specialty ↔ therapist
+    // Bidirectional filtering: specialty ↔ therapist (with discovery-first)
     const filteredSpecialties = computed(() => {
-      if (form.value.therapistId <= 0) return specialtyTypes.value;
-      const therapist = therapists.value.find(t => t.therapistId === form.value.therapistId);
-      if (!therapist || therapist.specialties.length === 0) return specialtyTypes.value;
-      const qualifiedIds = new Set(therapist.specialties.map(s => s.specialtyId));
-      return specialtyTypes.value.filter(s => qualifiedIds.has(s.id));
+      let specs = specialtyTypes.value;
+      // Discovery-first: only discovery types when patient needs discovery
+      if (needsDiscovery.value) {
+        specs = specs.filter(s => isDiscoverySpecialty(s.abbreviation));
+      }
+      // Therapist-based filtering
+      if (form.value.therapistId > 0) {
+        const therapist = therapists.value.find(t => t.therapistId === form.value.therapistId);
+        if (therapist && therapist.specialties.length > 0) {
+          const qualifiedIds = new Set(therapist.specialties.map(s => s.specialtyId));
+          specs = specs.filter(s => qualifiedIds.has(s.id));
+        }
+      }
+      return specs;
     });
 
     const filteredTherapists = computed(() => {
-      if (form.value.specialtyTypeId <= 0) return therapists.value;
-      return therapists.value.filter(t =>
-        t.specialties.some(s => s.specialtyId === form.value.specialtyTypeId)
-      );
+      let pool = therapists.value;
+      // Discovery-first: only therapists qualified in discovery specialties
+      if (needsDiscovery.value) {
+        const discoverySpecialtyIds = new Set(
+          specialtyTypes.value.filter(s => isDiscoverySpecialty(s.abbreviation)).map(s => s.id)
+        );
+        pool = pool.filter(t => t.specialties.some(s => discoverySpecialtyIds.has(s.specialtyId)));
+      }
+      // Specialty-based filtering
+      if (form.value.specialtyTypeId > 0) {
+        pool = pool.filter(t => t.specialties.some(s => s.specialtyId === form.value.specialtyTypeId));
+      }
+      return pool;
     });
 
     // Reset the other selection when it becomes invalid after filtering
@@ -228,15 +262,26 @@ export default defineComponent({
       }
     };
 
-    watch(() => form.value.patientId, checkCaretaker);
+    const checkDiscovery = async (patientId: number) => {
+      if (patientId <= 0) { needsDiscovery.value = false; return; }
+      try {
+        const patient = await patientsClient.getPatient(patientId);
+        needsDiscovery.value = patient.hasCompletedDiscovery === false;
+      } catch {
+        needsDiscovery.value = false; // Fail open — don't block booking
+      }
+    };
+
+    watch(() => form.value.patientId, (id) => { checkCaretaker(id); checkDiscovery(id); });
     watch(form, () => { saveError.value = ''; }, { deep: true });
 
     watch(() => props.visible, (val) => {
       if (val) {
         loadDropdowns();
         saveError.value = '';
+        needsDiscovery.value = false;
         form.value = {
-          patientId: 0,
+          patientId: props.preSelectPatientId || 0,
           therapistId: 0,
           sessionDate: props.isWalkIn ? today : today,
           sessionTime: props.isWalkIn ? nowTime : '09:00',
@@ -279,7 +324,7 @@ export default defineComponent({
       }
     };
 
-    return { form, patients, filteredTherapists, filteredSpecialties, saving, saveError, caretakerWarning, isValid, handleSubmit };
+    return { form, patients, filteredTherapists, filteredSpecialties, saving, saveError, caretakerWarning, needsDiscovery, isValid, handleSubmit };
   },
 });
 </script>
