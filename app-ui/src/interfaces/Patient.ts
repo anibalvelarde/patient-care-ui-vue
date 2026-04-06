@@ -11,6 +11,7 @@ export interface Patient {
   phoneNumber: string;
   gender: string;
   isActive: boolean;
+  hasCompletedDiscovery: boolean | null;
   createdTimestamp: string;
   caretakers?: PatientCaretakerSummary[];
 }

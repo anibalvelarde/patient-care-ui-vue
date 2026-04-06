@@ -20,7 +20,7 @@
             ? 'bg-white/20 text-white'
             : 'text-violet-300 hover:bg-white/10 hover:text-white',
         ]"
-        :title="item.label"
+        :title="item.title || item.label"
       >
         <font-awesome-icon :icon="['fas', item.icon]" class="text-lg" />
         <span class="text-[9px] mt-0.5 font-medium">{{ item.label }}</span>
@@ -85,7 +85,7 @@ export default defineComponent({
       { label: 'Patients', icon: 'users', to: '/patients' },
       { label: 'Therapists', icon: 'user-md', to: '/therapists' },
       { label: 'Caretakers', icon: 'hand-holding-heart', to: '/caretakers' },
-      { label: 'Schedule', icon: 'calendar-check', to: '/appointments' },
+      { label: 'Appts', icon: 'calendar-check', to: '/appointments', title: 'Appointments' },
       { label: 'Billing', icon: 'credit-card', to: '/payments' },
       { label: 'Statements', icon: 'file-alt', to: '/statements' },
     ];

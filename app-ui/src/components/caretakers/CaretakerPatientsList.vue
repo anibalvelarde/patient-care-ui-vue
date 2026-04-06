@@ -43,12 +43,20 @@
             Primary
           </span>
         </div>
-        <button
-          class="px-3 py-1 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
-          @click="confirmUnlink(lp)"
-        >
-          Unlink
-        </button>
+        <div class="flex items-center space-x-2">
+          <button
+            class="px-3 py-1 rounded-lg text-xs font-medium text-violet-600 hover:bg-violet-50 transition-colors"
+            @click="viewPlans(lp.patientId)"
+          >
+            Plans
+          </button>
+          <button
+            class="px-3 py-1 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+            @click="confirmUnlink(lp)"
+          >
+            Unlink
+          </button>
+        </div>
       </div>
     </div>
     <p v-else class="text-sm text-slate-400 mb-4">No patients linked.</p>
@@ -168,6 +176,7 @@
 
 <script lang="ts">
 import { defineComponent, ref, computed, onMounted, type PropType } from 'vue';
+import { useRouter } from 'vue-router';
 import type { Caretaker, CaretakerPatientSummary } from '../../interfaces/Caretaker';
 import type { Patient } from '../../interfaces/Patient';
 import { CaretakersHttpClient } from '../../services/CaretakersHttpClient';
@@ -180,6 +189,7 @@ export default defineComponent({
   },
   emits: ['close', 'updated'],
   setup(props, { emit }) {
+    const router = useRouter();
     const caretakerClient = new CaretakersHttpClient();
     const patientClient = new PatientsHttpClient();
 
@@ -254,6 +264,10 @@ export default defineComponent({
       linkIsPrimary.value = true;
     };
 
+    const viewPlans = (patientId: number) => {
+      router.push({ path: '/treatment-plans', query: { patientId: String(patientId) } });
+    };
+
     onMounted(loadData);
 
     return {
@@ -270,6 +284,7 @@ export default defineComponent({
       doUnlink,
       doLink,
       resetLinkForm,
+      viewPlans,
     };
   },
 });

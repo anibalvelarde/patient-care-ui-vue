@@ -48,7 +48,8 @@
     <BookingFormModal
       :visible="bookingModalVisible"
       :is-walk-in="isWalkIn"
-      @close="bookingModalVisible = false"
+      :pre-select-patient-id="preSelectPatientId"
+      @close="bookingModalVisible = false; preSelectPatientId = 0"
       @saved="onBookingSaved"
     />
 
@@ -63,6 +64,7 @@
 
 <script lang="ts">
 import { defineComponent, ref, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import O2MobileNav from '../components/option02/O2MobileNav.vue';
 import O2Sidebar from '../components/option02/O2Sidebar.vue';
 import O2Header from '../components/option02/O2Header.vue';
@@ -77,6 +79,7 @@ export default defineComponent({
   name: 'AppointmentsView',
   components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, AppointmentsList, BookingFormModal, ActionsPanel },
   setup() {
+    const route = useRoute();
     const client = new SessionsHttpClient();
     const appointments = ref<Appointment[]>([]);
     const loading = ref(false);
@@ -86,6 +89,7 @@ export default defineComponent({
 
     const bookingModalVisible = ref(false);
     const isWalkIn = ref(false);
+    const preSelectPatientId = ref(0);
     const actionsPanelVisible = ref(false);
     const selectedAppointment = ref<Appointment | null>(null);
 
@@ -153,11 +157,19 @@ export default defineComponent({
     const onBookingSaved = () => loadAppointments();
     const onStatusUpdated = () => loadAppointments();
 
-    onMounted(loadAppointments);
+    onMounted(async () => {
+      await loadAppointments();
+      // Auto-open booking modal if deep-linked with bookFor param
+      const bookFor = Number(route.query.bookFor);
+      if (bookFor > 0) {
+        preSelectPatientId.value = bookFor;
+        openBooking(false);
+      }
+    });
 
     return {
       appointments, loading, error, activeFilter, selectedDate,
-      bookingModalVisible, isWalkIn, actionsPanelVisible, selectedAppointment,
+      bookingModalVisible, isWalkIn, preSelectPatientId, actionsPanelVisible, selectedAppointment,
       loadAppointments, setToday, openBooking, openActionsPanel,
       handleQuickStatusChange, onBookingSaved, onStatusUpdated,
     };

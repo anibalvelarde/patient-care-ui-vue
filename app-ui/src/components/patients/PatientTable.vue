@@ -76,6 +76,15 @@
                 </svg>
               </button>
               <button
+                class="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                title="Treatment Plans"
+                @click="$emit('view-plans', patient)"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+              </button>
+              <button
                 class="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                 title="Edit patient"
                 @click="$emit('edit', patient)"
@@ -157,6 +166,12 @@
           Caretakers
         </button>
         <button
+          class="px-3 py-1.5 rounded-lg text-xs font-medium text-violet-600 hover:bg-violet-50 transition-colors"
+          @click="$emit('view-plans', patient)"
+        >
+          Plans
+        </button>
+        <button
           class="px-3 py-1.5 rounded-lg text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors"
           @click="$emit('edit', patient)"
         >
@@ -193,7 +208,7 @@ export default defineComponent({
   props: {
     patients: { type: Array as PropType<Patient[]>, required: true },
   },
-  emits: ['edit', 'toggle-active', 'view-caretakers'],
+  emits: ['edit', 'toggle-active', 'view-caretakers', 'view-plans'],
   setup(props) {
     const sortKey = ref('patientName');
     const sortAsc = ref(true);

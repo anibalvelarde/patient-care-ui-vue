@@ -22,6 +22,7 @@
           @retry="loadPatients"
           @tab-change="onTabChange"
           @view-caretakers="viewCaretakers"
+          @view-plans="viewPlans"
           @pay-delinquent="onPayDelinquent"
         />
 
@@ -85,7 +86,7 @@
 
 <script lang="ts">
 import { defineComponent, ref, computed, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import O2MobileNav from '../components/option02/O2MobileNav.vue';
 import O2Sidebar from '../components/option02/O2Sidebar.vue';
 import O2Header from '../components/option02/O2Header.vue';
@@ -104,6 +105,7 @@ export default defineComponent({
   components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, PatientList, PatientFormModal, PatientCaretakerPanel, PaymentFormModal },
   setup() {
     const route = useRoute();
+    const router = useRouter();
     const client = new PatientsHttpClient();
 
     const validTabs = ['all', 'active', 'inactive', 'delinquent'] as const;
@@ -226,6 +228,10 @@ export default defineComponent({
       setTimeout(() => { tempMrnBanner.value = ''; }, 8000);
     };
 
+    const viewPlans = (patient: Patient) => {
+      router.push({ path: '/treatment-plans', query: { patientId: String(patient.patientId) } });
+    };
+
     onMounted(loadPatients);
 
     return {
@@ -251,6 +257,7 @@ export default defineComponent({
       preSelectedCaretakerId,
       onPayDelinquent,
       onPaymentSaved,
+      viewPlans,
     };
   },
 });

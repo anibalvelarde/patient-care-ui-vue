@@ -41,9 +41,12 @@
                 <span class="text-slate-500">Time</span>
                 <span class="text-slate-700">{{ appointment.sessionTime }}</span>
               </div>
-              <div class="flex justify-between">
+              <div class="flex justify-between items-center">
                 <span class="text-slate-500">Therapy Type</span>
-                <span class="text-slate-700">{{ appointment.therapyTypes || 'N/A' }}</span>
+                <span class="text-slate-700">
+                  {{ appointment.therapyTypes || 'N/A' }}
+                  <span v-if="appointment.isDiscovery" class="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Discovery</span>
+                </span>
               </div>
               <div v-if="appointment.notes" class="pt-1 border-t border-slate-200">
                 <span class="text-slate-500">Notes</span>
@@ -170,6 +173,37 @@
             </button>
           </div>
 
+          <!-- Treatment Plan Section -->
+          <div class="space-y-3">
+            <h3 class="text-sm font-semibold text-slate-700 flex items-center">
+              <svg class="w-4 h-4 text-violet-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+              Treatment Plan
+            </h3>
+            <div v-if="isCompletedDiscovery" class="bg-violet-50 border border-violet-200 rounded-lg p-4 text-center">
+              <p class="text-sm text-violet-700 font-medium">Create a treatment plan from this discovery session</p>
+              <button
+                class="mt-3 inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-violet-600 rounded-lg hover:bg-violet-700 transition-colors"
+                @click="createPlanFromDiscovery"
+              >
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Create Treatment Plan
+              </button>
+            </div>
+            <button
+              class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-violet-600 bg-violet-50 rounded-lg hover:bg-violet-100 transition-colors"
+              @click="viewPatientPlans"
+            >
+              <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              View Patient's Treatment Plans
+            </button>
+          </div>
+
           <!-- Status Actions -->
           <div class="space-y-2">
             <div class="flex items-center justify-between">
@@ -230,6 +264,7 @@
 
 <script lang="ts">
 import { defineComponent, ref, computed, watch, type PropType } from 'vue';
+import { useRouter } from 'vue-router';
 import StatusBadge from './StatusBadge.vue';
 import { SessionsHttpClient } from '../../services/SessionsHttpClient';
 import type { Appointment } from '../../interfaces/Appointment';
@@ -245,6 +280,7 @@ export default defineComponent({
   },
   emits: ['close', 'updated'],
   setup(props, { emit }) {
+    const router = useRouter();
     const client = new SessionsHttpClient();
     const actionInProgress = ref(false);
     const actionError = ref('');
@@ -264,6 +300,32 @@ export default defineComponent({
       const id = props.appointment?.appointmentStatusId;
       return id !== undefined && id !== 3 && id !== 4 && id !== 5;
     });
+
+    const isCompletedDiscovery = computed(() =>
+      props.appointment?.isDiscovery === true && props.appointment?.appointmentStatusId === 4
+    );
+
+    const createPlanFromDiscovery = () => {
+      if (!props.appointment) return;
+      router.push({
+        path: '/treatment-plans',
+        query: {
+          patientId: String(props.appointment.patientId),
+          create: 'true',
+          discoverySessionId: String(props.appointment.sessionId),
+        },
+      });
+      emit('close');
+    };
+
+    const viewPatientPlans = () => {
+      if (!props.appointment) return;
+      router.push({
+        path: '/treatment-plans',
+        query: { patientId: String(props.appointment.patientId) },
+      });
+      emit('close');
+    };
 
     const availableActions = computed(() => {
       const currentId = props.appointment?.appointmentStatusId;
@@ -385,6 +447,7 @@ export default defineComponent({
       confirmForm, cancelReason, actionInProgress, actionError,
       correctionConfirmed, editingFinancials, financialForm, isTerminalStatus,
       showConfirmSection, showCancelSection, availableActions,
+      isCompletedDiscovery, createPlanFromDiscovery, viewPatientPlans,
       startEditFinancials, saveFinancials,
       handleConfirm, handleStatusChange, handleCancel,
     };

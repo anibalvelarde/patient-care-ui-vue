@@ -83,6 +83,7 @@
       @edit="(p) => $emit('edit', p)"
       @toggle-active="(p) => $emit('toggle-active', p)"
       @view-caretakers="(p) => $emit('view-caretakers', p)"
+      @view-plans="(p) => $emit('view-plans', p)"
     />
   </div>
 </template>
@@ -104,7 +105,7 @@ export default defineComponent({
     loading: { type: Boolean, default: false },
     error: { type: String, default: '' },
   },
-  emits: ['add', 'edit', 'toggle-active', 'retry', 'tab-change', 'view-caretakers', 'pay-delinquent'],
+  emits: ['add', 'edit', 'toggle-active', 'retry', 'tab-change', 'view-caretakers', 'view-plans', 'pay-delinquent'],
   setup(props, { emit }) {
     const search = ref('');
     const activeFilter = ref<'all' | 'active' | 'inactive' | 'delinquent'>(props.initialTab);
