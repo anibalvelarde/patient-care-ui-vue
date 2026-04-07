@@ -133,6 +133,9 @@
           </div>
         </div>
 
+        <!-- Plan progress (Active plans) -->
+        <PlanProgressCard v-if="plan.planStatus === 'Active'" :plan-id="plan.id" />
+
         <!-- Card footer -->
         <div class="mt-3 pt-3 border-t border-slate-100 flex justify-end space-x-2">
           <button
@@ -164,6 +167,16 @@
           </button>
           <button
             v-if="plan.planStatus === 'Active'"
+            class="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-violet-600 hover:bg-violet-700 transition-colors"
+            @click="$emit('schedule', plan)"
+          >
+            <svg class="w-3.5 h-3.5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Schedule Sessions
+          </button>
+          <button
+            v-if="plan.planStatus === 'Active'"
             class="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-gray-500 hover:bg-gray-600 transition-colors"
             @click="$emit('complete', plan)"
           >
@@ -192,9 +205,11 @@
 import { defineComponent, ref, computed, type PropType } from 'vue';
 import type { TreatmentPlan, PlanStatus } from '../../interfaces/TreatmentPlan';
 import { planStatusBadgeClass } from '../../interfaces/TreatmentPlan';
+import PlanProgressCard from './PlanProgressCard.vue';
 
 export default defineComponent({
   name: 'TreatmentPlanList',
+  components: { PlanProgressCard },
   props: {
     plans: { type: Array as PropType<TreatmentPlan[]>, required: true },
     loading: { type: Boolean, default: false },
@@ -202,7 +217,7 @@ export default defineComponent({
     initialTab: { type: String, default: 'All' },
     canCreate: { type: Boolean, default: true },
   },
-  emits: ['create', 'edit', 'activate', 'complete', 'cancel'],
+  emits: ['create', 'edit', 'activate', 'complete', 'cancel', 'schedule'],
   setup(props) {
     const tabs = ['All', 'Draft', 'Active', 'Completed', 'Cancelled'];
     const activeTab = ref(props.initialTab);

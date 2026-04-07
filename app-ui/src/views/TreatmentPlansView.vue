@@ -75,6 +75,7 @@
               @activate="onActivate"
               @complete="onComplete"
               @cancel="onCancel"
+              @schedule="onSchedule"
             />
           </template>
         </main>
@@ -91,6 +92,13 @@
       @close="modalVisible = false"
       @saved="onSaved"
     />
+
+    <SchedulePlanWizard
+      :visible="scheduleWizardVisible"
+      :plan="schedulingPlan"
+      @close="scheduleWizardVisible = false"
+      @scheduled="onScheduled"
+    />
   </div>
 </template>
 
@@ -103,6 +111,7 @@ import O2Header from '../components/option02/O2Header.vue';
 import O2Footer from '../components/option02/O2Footer.vue';
 import TreatmentPlanList from '../components/treatment-plans/TreatmentPlanList.vue';
 import TreatmentPlanFormModal from '../components/treatment-plans/TreatmentPlanFormModal.vue';
+import SchedulePlanWizard from '../components/treatment-plans/SchedulePlanWizard.vue';
 import { PatientsHttpClient } from '../services/PatientsHttpClient';
 import { TreatmentPlansHttpClient } from '../services/TreatmentPlansHttpClient';
 import { SessionsHttpClient } from '../services/SessionsHttpClient';
@@ -110,7 +119,7 @@ import type { TreatmentPlan, DiscoverySessionSummary } from '../interfaces/Treat
 
 export default defineComponent({
   name: 'TreatmentPlansView',
-  components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, TreatmentPlanList, TreatmentPlanFormModal },
+  components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, TreatmentPlanList, TreatmentPlanFormModal, SchedulePlanWizard },
   setup() {
     const route = useRoute();
     const router = useRouter();
@@ -142,6 +151,8 @@ export default defineComponent({
     const error = ref('');
     const modalVisible = ref(false);
     const editingPlan = ref<TreatmentPlan | null>(null);
+    const scheduleWizardVisible = ref(false);
+    const schedulingPlan = ref<TreatmentPlan | null>(null);
 
     const loadPatient = async () => {
       if (!patientId.value) return;
@@ -223,6 +234,15 @@ export default defineComponent({
       loadPlans();
     };
 
+    const onSchedule = (plan: TreatmentPlan) => {
+      schedulingPlan.value = plan;
+      scheduleWizardVisible.value = true;
+    };
+
+    const onScheduled = () => {
+      loadPlans();
+    };
+
     onMounted(async () => {
       await Promise.all([loadPatient(), loadPlans(), loadDiscoverySessions()]);
       // Auto-open create form if query param is set
@@ -259,6 +279,10 @@ export default defineComponent({
       onComplete,
       onCancel,
       onSaved,
+      scheduleWizardVisible,
+      schedulingPlan,
+      onSchedule,
+      onScheduled,
     };
   },
 });

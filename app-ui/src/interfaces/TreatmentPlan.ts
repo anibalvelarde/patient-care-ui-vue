@@ -83,3 +83,78 @@ export function planStatusBadgeClass(status: PlanStatus): string {
     case 'Cancelled': return 'bg-red-100 text-red-700';
   }
 }
+
+// --- Bulk Scheduling Types ---
+
+export interface LineOverride {
+  treatmentPlanLineId: number;
+  therapistId: number | null;
+  dayOfWeek: number | null;
+  time: string | null;
+  discountAmount: number | null;
+}
+
+export interface BulkScheduleRequest {
+  startDate: string;
+  siteId: number;
+  lineOverrides: LineOverride[];
+}
+
+export interface CreatedSessionInfo {
+  sessionId: number;
+  treatmentPlanLineId: number;
+  weekNumber: number;
+  sessionDate: string;
+  sessionTime: string;
+  therapistId: number;
+  therapistName: string;
+  specialtyAbbreviation: string;
+  amount: number;
+  discountAmount: number;
+  providerAmount: number;
+  grossProfit: number;
+}
+
+export interface SuggestedAlternative {
+  therapistId: number;
+  therapistName: string;
+  time: string;
+  type: 'different-therapist' | 'different-time';
+}
+
+export interface ScheduleConflict {
+  weekNumber: number;
+  lineId: number;
+  date: string;
+  reason: string;
+  suggestedAlternatives: SuggestedAlternative[];
+}
+
+export interface BulkScheduleResult {
+  planId: number;
+  sessionsCreated: number;
+  sessions: CreatedSessionInfo[];
+  conflicts: ScheduleConflict[];
+}
+
+export interface PlanSessionInfo {
+  sessionId: number;
+  sessionDate: string;
+  sessionTime: string;
+  treatmentPlanLineId: number;
+  specialtyAbbreviation: string;
+  therapistName: string;
+  appointmentStatusId: number;
+  statusName: string;
+}
+
+export interface PlanProgressSummary {
+  planId: number;
+  totalPlanned: number;
+  sessionsCreated: number;
+  sessionsCompleted: number;
+  sessionsCancelled: number;
+  sessionsRemaining: number;
+  nextUpcomingDate: string | null;
+  sessions: PlanSessionInfo[];
+}
