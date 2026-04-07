@@ -1,6 +1,6 @@
 // services/TreatmentPlansHttpClient.ts
 import { HttpClientBase } from './HttpClientBase';
-import type { TreatmentPlan, TreatmentPlanRequest } from '../interfaces/TreatmentPlan';
+import type { TreatmentPlan, TreatmentPlanRequest, BulkScheduleRequest, BulkScheduleResult, PlanSessionInfo, PlanProgressSummary } from '../interfaces/TreatmentPlan';
 
 export class TreatmentPlansHttpClient extends HttpClientBase {
   async getByPatient(patientId: number): Promise<TreatmentPlan[]> {
@@ -29,5 +29,17 @@ export class TreatmentPlansHttpClient extends HttpClientBase {
 
   async cancel(id: number): Promise<TreatmentPlan> {
     return this.putWithResponse<TreatmentPlan>(`/api/treatment-plans/${id}/cancel`, {});
+  }
+
+  async schedule(id: number, data: BulkScheduleRequest): Promise<BulkScheduleResult> {
+    return this.post<BulkScheduleResult>(`/api/treatment-plans/${id}/schedule`, data);
+  }
+
+  async getSessions(id: number): Promise<PlanSessionInfo[]> {
+    return this.get<PlanSessionInfo[]>(`/api/treatment-plans/${id}/sessions`);
+  }
+
+  async getProgress(id: number): Promise<PlanProgressSummary> {
+    return this.get<PlanProgressSummary>(`/api/treatment-plans/${id}/progress`);
   }
 }
