@@ -34,19 +34,22 @@
                 &mdash; {{ plan.discoverySpecialty }}, {{ formatDate(plan.discoveryDate) }}
               </p>
             </div>
-            <div v-else-if="discoverySessionId > 0">
-              <p class="text-sm text-slate-600">Discovery Session #{{ discoverySessionId }}</p>
-            </div>
             <div v-else>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Discovery Session ID</label>
-              <input
+              <label class="block text-sm font-medium text-slate-700 mb-1">Discovery Session</label>
+              <div v-if="discoverySessionsLoading" class="text-sm text-slate-400">Loading discovery sessions...</div>
+              <div v-else-if="discoverySessions.length === 0" class="text-sm text-amber-600">
+                No completed discovery sessions found for this patient.
+              </div>
+              <select
+                v-else
                 v-model.number="form.discoverySessionId"
-                type="number"
-                min="1"
-                placeholder="Enter the ID of a completed discovery session"
                 class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-              />
-              <p class="mt-1 text-xs text-slate-400">Enter the ID of a completed discovery session</p>
+              >
+                <option :value="0" disabled>Select a discovery session...</option>
+                <option v-for="ds in discoverySessions" :key="ds.sessionId" :value="ds.sessionId">
+                  #{{ ds.sessionId }} &mdash; {{ ds.specialtyAbbreviation }} on {{ formatDate(ds.sessionDate) }} with {{ ds.therapistName }}
+                </option>
+              </select>
             </div>
           </div>
 
@@ -202,6 +205,12 @@
 
         <!-- Footer -->
         <div class="px-6 py-4 border-t border-slate-200 space-y-3">
+          <div v-if="lineCountMismatch" class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <p class="text-sm text-amber-700">
+              Line count ({{ lines.length }}) does not match sessions per week ({{ form.weeklyFrequency }}).
+              Plan will stay in Draft until this is resolved.
+            </p>
+          </div>
           <div v-if="saveError" class="bg-red-50 border border-red-200 rounded-lg p-3">
             <p class="text-sm text-red-700">{{ saveError }}</p>
           </div>
@@ -215,10 +224,11 @@
             <button
               v-if="isEditing && plan && plan.planStatus === 'Draft'"
               @click="handleActivate"
-              :disabled="saving"
+              :disabled="saving || lineCountMismatch"
+              :title="lineCountMismatch ? 'Line count must match sessions per week before activating' : ''"
               :class="[
                 'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
-                saving
+                saving || lineCountMismatch
                   ? 'bg-emerald-300 text-white cursor-not-allowed'
                   : 'bg-emerald-600 text-white hover:bg-emerald-700',
               ]"
@@ -246,11 +256,12 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, watch, type PropType } from 'vue';
+import { defineComponent, ref, computed, watch, type PropType } from 'vue';
 import { TreatmentPlansHttpClient } from '../../services/TreatmentPlansHttpClient';
 import { LookupHttpClient } from '../../services/LookupHttpClient';
 import { TherapistsHttpClient } from '../../services/TherapistsHttpClient';
-import type { TreatmentPlan, TreatmentPlanRequest, TreatmentPlanLineRequest } from '../../interfaces/TreatmentPlan';
+import { SessionsHttpClient } from '../../services/SessionsHttpClient';
+import type { TreatmentPlan, TreatmentPlanRequest, TreatmentPlanLineRequest, DiscoverySessionSummary } from '../../interfaces/TreatmentPlan';
 import { DAY_OF_WEEK_LABELS, isDiscoverySpecialty, planStatusBadgeClass } from '../../interfaces/TreatmentPlan';
 import type { LookupItem } from '../../interfaces/Lookups';
 import type { Therapist } from '../../interfaces/Therapist';
@@ -277,9 +288,12 @@ export default defineComponent({
     const plansClient = new TreatmentPlansHttpClient();
     const lookupClient = new LookupHttpClient();
     const therapistsClient = new TherapistsHttpClient();
+    const sessionsClient = new SessionsHttpClient();
 
     const specialtyTypes = ref<LookupItem[]>([]);
     const therapists = ref<Therapist[]>([]);
+    const discoverySessions = ref<DiscoverySessionSummary[]>([]);
+    const discoverySessionsLoading = ref(false);
     const saving = ref(false);
     const saveError = ref('');
 
@@ -296,6 +310,26 @@ export default defineComponent({
     const lines = ref<FormLine[]>([]);
 
     const treatmentSpecialties = ref<LookupItem[]>([]);
+
+    const lineCountMismatch = computed(() => {
+      return lines.value.length !== form.value.weeklyFrequency;
+    });
+
+    const loadDiscoverySessions = async () => {
+      if (props.patientId <= 0) return;
+      discoverySessionsLoading.value = true;
+      try {
+        discoverySessions.value = await sessionsClient.getDiscoverySessions(props.patientId);
+        // Auto-select if exactly one discovery session and none is pre-selected
+        if (discoverySessions.value.length === 1 && form.value.discoverySessionId === 0) {
+          form.value.discoverySessionId = discoverySessions.value[0].sessionId;
+        }
+      } catch {
+        discoverySessions.value = [];
+      } finally {
+        discoverySessionsLoading.value = false;
+      }
+    };
 
     const emptyLine = (): FormLine => ({
       specialtyTypeId: 0,
@@ -367,6 +401,7 @@ export default defineComponent({
           populateFromPlan(props.plan);
         } else {
           resetForm();
+          loadDiscoverySessions();
         }
       }
     });
@@ -453,6 +488,9 @@ export default defineComponent({
       isEditing,
       saving,
       saveError,
+      discoverySessions,
+      discoverySessionsLoading,
+      lineCountMismatch,
       treatmentSpecialties,
       therapistsForLine,
       DAY_OF_WEEK_LABELS,

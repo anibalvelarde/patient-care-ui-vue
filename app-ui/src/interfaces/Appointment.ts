@@ -25,6 +25,7 @@ export interface Appointment {
     specialtyAbbreviation: string | null;
     specialtyName: string | null;
     isDiscovery: boolean | null;
+    providerAmount: number;
 }
 
 export interface AppointmentStatusInfo {

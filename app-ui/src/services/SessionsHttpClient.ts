@@ -1,6 +1,7 @@
 // services/SessionsHttpClient.ts
 import { HttpClientBase } from './HttpClientBase';
 import type { Appointment, AppointmentStatusInfo, SessionEventRequest, ConfirmationRequest, ConfirmationRecord } from '../interfaces/Appointment';
+import type { DiscoverySessionSummary } from '../interfaces/TreatmentPlan';
 
 export class SessionsHttpClient extends HttpClientBase {
   async getSessions(date: string): Promise<Appointment[]> {
@@ -64,6 +65,10 @@ export class SessionsHttpClient extends HttpClientBase {
     if (params?.days !== undefined) query.set('days', params.days.toString());
     const qs = query.toString();
     return this.get<Appointment[]>(`/api/Sessions/upcoming${qs ? '?' + qs : ''}`);
+  }
+
+  async getDiscoverySessions(patientId: number): Promise<DiscoverySessionSummary[]> {
+    return this.get<DiscoverySessionSummary[]>(`/api/Sessions/patient/${patientId}/discovery`);
   }
 
   async getConfirmations(id: number): Promise<ConfirmationRecord[]> {

@@ -8,6 +8,7 @@
           <th>Patient</th>
           <th>Therapy</th>
           <th>Therapist</th>
+          <th>Provider</th>
           <th>Notes</th>
           <th>Paid Off?</th>
           <th>Past Due?</th>
@@ -19,6 +20,7 @@
           <td>{{ appointment.patient }}</td>
           <td>{{ appointment.therapyTypes }}</td>
           <td>{{ appointment.therapist }}</td>
+          <td>${{ appointment.providerAmount.toFixed(2) }}</td>
           <td>{{ appointment.notes }}</td>
           <td>
             <font-awesome-icon 

@@ -84,6 +84,10 @@
               <span class="text-green-700 font-bold">{{ formatCurrency(settledFinancials.totalPaid) }}</span>
             </div>
           </div>
+          <p v-if="settledFinancials.totalProvider > 0" class="mt-2 text-[10px] text-gray-400 italic">
+            Includes {{ formatCurrency(settledFinancials.totalProvider) }} provider fees
+            ({{ settledFinancials.providerPercent }}% of collected)
+          </p>
         </div>
 
         <!-- Past Due Column -->
@@ -113,6 +117,10 @@
               <span class="text-red-700 font-bold">{{ formatCurrency(pastDueFinancials.totalDue) }}</span>
             </div>
           </div>
+          <p v-if="pastDueFinancials.totalProvider > 0" class="mt-2 text-[10px] text-gray-400 italic">
+            Includes {{ formatCurrency(pastDueFinancials.totalProvider) }} provider fees
+            ({{ pastDueFinancials.providerPercent }}% of outstanding)
+          </p>
         </div>
       </div>
     </div>
@@ -189,23 +197,31 @@ export default defineComponent({
 
     const pastDueFinancials = computed(() => {
       const pastDue = props.appointments.filter((a) => a.isPastDue);
+      const totalDue = pastDue.reduce((sum, a) => sum + a.amountDue, 0);
+      const totalProvider = pastDue.reduce((sum, a) => sum + a.providerAmount, 0);
       return {
         count: pastDue.length,
         totalAmount: pastDue.reduce((sum, a) => sum + a.amount, 0),
         totalDiscount: pastDue.reduce((sum, a) => sum + a.discount, 0),
         totalPaid: pastDue.reduce((sum, a) => sum + a.amountPaid, 0),
-        totalDue: pastDue.reduce((sum, a) => sum + a.amountDue, 0),
+        totalDue,
+        totalProvider,
+        providerPercent: totalDue > 0 ? Math.round((totalProvider / totalDue) * 100) : 0,
       };
     });
 
     const settledFinancials = computed(() => {
       const settled = props.appointments.filter((a) => a.isPaidOff);
+      const totalPaid = settled.reduce((sum, a) => sum + a.amountPaid, 0);
+      const totalProvider = settled.reduce((sum, a) => sum + a.providerAmount, 0);
       return {
         count: settled.length,
         totalAmount: settled.reduce((sum, a) => sum + a.amount, 0),
         totalDiscount: settled.reduce((sum, a) => sum + a.discount, 0),
-        totalPaid: settled.reduce((sum, a) => sum + a.amountPaid, 0),
+        totalPaid,
         totalDue: settled.reduce((sum, a) => sum + a.amountDue, 0),
+        totalProvider,
+        providerPercent: totalPaid > 0 ? Math.round((totalProvider / totalPaid) * 100) : 0,
       };
     });
 

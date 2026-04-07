@@ -120,6 +120,9 @@
           <div class="text-sm text-slate-600">
             <span class="text-slate-400">Lines:</span>
             {{ plan.lines.length }} treatment line{{ plan.lines.length !== 1 ? 's' : '' }}
+            <span v-if="hasLineCountMismatch(plan)" class="text-amber-600 text-xs ml-1" :title="`Expected ${plan.weeklyFrequency} line(s) to match sessions per week`">
+              (mismatch)
+            </span>
           </div>
         </div>
 
@@ -144,7 +147,14 @@
           </button>
           <button
             v-if="plan.planStatus === 'Draft'"
-            class="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
+            :disabled="hasLineCountMismatch(plan)"
+            :title="hasLineCountMismatch(plan) ? `Line count (${plan.lines.length}) must match sessions per week (${plan.weeklyFrequency})` : ''"
+            :class="[
+              'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+              hasLineCountMismatch(plan)
+                ? 'text-white bg-emerald-300 cursor-not-allowed'
+                : 'text-white bg-emerald-600 hover:bg-emerald-700',
+            ]"
             @click="$emit('activate', plan)"
           >
             <svg class="w-3.5 h-3.5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -206,6 +216,10 @@ export default defineComponent({
       return props.plans.filter(p => p.planStatus === activeTab.value as PlanStatus);
     });
 
+    const hasLineCountMismatch = (plan: TreatmentPlan) => {
+      return plan.lines.length !== plan.weeklyFrequency;
+    };
+
     const formatDate = (dateStr: string) => {
       if (!dateStr) return '';
       const d = new Date(dateStr);
@@ -219,6 +233,7 @@ export default defineComponent({
       activeCount,
       completedCount,
       filteredPlans,
+      hasLineCountMismatch,
       planStatusBadgeClass,
       formatDate,
     };
