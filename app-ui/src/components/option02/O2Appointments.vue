@@ -61,6 +61,8 @@
             <p class="md:hidden text-[10px] mt-0.5 truncate">
               <span class="text-gray-500">{{ formatCurrency(appt.amount) }} billed</span>
               <span class="text-gray-300"> &middot; </span>
+              <span class="text-violet-600">{{ formatCurrency(appt.providerAmount) }} provider</span>
+              <span class="text-gray-300"> &middot; </span>
               <span v-if="appt.isPastDue" class="text-red-600 font-medium">{{ formatCurrency(appt.amountDue) }} due</span>
               <span v-else class="text-green-600 font-medium">{{ formatCurrency(appt.amountPaid) }} paid</span>
             </p>
@@ -71,6 +73,10 @@
             <div class="w-16 text-right">
               <p class="text-xs font-medium text-gray-600">{{ formatCurrency(appt.amount) }}</p>
               <p class="text-[10px] text-gray-400">Billed</p>
+            </div>
+            <div class="w-16 text-right">
+              <p class="text-xs font-medium text-violet-600">{{ formatCurrency(appt.providerAmount) }}</p>
+              <p class="text-[10px] text-gray-400">Provider</p>
             </div>
             <div class="w-16 text-right">
               <p class="text-xs font-medium text-gray-600">-{{ formatCurrency(appt.discount) }}</p>

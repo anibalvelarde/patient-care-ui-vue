@@ -55,6 +55,13 @@ export interface TreatmentPlanRequest {
   lines: TreatmentPlanLineRequest[];
 }
 
+export interface DiscoverySessionSummary {
+  sessionId: number;
+  sessionDate: string;
+  specialtyAbbreviation: string;
+  therapistName: string;
+}
+
 export const DAY_OF_WEEK_LABELS: Record<number, string> = {
   1: 'Monday',
   2: 'Tuesday',

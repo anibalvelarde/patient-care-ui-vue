@@ -40,6 +40,30 @@
               </div>
             </div>
 
+            <!-- Discovery Sessions Summary -->
+            <div v-if="discoverySessions.length > 0" class="bg-white border border-slate-200 rounded-xl p-4 mb-6">
+              <h3 class="text-sm font-semibold text-slate-700 mb-3 flex items-center">
+                <svg class="w-4 h-4 mr-2 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Discovery Sessions
+              </h3>
+              <div class="space-y-2">
+                <div
+                  v-for="ds in discoverySessions"
+                  :key="ds.sessionId"
+                  class="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2"
+                >
+                  <div class="flex items-center space-x-3 text-sm">
+                    <span class="font-medium text-slate-700">#{{ ds.sessionId }}</span>
+                    <span class="text-violet-600 font-medium">{{ ds.specialtyAbbreviation }}</span>
+                    <span class="text-slate-500">{{ formatDiscoveryDate(ds.sessionDate) }}</span>
+                    <span class="text-slate-500">with {{ ds.therapistName }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <TreatmentPlanList
               :plans="plans"
               :loading="loading"
@@ -81,7 +105,8 @@ import TreatmentPlanList from '../components/treatment-plans/TreatmentPlanList.v
 import TreatmentPlanFormModal from '../components/treatment-plans/TreatmentPlanFormModal.vue';
 import { PatientsHttpClient } from '../services/PatientsHttpClient';
 import { TreatmentPlansHttpClient } from '../services/TreatmentPlansHttpClient';
-import type { TreatmentPlan } from '../interfaces/TreatmentPlan';
+import { SessionsHttpClient } from '../services/SessionsHttpClient';
+import type { TreatmentPlan, DiscoverySessionSummary } from '../interfaces/TreatmentPlan';
 
 export default defineComponent({
   name: 'TreatmentPlansView',
@@ -91,6 +116,7 @@ export default defineComponent({
     const router = useRouter();
     const patientsClient = new PatientsHttpClient();
     const plansClient = new TreatmentPlansHttpClient();
+    const sessionsClient = new SessionsHttpClient();
 
     const patientId = computed(() => {
       const raw = route.query.patientId;
@@ -111,6 +137,7 @@ export default defineComponent({
     }));
     const hasDiscovery = ref<boolean | null>(null);
     const plans = ref<TreatmentPlan[]>([]);
+    const discoverySessions = ref<DiscoverySessionSummary[]>([]);
     const loading = ref(false);
     const error = ref('');
     const modalVisible = ref(false);
@@ -138,6 +165,21 @@ export default defineComponent({
       } finally {
         loading.value = false;
       }
+    };
+
+    const loadDiscoverySessions = async () => {
+      if (!patientId.value) return;
+      try {
+        discoverySessions.value = await sessionsClient.getDiscoverySessions(patientId.value);
+      } catch {
+        discoverySessions.value = [];
+      }
+    };
+
+    const formatDiscoveryDate = (dateStr: string) => {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     };
 
     const openCreate = () => {
@@ -182,7 +224,7 @@ export default defineComponent({
     };
 
     onMounted(async () => {
-      await Promise.all([loadPatient(), loadPlans()]);
+      await Promise.all([loadPatient(), loadPlans(), loadDiscoverySessions()]);
       // Auto-open create form if query param is set
       if (route.query.create === 'true') {
         openCreate();
@@ -193,6 +235,7 @@ export default defineComponent({
     watch(patientId, () => {
       loadPatient();
       loadPlans();
+      loadDiscoverySessions();
     });
 
     return {
@@ -202,12 +245,14 @@ export default defineComponent({
       patientName,
       hasDiscovery,
       bookingLink,
+      discoverySessions,
       plans,
       loading,
       error,
       modalVisible,
       editingPlan,
       initialTab,
+      formatDiscoveryDate,
       openCreate,
       openEdit,
       onActivate,
