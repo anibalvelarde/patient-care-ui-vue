@@ -10,7 +10,8 @@ export class SessionsHttpClient extends HttpClientBase {
       throw new Error("Invalid date format.");
     }
     const url = `/api/Sessions/${formattedDate}/all`;
-    return this.get<Appointment[]>(url);
+    const appointments = await this.get<Appointment[]>(url);
+    return appointments.map(a => ({ ...a, time: a.sessionTime || '' }));
   }
 
   async createSession(data: SessionEventRequest): Promise<Appointment> {

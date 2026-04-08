@@ -34,6 +34,7 @@
                 @appointments-loaded="onAppointmentsLoaded"
                 @view-payments="onViewPayments"
                 @pay="onPay"
+                @reassign="onReassign"
               />
             </div>
           </div>
@@ -55,6 +56,13 @@
       @close="payFormVisible = false"
       @saved="onPaymentSaved"
     />
+
+    <TherapistReassignModal
+      :visible="reassignModalVisible"
+      :session="reassignModalSession"
+      @close="reassignModalVisible = false"
+      @saved="onReassignSaved"
+    />
   </div>
 </template>
 
@@ -71,6 +79,7 @@ import O2Appointments from '../components/option02/O2Appointments.vue';
 import O2Footer from '../components/option02/O2Footer.vue';
 import SessionPaymentsModal from '../components/payments/SessionPaymentsModal.vue';
 import PaymentFormModal from '../components/payments/PaymentFormModal.vue';
+import TherapistReassignModal from '../components/appointments/TherapistReassignModal.vue';
 import { PatientsHttpClient } from '../services/PatientsHttpClient';
 
 export default defineComponent({
@@ -85,6 +94,7 @@ export default defineComponent({
     O2Footer,
     SessionPaymentsModal,
     PaymentFormModal,
+    TherapistReassignModal,
   },
   setup() {
     const route = useRoute();
@@ -102,6 +112,10 @@ export default defineComponent({
 
     // Refresh key to force O2Appointments re-fetch
     const appointmentRefreshKey = ref(0);
+
+    // Therapist reassign modal state
+    const reassignModalVisible = ref(false);
+    const reassignModalSession = ref<Appointment | null>(null);
 
     const highlightedSessionId = computed(() => {
       const val = route.query.highlightSession;
@@ -157,6 +171,15 @@ export default defineComponent({
       appointmentRefreshKey.value++;
     };
 
+    const onReassign = (appt: Appointment) => {
+      reassignModalSession.value = appt;
+      reassignModalVisible.value = true;
+    };
+
+    const onReassignSaved = () => {
+      appointmentRefreshKey.value++;
+    };
+
     return {
       selectedDate,
       allAppointments,
@@ -172,6 +195,10 @@ export default defineComponent({
       payFormVisible,
       preSelectedCaretakerId,
       appointmentRefreshKey,
+      reassignModalVisible,
+      reassignModalSession,
+      onReassign,
+      onReassignSaved,
     };
   },
 });

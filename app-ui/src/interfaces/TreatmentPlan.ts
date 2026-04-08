@@ -18,6 +18,7 @@ export interface TreatmentPlanLine {
 
 export interface TreatmentPlan {
   id: number;
+  displayTitle: string;
   patientId: number;
   patientName: string;
   discoverySessionId: number;

@@ -184,6 +184,9 @@
                     <input
                       v-model="line.preferredTime"
                       type="time"
+                      :min="timeMin"
+                      :max="timeMax"
+                      :step="timeStep"
                       class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                     />
                   </div>
@@ -265,6 +268,7 @@ import type { TreatmentPlan, TreatmentPlanRequest, TreatmentPlanLineRequest, Dis
 import { DAY_OF_WEEK_LABELS, isDiscoverySpecialty, planStatusBadgeClass } from '../../interfaces/TreatmentPlan';
 import type { LookupItem } from '../../interfaces/Lookups';
 import type { Therapist } from '../../interfaces/Therapist';
+import { TIME_MIN, TIME_MAX, TIME_STEP } from '../../utils/timeSlots';
 
 interface FormLine {
   specialtyTypeId: number;
@@ -500,6 +504,9 @@ export default defineComponent({
       addLine,
       removeLine,
       formatDate,
+      timeMin: TIME_MIN,
+      timeMax: TIME_MAX,
+      timeStep: TIME_STEP,
     };
   },
 });

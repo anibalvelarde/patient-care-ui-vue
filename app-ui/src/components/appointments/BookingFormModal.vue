@@ -63,7 +63,7 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">Time</label>
-              <input v-model="form.sessionTime" type="time" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500" />
+              <input v-model="form.sessionTime" type="time" :min="timeMin" :max="timeMax" :step="timeStep" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500" />
             </div>
           </div>
 
@@ -147,6 +147,7 @@ import type { Patient } from '../../interfaces/Patient';
 import type { Therapist } from '../../interfaces/Therapist';
 import type { LookupItem } from '../../interfaces/Lookups';
 import { isDiscoverySpecialty } from '../../interfaces/TreatmentPlan';
+import { TIME_MIN, TIME_MAX, TIME_STEP } from '../../utils/timeSlots';
 
 export default defineComponent({
   name: 'BookingFormModal',
@@ -324,7 +325,7 @@ export default defineComponent({
       }
     };
 
-    return { form, patients, filteredTherapists, filteredSpecialties, saving, saveError, caretakerWarning, needsDiscovery, isValid, handleSubmit };
+    return { form, patients, filteredTherapists, filteredSpecialties, saving, saveError, caretakerWarning, needsDiscovery, isValid, handleSubmit, timeMin: TIME_MIN, timeMax: TIME_MAX, timeStep: TIME_STEP };
   },
 });
 </script>

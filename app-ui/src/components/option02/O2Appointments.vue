@@ -104,6 +104,15 @@
             </div>
           </div>
 
+          <!-- Reassign therapist -->
+          <button
+            class="flex-shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+            title="Reassign therapist"
+            @click.stop="$emit('reassign', appt)"
+          >
+            <font-awesome-icon :icon="['fas', 'user-md']" class="text-xs" />
+          </button>
+
           <!-- Status badge (clickable) -->
           <div class="flex-shrink-0 flex items-center gap-1">
             <button
@@ -167,9 +176,10 @@ import {
   faExclamationCircle,
   faCalendarDay,
   faCreditCard,
+  faUserMd,
 } from '@fortawesome/free-solid-svg-icons';
 
-library.add(faList, faStickyNote, faCheckCircle, faExclamationCircle, faCalendarDay, faCreditCard);
+library.add(faList, faStickyNote, faCheckCircle, faExclamationCircle, faCalendarDay, faCreditCard, faUserMd);
 
 export default defineComponent({
   name: 'O2Appointments',
@@ -188,7 +198,7 @@ export default defineComponent({
       default: 0,
     },
   },
-  emits: ['appointments-loaded', 'view-payments', 'pay'],
+  emits: ['appointments-loaded', 'view-payments', 'pay', 'reassign'],
   setup(props, { emit }) {
     const sessionsHttpClient = new SessionsHttpClient();
     const allAppointments = ref<Appointment[]>([]);
