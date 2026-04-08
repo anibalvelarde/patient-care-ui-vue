@@ -28,19 +28,20 @@
         {{ expanded ? 'Hide' : 'Show' }} {{ progress.sessionsCreated }} session{{ progress.sessionsCreated !== 1 ? 's' : '' }}
       </button>
       <div v-if="expanded" class="mt-2 space-y-1 max-h-48 overflow-y-auto">
-        <div
+        <router-link
           v-for="s in progress.sessions"
           :key="s.sessionId"
-          class="flex items-center justify-between text-xs bg-slate-50 rounded px-2 py-1"
+          :to="{ path: '/', query: { date: s.sessionDate, highlightSession: s.sessionId } }"
+          class="flex items-center justify-between text-xs bg-slate-50 rounded px-2 py-1 hover:bg-violet-50 cursor-pointer transition-colors"
         >
           <div class="flex items-center space-x-2">
             <span class="text-slate-600">{{ formatDate(s.sessionDate) }}</span>
-            <span class="text-slate-400">{{ s.sessionTime }}</span>
+            <span class="text-slate-400">{{ s.sessionTime?.replace(/:00$/, '') }}</span>
             <span class="font-medium text-violet-600">{{ s.specialtyAbbreviation }}</span>
             <span class="text-slate-500">{{ s.therapistName }}</span>
           </div>
           <span :class="statusBadgeClass(s.appointmentStatusId)">{{ s.statusName }}</span>
-        </div>
+        </router-link>
       </div>
     </div>
   </div>

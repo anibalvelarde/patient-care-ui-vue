@@ -97,7 +97,7 @@
       >
         <!-- Card header -->
         <div class="flex items-center justify-between">
-          <span class="text-base font-semibold text-slate-800">Plan #{{ plan.id }}</span>
+          <span class="text-base font-semibold text-slate-800">{{ plan.displayTitle }}</span>
           <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', planStatusBadgeClass(plan.planStatus)]">
             {{ plan.planStatus }}
           </span>
@@ -130,11 +130,14 @@
         <div v-if="plan.lines.length > 0" class="mt-3 border-t border-slate-100 pt-3">
           <div v-for="line in plan.lines" :key="line.id" class="text-xs text-slate-600">
             &bull; {{ line.specialtyAbbreviation }} &mdash; {{ line.preferredTherapistName || 'Any Qualified' }}
+            <span v-if="line.dayOfWeek || line.preferredTime || line.duration" class="text-slate-400">
+              ({{ line.dayOfWeek ? dayOfWeekLabel(line.dayOfWeek) : '' }}{{ line.dayOfWeek && line.preferredTime ? ' ' : '' }}{{ line.preferredTime ? formatTime(line.preferredTime) : '' }}{{ line.duration ? `, ${line.duration}min` : '' }})
+            </span>
           </div>
         </div>
 
-        <!-- Plan progress (Active plans) -->
-        <PlanProgressCard v-if="plan.planStatus === 'Active'" :plan-id="plan.id" />
+        <!-- Plan progress (Active + Completed plans) -->
+        <PlanProgressCard v-if="plan.planStatus === 'Active' || plan.planStatus === 'Completed'" :plan-id="plan.id" />
 
         <!-- Card footer -->
         <div class="mt-3 pt-3 border-t border-slate-100 flex justify-end space-x-2">
@@ -204,7 +207,7 @@
 <script lang="ts">
 import { defineComponent, ref, computed, type PropType } from 'vue';
 import type { TreatmentPlan, PlanStatus } from '../../interfaces/TreatmentPlan';
-import { planStatusBadgeClass } from '../../interfaces/TreatmentPlan';
+import { planStatusBadgeClass, DAY_OF_WEEK_LABELS } from '../../interfaces/TreatmentPlan';
 import PlanProgressCard from './PlanProgressCard.vue';
 
 export default defineComponent({
@@ -251,6 +254,8 @@ export default defineComponent({
       hasLineCountMismatch,
       planStatusBadgeClass,
       formatDate,
+      dayOfWeekLabel: (dow: number) => DAY_OF_WEEK_LABELS[dow] ?? '',
+      formatTime: (time: string) => time?.replace(/:00$/, '') ?? '',
     };
   },
 });

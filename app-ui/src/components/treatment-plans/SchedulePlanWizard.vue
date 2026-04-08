@@ -25,7 +25,7 @@
           <div v-if="step === 1" class="space-y-6">
             <div class="bg-slate-50 rounded-lg p-4">
               <p class="text-sm text-slate-600 mb-1">
-                Plan #{{ plan?.id }} &middot; {{ plan?.patientName }}
+                {{ plan?.displayTitle }} &middot; {{ plan?.patientName }}
               </p>
               <p class="text-sm text-slate-500">
                 {{ plan?.weeklyFrequency }}x/week &middot; {{ plan?.durationWeeks }} weeks &middot; {{ plan?.lines.length }} line(s)
@@ -100,6 +100,9 @@
                   <input
                     type="time"
                     v-model="line.time"
+                    :min="timeMin"
+                    :max="timeMax"
+                    :step="timeStep"
                     class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm"
                   />
                 </div>
@@ -147,15 +150,20 @@
             <!-- Summary banner -->
             <div :class="[
               'rounded-xl p-4',
-              result && result.conflicts.length > 0
+              hasConflicts
                 ? 'bg-amber-50 border border-amber-200'
                 : 'bg-emerald-50 border border-emerald-200',
             ]">
-              <p class="text-sm font-semibold" :class="result && result.conflicts.length > 0 ? 'text-amber-800' : 'text-emerald-800'">
-                {{ result?.sessionsCreated }} session{{ result?.sessionsCreated !== 1 ? 's' : '' }} created
-                <template v-if="result && result.conflicts.length > 0">
-                  &middot; {{ result.conflicts.length }} conflict{{ result.conflicts.length !== 1 ? 's' : '' }}
+              <p class="text-sm font-semibold" :class="hasConflicts ? 'text-amber-800' : 'text-emerald-800'">
+                <template v-if="hasConflicts">
+                  {{ result?.conflicts.length }} conflict{{ result?.conflicts.length !== 1 ? 's' : '' }} found &mdash; no sessions were created
                 </template>
+                <template v-else>
+                  {{ result?.sessionsCreated }} session{{ result?.sessionsCreated !== 1 ? 's' : '' }} created
+                </template>
+              </p>
+              <p v-if="hasConflicts" class="text-xs text-amber-700 mt-1">
+                Select alternatives below, or go back to adjust your schedule.
               </p>
             </div>
 
@@ -187,28 +195,37 @@
               </div>
             </div>
 
-            <!-- Conflicts -->
-            <div v-if="result && result.conflicts.length > 0">
+            <!-- Conflicts with selectable alternatives -->
+            <div v-if="hasConflicts">
               <h3 class="text-sm font-semibold text-amber-700 mb-2">Conflicts</h3>
-              <div class="space-y-2">
+              <div class="space-y-3">
                 <div
-                  v-for="(conflict, ci) in result.conflicts"
+                  v-for="(conflict, ci) in result!.conflicts"
                   :key="ci"
                   class="bg-amber-50 rounded-lg px-3 py-2"
                 >
                   <p class="text-sm text-amber-800">
                     Week {{ conflict.weekNumber }} &middot; {{ formatDate(conflict.date) }}: {{ conflict.reason }}
                   </p>
-                  <div v-if="conflict.suggestedAlternatives.length > 0" class="mt-1 ml-4 space-y-1">
-                    <p v-for="(alt, ai) in conflict.suggestedAlternatives" :key="ai" class="text-xs text-amber-600">
-                      <template v-if="alt.type === 'different-therapist'">
-                        Try {{ alt.therapistName }} at {{ alt.time }}
-                      </template>
-                      <template v-else>
-                        Try {{ alt.therapistName }} at {{ alt.time }}
-                      </template>
-                    </p>
+                  <div v-if="conflict.suggestedAlternatives.length > 0" class="mt-2 ml-4 space-y-1.5">
+                    <label
+                      v-for="(alt, ai) in conflict.suggestedAlternatives"
+                      :key="ai"
+                      class="flex items-center gap-2 cursor-pointer text-xs group"
+                    >
+                      <input
+                        type="checkbox"
+                        :checked="isAlternativeSelected(ci, ai)"
+                        @change="toggleAlternative(ci, ai, conflict.lineId, alt)"
+                        class="rounded border-amber-300 text-violet-600 focus:ring-violet-500"
+                      />
+                      <span :class="isAlternativeSelected(ci, ai) ? 'text-violet-700 font-medium' : 'text-amber-600 group-hover:text-amber-800'">
+                        {{ alt.therapistName }} at {{ alt.time }}
+                        <span class="text-amber-400 ml-1">({{ alt.type === 'different-therapist' ? 'diff. therapist' : 'diff. time' }})</span>
+                      </span>
+                    </label>
                   </div>
+                  <p v-else class="text-xs text-amber-500 mt-1 ml-4">No alternatives available — go back to adjust manually.</p>
                 </div>
               </div>
             </div>
@@ -219,8 +236,8 @@
         <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
           <div>
             <button
-              v-if="step > 1 && step < 3"
-              @click="step--"
+              v-if="step === 2 || (step === 3 && hasConflicts)"
+              @click="goBack"
               class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
             >
               Back
@@ -231,7 +248,7 @@
               @click="handleClose"
               class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
             >
-              {{ step === 3 ? 'Close' : 'Cancel' }}
+              {{ step === 3 && !hasConflicts ? 'Close' : 'Cancel' }}
             </button>
             <button
               v-if="step === 1"
@@ -254,6 +271,13 @@
             >
               {{ submitting ? 'Scheduling...' : 'Schedule Sessions' }}
             </button>
+            <button
+              v-if="step === 3 && hasConflicts && selectedAlternatives.size > 0"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 transition-colors"
+              @click="applyAlternatives"
+            >
+              Pick These
+            </button>
           </div>
         </div>
 
@@ -268,7 +292,8 @@
 
 <script lang="ts">
 import { defineComponent, ref, computed, watch, type PropType } from 'vue';
-import type { TreatmentPlan, BulkScheduleResult, LineOverride } from '../../interfaces/TreatmentPlan';
+import type { TreatmentPlan, BulkScheduleResult, LineOverride, SuggestedAlternative } from '../../interfaces/TreatmentPlan';
+import { TIME_MIN, TIME_MAX, TIME_STEP } from '../../utils/timeSlots';
 import { DAY_OF_WEEK_LABELS } from '../../interfaces/TreatmentPlan';
 import { TreatmentPlansHttpClient } from '../../services/TreatmentPlansHttpClient';
 import { SitesHttpClient } from '../../services/SitesHttpClient';
@@ -311,6 +336,51 @@ export default defineComponent({
     const errorMsg = ref('');
     const result = ref<BulkScheduleResult | null>(null);
     const dayLabels = DAY_OF_WEEK_LABELS;
+
+    // Alternative selection for conflict resolution
+    // Key: "conflictIdx-altIdx", Value: { lineId, alternative }
+    const selectedAlternatives = ref<Map<string, { lineId: number; alt: SuggestedAlternative }>>(new Map());
+
+    const hasConflicts = computed(() => !!(result.value && result.value.conflicts.length > 0));
+
+    const isAlternativeSelected = (ci: number, ai: number) => selectedAlternatives.value.has(`${ci}-${ai}`);
+
+    const toggleAlternative = (ci: number, ai: number, lineId: number, alt: SuggestedAlternative) => {
+      const key = `${ci}-${ai}`;
+      const updated = new Map(selectedAlternatives.value);
+      if (updated.has(key)) {
+        updated.delete(key);
+      } else {
+        // Deselect other alternatives for the same conflict
+        for (const k of updated.keys()) {
+          if (k.startsWith(`${ci}-`)) updated.delete(k);
+        }
+        updated.set(key, { lineId, alt });
+      }
+      selectedAlternatives.value = updated;
+    };
+
+    const applyAlternatives = () => {
+      // Apply selected alternatives back to lineEdits and go to step 2
+      for (const { lineId, alt } of selectedAlternatives.value.values()) {
+        const edit = lineEdits.value.find(le => le.lineId === lineId);
+        if (edit) {
+          edit.therapistId = alt.therapistId;
+          edit.time = alt.time;
+        }
+      }
+      selectedAlternatives.value = new Map();
+      result.value = null;
+      step.value = 2;
+    };
+
+    const goBack = () => {
+      if (step.value === 3) {
+        selectedAlternatives.value = new Map();
+        result.value = null;
+      }
+      step.value--;
+    };
 
     const canProceedStep1 = computed(() => startDate.value !== '' && siteId.value > 0);
 
@@ -361,6 +431,7 @@ export default defineComponent({
       siteId.value = 0;
       errorMsg.value = '';
       result.value = null;
+      selectedAlternatives.value = new Map();
       submitting.value = false;
 
       if (props.plan) {
@@ -456,6 +527,15 @@ export default defineComponent({
       formatDate,
       submitSchedule,
       handleClose,
+      timeMin: TIME_MIN,
+      timeMax: TIME_MAX,
+      timeStep: TIME_STEP,
+      hasConflicts,
+      selectedAlternatives,
+      isAlternativeSelected,
+      toggleAlternative,
+      applyAlternatives,
+      goBack,
     };
   },
 });
