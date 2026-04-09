@@ -6,16 +6,16 @@
       <div class="flex-1 flex flex-col min-w-0">
         <O2Header />
         <main class="flex-1 p-6 overflow-y-auto">
-          <!-- Back to delinquent review banner -->
+          <!-- Back to originating context banner -->
           <router-link
-            v-if="cameFromDelinquent"
-            to="/patients?tab=delinquent"
+            v-if="backLink"
+            :to="backLink.to"
             class="mb-4 flex items-center space-x-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700 hover:bg-amber-100 transition-colors w-fit"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            <span class="font-medium">Back to Delinquent Review</span>
+            <span class="font-medium">{{ backLink.label }}</span>
           </router-link>
 
           <O2StatsBar :appointments="allAppointments" />
@@ -122,7 +122,20 @@ export default defineComponent({
       return val ? Number(val) : undefined;
     });
 
-    const cameFromDelinquent = computed(() => !!route.query.highlightSession);
+    const backLink = computed(() => {
+      const from = route.query.from as string | undefined;
+      if (!from) return null;
+      // from contains the full encoded return path (e.g., "/schedule?date=2026-04-13&siteId=1")
+      const pathLabels: Record<string, string> = {
+        '/patients': 'Patient Delinquent Review',
+        '/therapists': 'Therapist Delinquent Review',
+        '/schedule': 'Weekly Schedule',
+        '/treatment-plans': 'Treatment Plans',
+      };
+      const basePath = from.split('?')[0];
+      const label = pathLabels[basePath] || basePath.replace(/^\//, '');
+      return { label: `Back to ${label}`, to: from };
+    });
 
     // Sync selectedDate from route query — handles both initial load and
     // subsequent navigations (e.g., clicking Dashboard resets to today)
@@ -184,7 +197,7 @@ export default defineComponent({
       selectedDate,
       allAppointments,
       highlightedSessionId,
-      cameFromDelinquent,
+      backLink,
       updateSelectedDate,
       onAppointmentsLoaded,
       onViewPayments,

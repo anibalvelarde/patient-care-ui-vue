@@ -64,6 +64,37 @@
               </div>
             </div>
 
+            <!-- Active Plans Needing Attention -->
+            <div v-if="attentionPlans.length > 0" class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+              <h3 class="text-sm font-semibold text-amber-800 mb-3 flex items-center">
+                <svg class="w-4 h-4 mr-2 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.072 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                Plans Needing Attention
+              </h3>
+              <div class="space-y-2">
+                <div
+                  v-for="ap in attentionPlans"
+                  :key="ap.planId"
+                  class="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-amber-100"
+                >
+                  <div class="text-sm">
+                    <span class="font-medium text-slate-700">{{ ap.patientName }}</span>
+                    <span class="text-slate-400 mx-1">&middot;</span>
+                    <span class="text-slate-500">{{ ap.displayTitle }}</span>
+                    <span class="text-slate-400 mx-1">&middot;</span>
+                    <span class="text-amber-700 font-medium">No remaining sessions scheduled</span>
+                  </div>
+                  <button
+                    @click="goToSchedulePlan(ap)"
+                    class="text-xs font-medium text-violet-600 hover:text-violet-800 whitespace-nowrap ml-3"
+                  >
+                    Schedule Sessions &rarr;
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <TreatmentPlanList
               :plans="plans"
               :loading="loading"
@@ -115,7 +146,7 @@ import SchedulePlanWizard from '../components/treatment-plans/SchedulePlanWizard
 import { PatientsHttpClient } from '../services/PatientsHttpClient';
 import { TreatmentPlansHttpClient } from '../services/TreatmentPlansHttpClient';
 import { SessionsHttpClient } from '../services/SessionsHttpClient';
-import type { TreatmentPlan, DiscoverySessionSummary } from '../interfaces/TreatmentPlan';
+import type { TreatmentPlan, DiscoverySessionSummary, ActivePlanSummary } from '../interfaces/TreatmentPlan';
 
 export default defineComponent({
   name: 'TreatmentPlansView',
@@ -153,6 +184,8 @@ export default defineComponent({
     const editingPlan = ref<TreatmentPlan | null>(null);
     const scheduleWizardVisible = ref(false);
     const schedulingPlan = ref<TreatmentPlan | null>(null);
+    const activeSummaries = ref<ActivePlanSummary[]>([]);
+    const attentionPlans = computed(() => activeSummaries.value.filter(s => s.needsAttention));
 
     const loadPatient = async () => {
       if (!patientId.value) return;
@@ -175,6 +208,14 @@ export default defineComponent({
         error.value = e instanceof Error ? e.message : 'Failed to load treatment plans.';
       } finally {
         loading.value = false;
+      }
+    };
+
+    const loadActiveSummary = async () => {
+      try {
+        activeSummaries.value = await plansClient.getActiveSummary();
+      } catch {
+        activeSummaries.value = [];
       }
     };
 
@@ -241,10 +282,18 @@ export default defineComponent({
 
     const onScheduled = () => {
       loadPlans();
+      loadActiveSummary();
+    };
+
+    const goToSchedulePlan = (summary: ActivePlanSummary) => {
+      router.push({
+        path: '/treatment-plans',
+        query: { patientId: String(summary.patientId), tab: 'Active' },
+      });
     };
 
     onMounted(async () => {
-      await Promise.all([loadPatient(), loadPlans(), loadDiscoverySessions()]);
+      await Promise.all([loadPatient(), loadPlans(), loadDiscoverySessions(), loadActiveSummary()]);
       // Auto-open create form if query param is set
       if (route.query.create === 'true') {
         openCreate();
@@ -283,6 +332,8 @@ export default defineComponent({
       schedulingPlan,
       onSchedule,
       onScheduled,
+      attentionPlans,
+      goToSchedulePlan,
     };
   },
 });

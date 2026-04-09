@@ -58,7 +58,7 @@
               <td class="px-4 py-2"></td>
               <td colspan="5" class="px-4 py-2">
                 <router-link
-                  :to="{ path: '/', query: { date: session.sessionDate, highlightSession: String(session.sessionId) } }"
+                  :to="{ path: '/', query: { date: session.sessionDate, highlightSession: String(session.sessionId), from: '/patients?tab=delinquent' } }"
                   class="flex items-center justify-between group hover:bg-amber-100/50 rounded-lg px-3 py-2 -mx-3 transition-colors"
                 >
                   <div class="flex items-center space-x-4">
@@ -126,7 +126,7 @@
         <router-link
           v-for="session in dp.delinquency"
           :key="session.sessionId"
-          :to="{ path: '/', query: { date: session.sessionDate, highlightSession: String(session.sessionId) } }"
+          :to="{ path: '/', query: { date: session.sessionDate, highlightSession: String(session.sessionId), from: '/patients?tab=delinquent' } }"
           class="block px-4 py-3 bg-amber-50/30 hover:bg-amber-100/50 transition-colors"
         >
           <div class="flex items-center justify-between text-xs">

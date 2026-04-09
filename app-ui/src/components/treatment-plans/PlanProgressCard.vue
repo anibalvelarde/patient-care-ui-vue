@@ -31,7 +31,7 @@
         <router-link
           v-for="s in progress.sessions"
           :key="s.sessionId"
-          :to="{ path: '/', query: { date: s.sessionDate, highlightSession: s.sessionId } }"
+          :to="{ path: '/', query: { date: s.sessionDate, highlightSession: s.sessionId, from: '/treatment-plans' } }"
           class="flex items-center justify-between text-xs bg-slate-50 rounded px-2 py-1 hover:bg-violet-50 cursor-pointer transition-colors"
         >
           <div class="flex items-center space-x-2">
