@@ -2,6 +2,7 @@
 import { HttpClientBase } from './HttpClientBase';
 import type { Appointment, AppointmentStatusInfo, SessionEventRequest, ConfirmationRequest, ConfirmationRecord } from '../interfaces/Appointment';
 import type { DiscoverySessionSummary } from '../interfaces/TreatmentPlan';
+import type { ScheduleMatrixResponse } from '../interfaces/ScheduleMatrix';
 
 export class SessionsHttpClient extends HttpClientBase {
   async getSessions(date: string): Promise<Appointment[]> {
@@ -74,6 +75,11 @@ export class SessionsHttpClient extends HttpClientBase {
 
   async getConfirmations(id: number): Promise<ConfirmationRecord[]> {
     return this.get<ConfirmationRecord[]>(`/api/Sessions/${id}/confirmations`);
+  }
+
+  async getScheduleMatrix(date: string, siteId: number): Promise<ScheduleMatrixResponse> {
+    const formattedDate = this.formatDateForApi(date);
+    return this.get<ScheduleMatrixResponse>(`/api/Sessions/${formattedDate}/schedule-matrix?siteId=${siteId}`);
   }
 
   private formatDateForApi(date: string): string {

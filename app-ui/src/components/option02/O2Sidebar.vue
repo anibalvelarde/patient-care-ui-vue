@@ -70,9 +70,10 @@ import {
   faFileAlt,
   faGear,
   faArrowLeft,
+  faCalendarWeek,
 } from '@fortawesome/free-solid-svg-icons';
 
-library.add(faChartPie, faUsers, faUserMd, faHandHoldingHeart, faCalendarCheck, faCreditCard, faFileAlt, faGear, faArrowLeft);
+library.add(faChartPie, faUsers, faUserMd, faHandHoldingHeart, faCalendarCheck, faCalendarWeek, faCreditCard, faFileAlt, faGear, faArrowLeft);
 
 export default defineComponent({
   name: 'O2Sidebar',
@@ -86,6 +87,7 @@ export default defineComponent({
       { label: 'Therapists', icon: 'user-md', to: '/therapists' },
       { label: 'Caretakers', icon: 'hand-holding-heart', to: '/caretakers' },
       { label: 'Appts', icon: 'calendar-check', to: '/appointments', title: 'Appointments' },
+      { label: 'Schedule', icon: 'calendar-week', to: '/schedule', title: 'Weekly Schedule' },
       { label: 'Billing', icon: 'credit-card', to: '/payments' },
       { label: 'Statements', icon: 'file-alt', to: '/statements' },
     ];

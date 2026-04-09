@@ -159,3 +159,19 @@ export interface PlanProgressSummary {
   nextUpcomingDate: string | null;
   sessions: PlanSessionInfo[];
 }
+
+export interface ActivePlanSummary {
+  planId: number;
+  displayTitle: string;
+  patientId: number;
+  patientName: string;
+  planStatus: string;
+  weeklyFrequency: number;
+  durationWeeks: number;
+  totalPlanned: number;
+  sessionsCreated: number;
+  sessionsCompleted: number;
+  sessionsRemaining: number;
+  nextUpcomingDate: string | null;
+  needsAttention: boolean;
+}
