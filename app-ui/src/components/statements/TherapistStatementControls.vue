@@ -1,20 +1,20 @@
 <template>
   <div class="bg-white rounded-xl shadow-sm border border-slate-200 px-6 py-4 print:hidden">
     <div class="flex flex-col sm:flex-row sm:items-end gap-4">
-      <!-- Caretaker Select -->
+      <!-- Therapist Select -->
       <div class="flex-1">
-        <label class="block text-sm font-medium text-slate-700 mb-1">Caretaker</label>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Therapist</label>
         <select
-          v-model="selectedCaretakerId"
+          v-model="selectedTherapistId"
           class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
-          <option :value="null" disabled>Select a caretaker...</option>
+          <option :value="null" disabled>Select a therapist...</option>
           <option
-            v-for="ct in caretakers"
-            :key="ct.caretakerId"
-            :value="ct.caretakerId"
+            v-for="t in therapists"
+            :key="t.therapistId"
+            :value="t.therapistId"
           >
-            {{ ct.caretakerName }}
+            {{ t.therapistName }}
           </option>
         </select>
       </div>
@@ -42,7 +42,7 @@
       <!-- Generate Button -->
       <div>
         <button
-          :disabled="!selectedCaretakerId || loading"
+          :disabled="!selectedTherapistId || loading"
           class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           @click="onGenerate"
         >
@@ -60,22 +60,22 @@
 <script lang="ts">
 import { defineComponent, ref, type PropType } from 'vue';
 
-interface CaretakerOption {
-  caretakerId: number
-  caretakerName: string
+interface TherapistOption {
+  therapistId: number
+  therapistName: string
 }
 
 export default defineComponent({
-  name: 'StatementControls',
+  name: 'TherapistStatementControls',
   props: {
-    caretakers: { type: Array as PropType<CaretakerOption[]>, required: true },
+    therapists: { type: Array as PropType<TherapistOption[]>, required: true },
     loading: { type: Boolean, default: false },
   },
   emits: ['generate'],
   setup(_, { emit }) {
-    const selectedCaretakerId = ref<number | null>(null);
+    const selectedTherapistId = ref<number | null>(null);
 
-    // Default: 90 days ago to today
+    // Default: 90 days ago to today (matches Caretaker pattern)
     const today = new Date();
     const ninetyDaysAgo = new Date(today);
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
@@ -85,12 +85,12 @@ export default defineComponent({
     const toDate = ref(toIso(today));
 
     const onGenerate = () => {
-      if (selectedCaretakerId.value) {
-        emit('generate', selectedCaretakerId.value, fromDate.value, toDate.value);
+      if (selectedTherapistId.value) {
+        emit('generate', selectedTherapistId.value, fromDate.value, toDate.value);
       }
     };
 
-    return { selectedCaretakerId, fromDate, toDate, onGenerate };
+    return { selectedTherapistId, fromDate, toDate, onGenerate };
   },
 });
 </script>
