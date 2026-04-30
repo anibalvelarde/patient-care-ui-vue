@@ -198,7 +198,7 @@ import { defineComponent, type PropType } from 'vue';
 import type { AccountStatement } from '../../interfaces/Statement';
 
 export default defineComponent({
-  name: 'StatementScreen',
+  name: 'CaretakerStatementScreen',
   props: {
     statement: { type: Object as PropType<AccountStatement>, required: true },
   },
