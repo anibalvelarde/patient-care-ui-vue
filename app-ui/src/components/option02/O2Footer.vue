@@ -9,12 +9,6 @@
         <span class="text-gray-300">|</span>
         <ApiHealthStatus class="text-[10px]" />
       </div>
-      <router-link
-        to="/design-options"
-        class="text-[10px] text-violet-500 hover:text-violet-700 font-medium transition-colors md:hidden"
-      >
-        &larr; Back to Options
-      </router-link>
     </div>
   </footer>
 </template>
