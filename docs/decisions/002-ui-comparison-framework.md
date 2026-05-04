@@ -1,6 +1,11 @@
 # ADR-002: UI Design Comparison Framework
 
 ## Status
+**Superseded** by Option 02 selection (2026-03-14) and dismantled by WP-16C (2026-05-04). See ADR-003 for the original Option 01 pick and the subsequent switch to Option 02; see WP-16C plan in `patient-care-super/planning/completed/wp-16-design-option-cleanup.md` for the cleanup that removed the comparison framework from the codebase.
+
+This ADR is preserved as the historical record of the comparison framework's original design.
+
+## Original Status (2026-03-08)
 Accepted
 
 ## Date
