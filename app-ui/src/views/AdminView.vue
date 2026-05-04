@@ -52,6 +52,11 @@
                   />
                 </div>
               </template>
+
+              <!-- About -->
+              <div v-if="activeSection === 'about'">
+                <AboutPanel />
+              </div>
             </div>
           </div>
         </main>
@@ -91,6 +96,7 @@ import SiteFormModal from '../components/sites/SiteFormModal.vue';
 import AdminAccordionNav from '../components/admin/AdminAccordionNav.vue';
 import LookupTableManager from '../components/admin/LookupTableManager.vue';
 import LookupFormModal from '../components/admin/LookupFormModal.vue';
+import AboutPanel from '../components/admin/AboutPanel.vue';
 import type { FieldDef } from '../components/admin/LookupFormModal.vue';
 import type { ColumnDef } from '../components/admin/LookupTableManager.vue';
 import { SitesHttpClient } from '../services/SitesHttpClient';
@@ -105,6 +111,7 @@ export default defineComponent({
     O2MobileNav, O2Sidebar, O2Header, O2Footer,
     SiteList, SiteFormModal,
     AdminAccordionNav, LookupTableManager, LookupFormModal,
+    AboutPanel,
   },
   setup() {
     const activeSection = ref('sites');
