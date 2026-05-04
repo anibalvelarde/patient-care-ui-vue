@@ -51,6 +51,9 @@ jobs:
           push: true
           build-args: |
             BUILD_VERSION=${{ github.run_number }}
+            VITE_APP_VERSION=${{ github.run_number }}
+            VITE_APP_COMMIT=${{ github.sha }}
+            VITE_APP_BUILD_TIME=${{ github.event.head_commit.timestamp }}
           tags: |
             anibalvelarde/patient-care-ui-vue:latest
             anibalvelarde/patient-care-ui-vue:${{ github.run_number }}
@@ -75,6 +78,10 @@ jobs:
 
       - name: Build SPA
         working-directory: app-ui
+        env:
+          VITE_APP_VERSION: ${{ github.run_number }}
+          VITE_APP_COMMIT: ${{ github.sha }}
+          VITE_APP_BUILD_TIME: ${{ github.event.head_commit.timestamp }}
         run: npm run build
 
       - name: Generate runtime config for S3

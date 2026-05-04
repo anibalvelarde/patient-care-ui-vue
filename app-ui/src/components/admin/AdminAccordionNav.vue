@@ -97,6 +97,40 @@
         </div>
       </div>
     </div>
+
+    <!-- About group -->
+    <div>
+      <button
+        class="w-full px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between hover:bg-slate-100 transition-colors"
+        @click="aboutOpen = !aboutOpen"
+      >
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">About</span>
+        <svg
+          class="w-4 h-4 text-slate-400 transition-transform duration-200"
+          :class="{ 'rotate-180': aboutOpen }"
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      <div
+        class="overflow-hidden transition-all duration-200"
+        :class="aboutOpen ? 'max-h-20' : 'max-h-0'"
+      >
+        <button
+          class="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors border-b border-slate-50"
+          :class="activeSection === 'about'
+            ? 'bg-violet-50 text-violet-700 font-medium border-l-2 border-l-violet-600'
+            : 'text-slate-600 hover:bg-slate-50'"
+          @click="$emit('select', 'about')"
+        >
+          <svg class="w-4 h-4" :class="activeSection === 'about' ? 'text-violet-500' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Build Info
+        </button>
+      </div>
+    </div>
   </nav>
 </template>
 
@@ -113,6 +147,7 @@ export default defineComponent({
     const configOpen = ref(true);
     const refdataOpen = ref(true);
     const securityOpen = ref(false);
+    const aboutOpen = ref(false);
 
     const refDataItems = [
       {
@@ -137,7 +172,7 @@ export default defineComponent({
       },
     ];
 
-    return { configOpen, refdataOpen, securityOpen, refDataItems };
+    return { configOpen, refdataOpen, securityOpen, aboutOpen, refDataItems };
   },
 });
 </script>
