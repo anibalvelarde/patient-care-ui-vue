@@ -141,9 +141,9 @@ export default defineComponent({
       if (q) {
         list = list.filter((p) =>
           p.patientName.toLowerCase().includes(q) ||
-          p.medicalRecordNumber.toLowerCase().includes(q) ||
-          p.email.toLowerCase().includes(q) ||
-          p.phoneNumber.includes(q)
+          (p.medicalRecordNumber ?? '').toLowerCase().includes(q) ||
+          (p.email ?? '').toLowerCase().includes(q) ||
+          (p.phoneNumber ?? '').includes(q)
         );
       }
 

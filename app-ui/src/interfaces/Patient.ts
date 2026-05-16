@@ -5,11 +5,11 @@ export interface Patient {
   patientId: number;
   userId: number;
   patientName: string;       // "Last, First Middle" from API
-  medicalRecordNumber: string;
+  medicalRecordNumber: string | null;
   dateOfBirth: string;
-  email: string;
-  phoneNumber: string;
-  gender: string;
+  email: string | null;
+  phoneNumber: string | null;
+  gender: string | null;
   isActive: boolean;
   hasCompletedDiscovery: boolean | null;
   createdTimestamp: string;
@@ -49,6 +49,6 @@ export interface PatientUpdateRequest {
 }
 
 // Temporary MRN helper
-export function isTemporaryMrn(mrn: string): boolean {
+export function isTemporaryMrn(mrn: string | null | undefined): boolean {
   return !mrn || mrn.toUpperCase().startsWith('TEMP-');
 }

@@ -123,8 +123,8 @@ export default defineComponent({
       if (q) {
         list = list.filter((c) =>
           c.caretakerName.toLowerCase().includes(q) ||
-          c.email.toLowerCase().includes(q) ||
-          c.phoneNumber.includes(q) ||
+          (c.email ?? '').toLowerCase().includes(q) ||
+          (c.phoneNumber ?? '').includes(q) ||
           c.notes.toLowerCase().includes(q)
         );
       }

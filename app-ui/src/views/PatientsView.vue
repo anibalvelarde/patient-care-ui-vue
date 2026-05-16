@@ -161,9 +161,9 @@ export default defineComponent({
           middleName: parsed.middleName || undefined,
           lastName: parsed.lastName,
           dateOfBirth: patient.dateOfBirth,
-          email: patient.email,
-          phoneNumber: patient.phoneNumber,
-          gender: patient.gender,
+          email: patient.email ?? '',
+          phoneNumber: patient.phoneNumber ?? '',
+          gender: patient.gender ?? '',
           activeStatus: !patient.isActive,
         });
         await loadPatients();
@@ -224,7 +224,7 @@ export default defineComponent({
     };
 
     const onCreatedTempMrn = (patient: Patient) => {
-      tempMrnBanner.value = patient.medicalRecordNumber;
+      tempMrnBanner.value = patient.medicalRecordNumber ?? '';
       setTimeout(() => { tempMrnBanner.value = ''; }, 8000);
     };
 

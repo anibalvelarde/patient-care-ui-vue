@@ -138,8 +138,8 @@ export default defineComponent({
       if (q) {
         list = list.filter((t) =>
           t.therapistName.toLowerCase().includes(q) ||
-          t.email.toLowerCase().includes(q) ||
-          t.phoneNumber.includes(q)
+          (t.email ?? '').toLowerCase().includes(q) ||
+          (t.phoneNumber ?? '').includes(q)
         );
       }
 

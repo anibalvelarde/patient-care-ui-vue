@@ -5,8 +5,8 @@ export interface Caretaker {
   caretakerId: number
   userId: number
   caretakerName: string
-  email: string
-  phoneNumber: string
+  email: string | null
+  phoneNumber: string | null
   notes: string
   createdTimestamp: string
   lastUpdated: string
