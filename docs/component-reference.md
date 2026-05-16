@@ -1,60 +1,84 @@
 # Component Reference — Patient Care UI
 
-## Shared Components
+> **Note:** prior to WP-16C (2026-05-04) this app hosted a 7-option design-comparison framework. All but one option was deleted. The current production layout components live in `src/components/option02/`. The `option02` name is a historical artifact — WP-17C will rename it.
 
-### JumpToDate (`components/shared/JumpToDate.vue`)
-A reusable date picker dropdown for jumping to a specific month/year/day. Used across all UI options.
+## Layout components (`components/option02/`)
+
+Used by every production view. Composed in this shape:
+
+```
+<O2MobileNav />           — narrow-screen drawer nav
+<div class="flex flex-1">
+  <O2Sidebar />           — wide-screen left rail
+  <div class="flex-1 flex flex-col">
+    <O2Header />          — page top bar
+    <main>{{ view body }}</main>
+    <O2Footer />          — copyright + UiVersion + ApiHealthStatus
+  </div>
+</div>
+```
+
+| Component | Purpose |
+|---|---|
+| `O2Header.vue` | Page title bar with navigation breadcrumbs |
+| `O2Sidebar.vue` | Persistent left-rail nav (medium+ screens) |
+| `O2MobileNav.vue` | Hamburger-driven drawer nav (small screens) |
+| `O2Footer.vue` | Footer; renders `<UiVersion />` and `<ApiHealthStatus />` |
+| `O2StatsBar.vue` | Dashboard-only KPI strip |
+| `O2Calendar.vue` | Dashboard-only mini-calendar with `JumpToDate` |
+| `O2Appointments.vue` | Dashboard-only daily appointments panel |
+
+## Shared components (`components/shared/`)
+
+| Component | Purpose |
+|---|---|
+| `JumpToDate.vue` | Reusable date-picker dropdown used by `O2Calendar` |
+| `ApiHealthStatus.vue` | Polls `GET /api/health/checks`, renders `API {version} \| {status} \| As of …` |
+| `UiVersion.vue` | Renders the build-time-injected UI version (`UI v{n}` footer mode; `UI v{n} ({sha})` full mode) |
+
+### JumpToDate
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `alignRight` | `Boolean` | `false` | Align dropdown to the right edge |
-| `buttonClass` | `String` | Blue theme | Tailwind classes for the trigger button |
-| `panelClass` | `String` | White theme | Tailwind classes for the dropdown panel |
-| `labelClass` | `String` | Gray theme | Tailwind classes for field labels |
-| `selectClass` | `String` | White theme | Tailwind classes for select inputs |
-| `jumpButtonClass` | `String` | Blue theme | Tailwind classes for the "Go" button |
-| `cancelButtonClass` | `String` | Gray theme | Tailwind classes for the "Cancel" button |
+| `alignRight` | `boolean` | `false` | Align dropdown to the right edge |
+| `buttonClass` | `string` | Blue theme | Tailwind classes for the trigger button |
+| `panelClass` | `string` | White theme | Tailwind classes for the dropdown panel |
+| `labelClass` | `string` | Gray theme | Tailwind classes for field labels |
+| `selectClass` | `string` | White theme | Tailwind classes for select inputs |
+| `jumpButtonClass` | `string` | Blue theme | Tailwind classes for the "Go" button |
+| `cancelButtonClass` | `string` | Gray theme | Tailwind classes for the "Cancel" button |
 
 | Event | Payload | Description |
 |-------|---------|-------------|
 | `jump` | `string` (en-US date) | Emitted when user confirms a date selection |
 
-## Per-Option Component Patterns
+### UiVersion
 
-Each option follows a consistent structure:
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `mode` | `'footer' \| 'full'` | `'footer'` | `footer` → `UI v{n}`; `full` → `UI v{n} ({sha})` |
+| `textClass` | `string` | `text-gray-400` | Tailwind classes for the text span |
 
-### Header Component (`O{N}Header` or `O{N}TopBar`)
-- Receives `selectedDate` prop
-- Emits `date-selected` event
-- Contains: brand logo, date navigation (prev/next/today), JumpToDate, role badge, "Back to Options" link
+## Domain component directories
 
-### Calendar Component (`O{N}Calendar` or `O{N}MiniCalendar`)
-- Receives `selectedDate` prop
-- Emits `date-selected` event
-- Varies by option: week strip, month grid, collapsible panel, or pill tabs
+Each domain has its own dir with form modals, list components, and any domain-specific widgets.
 
-### Appointment Display (`O{N}Appointments`, `O{N}AppointmentTable`, `O{N}AppointmentList`)
-- Receives `appointments` prop (type `Appointment[]`)
-- Rendering varies: tables, cards, swim lanes, master-detail list
+| Dir | Highlights |
+|---|---|
+| `components/admin/` | `AdminAccordionNav`, `LookupTableManager`, `LookupFormModal`, `AboutPanel` |
+| `components/appointments/` | `AppointmentsList`, `AppointmentsTable`, `BookingFormModal`, `ActionsPanel`, `TherapistReassignModal`, `StatusBadge` |
+| `components/patients/` | `PatientFormModal` |
+| `components/therapists/` | `TherapistFormModal` |
+| `components/caretakers/` | `CaretakerFormModal` |
+| `components/payments/` | `PaymentFormModal`, `SessionPaymentsModal` |
+| `components/statements/` | `TherapistStatementControls`, `TherapistStatementScreen`, plus the older `CaretakerStatement*` siblings |
+| `components/sites/` | `SiteList`, `SiteFormModal` |
+| `components/treatment-plans/` | `TreatmentPlanList`, `TreatmentPlanFormModal`, `SchedulePlanWizard` |
+| `components/schedule/` | Schedule-matrix-specific subcomponents |
 
-### Footer Component (`O{N}Footer`)
-- Static component with copyright and option label
+## Core data interface
 
-## Component Inventory by Option
-
-| Option | Components |
-|--------|-----------|
-| 01 — Clean Medical | O1Navbar, O1ActionBar, O1Calendar, O1Appointments, O1AppointmentCard, O1Footer |
-| 02 — Dashboard Cards | O2Sidebar, O2Header, O2StatsBar, O2Calendar, O2Appointments, O2Footer |
-| 03 — Modern Dark | O3TopBar, O3StatsBar, O3Calendar, O3Appointments, O3Footer |
-| 04 — Kanban Board | O4TopBar, O4KanbanBoard, O4Footer |
-| 05 — Command Center | O5Header, O5MiniCalendar, O5AppointmentTable, O5StatsStrip, O5AlertStrip |
-| 06 — Split Panel | O6Header, O6Calendar, O6AppointmentList, O6DetailPanel |
-| 07 — Warm Minimal | O7Header, O7WeekPills, O7AppointmentList, O7AppointmentCard |
-
-## Core Interface
-
-### Appointment (`interfaces/Appointment.ts`)
+### `Appointment` (`interfaces/Appointment.ts`)
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -73,3 +97,5 @@ Each option follows a consistent structure:
 | `patientId` | `number` | Patient ID |
 | `therapistId` | `number` | Therapist ID |
 | `time` | `string` | Session time |
+
+Per-domain interfaces live alongside in `interfaces/` (`Patient.ts`, `Therapist.ts`, `Caretaker.ts`, `TreatmentPlan.ts`, etc.).

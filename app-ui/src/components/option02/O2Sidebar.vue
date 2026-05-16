@@ -43,14 +43,6 @@
         <font-awesome-icon :icon="['fas', 'gear']" class="text-lg" />
         <span class="text-[9px] mt-0.5 font-medium">Admin</span>
       </router-link>
-      <router-link
-        to="/design-options"
-        class="w-12 h-12 rounded-xl flex flex-col items-center justify-center text-violet-300 hover:bg-white/10 hover:text-white transition-all duration-150"
-        title="Back to Options"
-      >
-        <font-awesome-icon :icon="['fas', 'arrow-left']" class="text-lg" />
-        <span class="text-[9px] mt-0.5 font-medium">Back</span>
-      </router-link>
     </div>
   </aside>
 </template>

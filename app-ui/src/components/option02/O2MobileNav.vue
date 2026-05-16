@@ -58,14 +58,6 @@
       <font-awesome-icon :icon="['fas', 'gear']" class="w-5" />
       <span>Admin</span>
     </router-link>
-    <router-link
-      to="/design-options"
-      class="flex items-center space-x-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-violet-300 hover:bg-white/10 hover:text-white transition-colors"
-      @click="mobileOpen = false"
-    >
-      <font-awesome-icon :icon="['fas', 'arrow-left']" class="w-5" />
-      <span>Design Options</span>
-    </router-link>
   </div>
 </template>
 

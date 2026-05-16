@@ -2,7 +2,7 @@
 
 ## What Is This?
 
-A Vue 3 single-page application for the Neurocorp Therapy Center front-desk patient care workflow. Displays daily appointment schedules with session details, payment status, and therapist assignments. The app currently hosts a **UI design comparison framework** with 7+ design options on a single branch, all sharing the same data layer.
+A Vue 3 single-page application for the Neurocorp Therapy Center front-desk patient care workflow — patient management, therapist views, caretaker linking, payment recording, statements, appointment booking, treatment plans, schedule visibility, and admin lookup CRUD. Used by clinic front-desk staff.
 
 ## Cross-Project Context
 
@@ -23,34 +23,36 @@ Part of NeuroCorp multi-project system. See `../CLAUDE.md` for system map, depen
 ```
 app-ui/                          # Main application directory
 ├── index.html                   # Entry HTML
-├── vite.config.ts               # Vite config (port 8080, @ alias)
+├── vite.config.ts               # Vite config — port 8080, @ alias, build-time __APP_VERSION__/__APP_COMMIT__/__APP_BUILD_TIME__ inject
 ├── tailwind.config.js           # Tailwind config with custom colors
 ├── tsconfig.json                # TypeScript config (@ → src/*)
-├── package.json                 # Dependencies
+├── package.json
+├── public/config.js             # Runtime API base URL placeholder (overwritten by Docker entrypoint in prod)
 ├── src/
-│   ├── main.ts                  # App entry point
-│   ├── App.vue                  # Root component (router-view)
+│   ├── main.ts                  # App entry — createApp(App).use(router).mount('#app')
+│   ├── App.vue                  # Root — just <router-view />
 │   ├── router/index.ts          # Route definitions
-│   ├── interfaces/Appointment.ts  # Core data interface
-│   ├── services/
-│   │   ├── HttpClientBase.ts    # Base HTTP client
-│   │   └── SessionsHttpClient.ts  # Appointment data fetching
-│   ├── views/                   # Page-level components
-│   │   ├── CompareView.vue      # Landing page with option cards
-│   │   ├── CurrentView.vue      # Original UI preserved
-│   │   └── Option0XView.vue     # Design option pages (01–07)
+│   ├── interfaces/              # TS types per domain (Patient, Therapist, Caretaker, Session, …)
+│   ├── services/                # HttpClientBase + per-resource HTTP clients
+│   ├── composables/             # Reusable hooks (useLookupCrud, …)
+│   ├── types/build-info.d.ts    # Declarations for build-time-injected version constants
+│   ├── views/                   # Page-level components (one per route)
+│   │   ├── Option02View.vue     # Dashboard at /
+│   │   ├── PatientsView.vue, TherapistsView.vue, CaretakersView.vue,
+│   │   ├── PaymentsView.vue, StatementView.vue, AppointmentsView.vue,
+│   │   ├── TreatmentPlansView.vue, ScheduleMatrixView.vue, AdminView.vue
 │   └── components/
-│       ├── shared/              # Cross-option components (JumpToDate)
-│       ├── option01/ – option07/  # Per-option component directories
-│       ├── headers/             # Original UI components (untouched)
-│       ├── sidebars/            # Original UI components (untouched)
-│       ├── appointments/        # Original UI components (untouched)
-│       ├── calendars/           # Original UI components (untouched)
-│       ├── actions/             # Original UI components (untouched)
-│       └── footers/             # Original UI components (untouched)
-docs/                            # Project documentation
-UI-DESIGN-IDEAS.md               # Design option reference and status
-UI-REVAMP-CONTINUATION.md        # Session continuation prompt
+│       ├── option02/            # Production layout: O2Header, O2Sidebar, O2MobileNav, O2Footer, O2StatsBar, O2Calendar, O2Appointments
+│       ├── shared/              # Cross-view utilities: JumpToDate, ApiHealthStatus, UiVersion
+│       ├── admin/               # AdminAccordionNav, LookupTableManager, LookupFormModal, AboutPanel
+│       ├── appointments/        # AppointmentsList, AppointmentsTable, BookingFormModal, ActionsPanel, TherapistReassignModal, StatusBadge
+│       ├── patients/, therapists/, caretakers/, payments/, statements/, sites/, treatment-plans/, schedule/
+docs/
+├── architecture.md
+├── component-reference.md
+├── decisions/                   # ADR-001 (repo structure), ADR-002 (comparison framework, superseded), ADR-003 (Option-01 pick → Option-02 switch, superseded)
+└── runbooks/                    # local-dev-setup
+test-scenarios/                  # User-facing test scenarios per WP
 ```
 
 ## Build & Run
@@ -61,22 +63,34 @@ npm install              # Install dependencies
 npm run dev              # Dev server → http://localhost:8080
 npx vue-tsc --noEmit     # Type-check without emitting
 npm run lint             # ESLint
+npm run build            # Production build → dist/
 ```
 
 ## API Dependency
 
-The app fetches appointment data from the `patient-care-api` (.NET 8 REST API):
-- **Base URL**: Configured via `VITE_API_BASE_URL` env var (default: `http://localhost:5245`)
-- **Endpoint**: `GET /api/Sessions/{yyyy-MM-dd}/all`
-- **Date format**: API expects `yyyy-MM-dd`; the app stores dates as `en-US` locale strings and converts in `SessionsHttpClient`
+Fetches data from `patient-care-api` (.NET 8 REST API):
+
+- **Base URL resolution** (`HttpClientBase.getBaseUrlFromConfig()`):
+  - Dev: `VITE_API_BASE_URL` env var → `public/config.js` → `http://localhost:5245`
+  - Prod (Docker/K3s): runtime `config.js` (generated by Docker entrypoint) → `http://localhost:5245` fallback
+- **Endpoints**: see contracts in `../patient-care-super/_contracts/*.md`
 
 ## Conventions
 
-- **Component naming**: Per-option components use `O{N}` prefix (e.g., `O1Navbar`, `O6DetailPanel`)
-- **Component organization**: Each option gets its own directory under `components/option0X/`
-- **View pattern**: Each option view manages `selectedDate`, fetches via `SessionsHttpClient`, and includes a "Back to Options" router-link
-- **Shared components**: Cross-option utilities go in `components/shared/`
-- **Styling**: All styling via Tailwind utility classes — no separate CSS files for option components
-- **Original UI**: Components in `headers/`, `sidebars/`, etc. are preserved untouched
-- **Target user**: Front-desk staff (role badge shown in UI)
+- **One component per file**, `PascalCase.vue`, with `<script lang="ts">` blocks
+- **Composition API** with `defineComponent` + `setup()` (some long-lived components also use single-file `<script setup>` if added recently — both styles are accepted)
+- **Tailwind utility classes** for styling — avoid separate `.css` files unless a specific reason exists
+- **Production layout** lives in `components/option02/` — every view imports its `O2*` chrome components from there. The `option02/` name is a historical artifact from the design-comparison era; it will be renamed in WP-17C.
+- **Per-domain component dirs** (`patients/`, `therapists/`, etc.) hold form modals, list components, and domain-specific widgets
+- **Cross-view utilities** go in `components/shared/`
+- **ADRs** are append-only — when an ADR is replaced, mark the old one Superseded with a pointer; don't delete history
 
+## Build-time version
+
+The footer (`UiVersion.vue`) and Admin → About panel (`AboutPanel.vue`) display a UI version baked into the bundle at build time via Vite's `define`:
+
+- `__APP_VERSION__` — GitHub Actions run number in CI; `dev` locally
+- `__APP_COMMIT__` — short commit SHA (CI: `github.sha`; local: `git rev-parse --short=7 HEAD`)
+- `__APP_BUILD_TIME__` — ISO timestamp from `github.event.head_commit.timestamp` in CI; `new Date().toISOString()` locally
+
+Set in `.github/workflows/main.yaml` for the S3 build step and Docker build-args; declared in `src/types/build-info.d.ts`. See `planning/completed/wp-15-ui-version-display.md` in `patient-care-super` for the full design.
