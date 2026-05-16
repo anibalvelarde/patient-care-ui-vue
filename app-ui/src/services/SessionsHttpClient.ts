@@ -1,6 +1,7 @@
 // services/SessionsHttpClient.ts
 import { HttpClientBase } from './HttpClientBase';
-import type { Appointment, AppointmentStatusInfo, SessionEventRequest, ConfirmationRequest, ConfirmationRecord } from '../interfaces/Appointment';
+import type { Appointment, SessionEventRequest, ConfirmationRequest, ConfirmationRecord } from '../interfaces/Appointment';
+import type { LookupItem } from '../interfaces/Lookups';
 import type { DiscoverySessionSummary } from '../interfaces/TreatmentPlan';
 import type { ScheduleMatrixResponse } from '../interfaces/ScheduleMatrix';
 
@@ -23,8 +24,8 @@ export class SessionsHttpClient extends HttpClientBase {
     return this.put(`/api/Sessions/${id}`, data);
   }
 
-  async getStatuses(): Promise<AppointmentStatusInfo[]> {
-    return this.get<AppointmentStatusInfo[]>('/api/Sessions/statuses');
+  async getStatuses(): Promise<LookupItem[]> {
+    return this.get<LookupItem[]>('/api/Sessions/statuses');
   }
 
   async confirmSession(id: number, data: ConfirmationRequest): Promise<Appointment> {

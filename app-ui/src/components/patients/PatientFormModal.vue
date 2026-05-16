@@ -262,10 +262,10 @@ export default defineComponent({
           form.middleName = parsed.middleName;
           form.lastName = parsed.lastName;
           form.dateOfBirth = formatDobForInput(props.patient.dateOfBirth);
-          form.email = props.patient.email;
-          form.phoneNumber = props.patient.phoneNumber;
-          form.gender = props.patient.gender;
-          form.medicalRecordNumber = props.patient.medicalRecordNumber || '';
+          form.email = props.patient.email ?? '';
+          form.phoneNumber = props.patient.phoneNumber ?? '';
+          form.gender = props.patient.gender ?? '';
+          form.medicalRecordNumber = props.patient.medicalRecordNumber ?? '';
           form.activeStatus = props.patient.isActive;
         } else {
           isEdit.value = false;
@@ -342,7 +342,7 @@ export default defineComponent({
             gender: form.gender,
             medicalRecordNumber: form.medicalRecordNumber || undefined,
           });
-          if (isTemporaryMrn(created.medicalRecordNumber)) {
+          if (isTemporaryMrn(created.medicalRecordNumber ?? '')) {
             emit('created-temp-mrn', created);
           }
         }

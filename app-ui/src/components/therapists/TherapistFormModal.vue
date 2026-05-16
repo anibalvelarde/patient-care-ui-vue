@@ -314,8 +314,8 @@ export default defineComponent({
           form.firstName = parsed.firstName;
           form.middleName = parsed.middleName;
           form.lastName = parsed.lastName;
-          form.email = props.therapist.email;
-          form.phoneNumber = props.therapist.phoneNumber;
+          form.email = props.therapist.email ?? '';
+          form.phoneNumber = props.therapist.phoneNumber ?? '';
           form.feePerSession = props.therapist.feePerSession;
           form.feePctPerSession = props.therapist.feePctPerSession;
           form.activeStatus = props.therapist.isActive;

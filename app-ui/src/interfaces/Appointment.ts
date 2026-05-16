@@ -28,12 +28,6 @@ export interface Appointment {
     providerAmount: number;
 }
 
-export interface AppointmentStatusInfo {
-    appointmentStatusId: number;
-    statusName: string;
-    statusDescription: string;
-}
-
 export interface SessionEventRequest {
     sessionDate: string;
     sessionTime: string;

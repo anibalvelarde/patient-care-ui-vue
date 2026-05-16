@@ -179,8 +179,8 @@ export default defineComponent({
           form.firstName = parsed.firstName;
           form.middleName = parsed.middleName;
           form.lastName = parsed.lastName;
-          form.email = props.caretaker.email;
-          form.phoneNumber = props.caretaker.phoneNumber;
+          form.email = props.caretaker.email ?? '';
+          form.phoneNumber = props.caretaker.phoneNumber ?? '';
           form.notes = props.caretaker.notes;
           form.isActive = props.caretaker.isActive;
         } else {

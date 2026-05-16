@@ -14,8 +14,8 @@ export interface Therapist {
   feePerSession: number;
   feePctPerSession: number;
   therapistName: string;       // "Last, First Middle" from API
-  email: string;
-  phoneNumber: string;
+  email: string | null;
+  phoneNumber: string | null;
   createdTimestamp: string;
   isActive: boolean;
   specialties: TherapistSpecialtyItem[];

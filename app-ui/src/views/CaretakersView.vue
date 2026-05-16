@@ -106,8 +106,8 @@ export default defineComponent({
           firstName: parsed.firstName,
           middleName: parsed.middleName || undefined,
           lastName: parsed.lastName,
-          email: caretaker.email,
-          phoneNumber: caretaker.phoneNumber,
+          email: caretaker.email ?? undefined,
+          phoneNumber: caretaker.phoneNumber ?? undefined,
           notes: caretaker.notes || undefined,
           isActive: !caretaker.isActive,
         });
