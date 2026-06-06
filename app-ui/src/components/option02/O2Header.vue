@@ -35,9 +35,20 @@
         <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
       </button>
 
-      <!-- Avatar -->
-      <div class="w-8 h-8 bg-violet-100 rounded-full flex items-center justify-center">
-        <span class="text-xs font-semibold text-violet-600">FD</span>
+      <!-- User + logout -->
+      <div class="flex items-center gap-2 pl-2 border-l border-gray-200">
+        <div class="w-8 h-8 bg-violet-100 rounded-full flex items-center justify-center" :title="fullName">
+          <span class="text-xs font-semibold text-violet-600">{{ initials }}</span>
+        </div>
+        <span class="hidden lg:block text-xs font-medium text-gray-600 max-w-[10rem] truncate">{{ fullName }}</span>
+        <button
+          @click="onLogout"
+          title="Sign out"
+          class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-500 border border-gray-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+        >
+          <font-awesome-icon :icon="['fas', 'right-from-bracket']" />
+          <span class="hidden sm:inline">Sign out</span>
+        </button>
       </div>
     </div>
   </header>
@@ -66,7 +77,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { computed, defineComponent } from 'vue';
 import { useRouter } from 'vue-router';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -75,9 +86,11 @@ import {
   faUserPlus,
   faMoneyBill,
   faBell,
+  faRightFromBracket,
 } from '@fortawesome/free-solid-svg-icons';
+import { useAuthStore } from '../../stores/auth';
 
-library.add(faCalendarPlus, faUserPlus, faMoneyBill, faBell);
+library.add(faCalendarPlus, faUserPlus, faMoneyBill, faBell, faRightFromBracket);
 
 export default defineComponent({
   name: 'O2Header',
@@ -94,6 +107,19 @@ export default defineComponent({
     });
 
     const router = useRouter();
+    const auth = useAuthStore();
+
+    const fullName = computed(() => auth.fullName);
+    const initials = computed(() => {
+      const tokens = auth.fullName.split(/[\s,]+/).filter(Boolean);
+      const letters = tokens.map((t) => t[0]).filter((c) => /[a-zA-Z]/.test(c));
+      return (letters[0] ?? '') + (letters[1] ?? '') || '?';
+    });
+
+    const onLogout = () => {
+      auth.logout();
+      router.push({ name: 'login' });
+    };
 
     const quickActions = [
       { label: 'New Appointment', icon: 'calendar-plus', primary: true, disabled: true },
@@ -108,7 +134,7 @@ export default defineComponent({
       }
     };
 
-    return { greeting, todayFormatted, quickActions, handleAction };
+    return { greeting, todayFormatted, quickActions, handleAction, fullName, initials, onLogout };
   },
 });
 </script>
