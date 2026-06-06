@@ -45,9 +45,7 @@
 
         <!-- Footer -->
         <div class="px-6 py-4 border-t border-slate-200 space-y-3">
-          <div v-if="error" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {{ error }}
-          </div>
+          <FormErrorBanner :message="error" />
           <div class="flex items-center justify-end space-x-3">
             <button
               type="button"
@@ -58,7 +56,7 @@
             </button>
             <button
               type="button"
-              :disabled="saving || !!error"
+              :disabled="saving || hasError"
               class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-50"
               @click="handleSubmit"
             >
@@ -73,6 +71,8 @@
 
 <script lang="ts">
 import { defineComponent, reactive, ref, watch, type PropType } from 'vue';
+import { useFormError } from '../../composables/useFormError';
+import FormErrorBanner from '../shared/FormErrorBanner.vue';
 
 export interface FieldDef {
   key: string;
@@ -82,8 +82,11 @@ export interface FieldDef {
   type?: string;
 }
 
+// This modal delegates the actual save to its parent via emit('submit', …), so it doesn't do its own
+// async call — hence useFormError (validation + shared banner) rather than the full useModalForm.
 export default defineComponent({
   name: 'LookupFormModal',
+  components: { FormErrorBanner },
   props: {
     visible: { type: Boolean, required: true },
     title: { type: String, required: true },
@@ -94,50 +97,45 @@ export default defineComponent({
   emits: ['close', 'submit'],
   setup(props, { emit }) {
     const saving = ref(false);
-    const error = ref('');
+    const { message: error, hasError, setError, clear: clearError } = useFormError();
     const formData = reactive<Record<string, string | number>>({});
 
-    watch(formData, () => { error.value = ''; }, { deep: true });
+    watch(formData, () => clearError(), { deep: true });
 
     watch(
       () => props.visible,
       (val) => {
         if (!val) return;
-        error.value = '';
+        clearError();
         for (const field of props.fields) {
           formData[field.key] = props.initialValues?.[field.key] ?? '';
         }
       }
     );
 
-    const handleSubmit = async () => {
+    const handleSubmit = () => {
       // Validate required fields
       for (const field of props.fields) {
         const val = formData[field.key];
         if (field.required && (val === undefined || val === null || String(val).trim() === '')) {
-          error.value = `${field.label} is required.`;
+          setError(`${field.label} is required.`);
           return;
         }
       }
 
       saving.value = true;
-      error.value = '';
-      try {
-        const data: Record<string, string | number> = {};
-        for (const field of props.fields) {
-          const val = formData[field.key];
-          if (val === undefined || val === null || String(val).trim() === '') continue;
-          data[field.key] = field.type === 'number' ? Number(val) : String(val).trim();
-        }
-        emit('submit', data);
-      } catch (e: unknown) {
-        error.value = e instanceof Error ? e.message : 'An error occurred while saving.';
-      } finally {
-        saving.value = false;
+      clearError();
+      const data: Record<string, string | number> = {};
+      for (const field of props.fields) {
+        const val = formData[field.key];
+        if (val === undefined || val === null || String(val).trim() === '') continue;
+        data[field.key] = field.type === 'number' ? Number(val) : String(val).trim();
       }
+      emit('submit', data);
+      saving.value = false;
     };
 
-    return { formData, saving, error, handleSubmit };
+    return { formData, saving, error, hasError, handleSubmit };
   },
 });
 </script>

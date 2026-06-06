@@ -36,5 +36,5 @@ export function useModalForm() {
     }
   }
 
-  return { error, hasError, saving, setError, clearError: clear, submit };
+  return { error, hasError, saving, setError, setFromException, clearError: clear, submit };
 }
