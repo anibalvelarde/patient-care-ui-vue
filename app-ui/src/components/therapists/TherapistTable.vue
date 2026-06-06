@@ -40,7 +40,7 @@
           <td class="px-4 py-3 text-sm text-slate-600">{{ therapist.email }}</td>
           <td class="px-4 py-3 text-sm text-slate-600">{{ therapist.phoneNumber }}</td>
           <td class="px-4 py-3 text-sm text-slate-600">${{ therapist.feePerSession.toFixed(2) }}</td>
-          <td class="px-4 py-3 text-sm text-slate-600">{{ therapist.feePctPerSession.toFixed(2) }}%</td>
+          <td class="px-4 py-3 text-sm text-slate-600">{{ (therapist.feePctPerSession * 100).toFixed(2) }}%</td>
           <td class="px-4 py-3">
             <span
               :class="[
@@ -120,7 +120,7 @@
         <div><span class="font-medium">Email:</span> {{ therapist.email }}</div>
         <div><span class="font-medium">Phone:</span> {{ therapist.phoneNumber }}</div>
         <div><span class="font-medium">Fee/Session:</span> ${{ therapist.feePerSession.toFixed(2) }}</div>
-        <div><span class="font-medium">Fee %:</span> {{ therapist.feePctPerSession.toFixed(2) }}%</div>
+        <div><span class="font-medium">Fee %:</span> {{ (therapist.feePctPerSession * 100).toFixed(2) }}%</div>
       </div>
       <div class="flex items-center justify-end space-x-2 border-t border-slate-100 pt-2">
         <button
