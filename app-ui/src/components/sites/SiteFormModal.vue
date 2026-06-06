@@ -90,9 +90,7 @@
 
         <!-- Footer -->
         <div class="px-6 py-4 border-t border-slate-200 space-y-3">
-          <div v-if="error" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {{ error }}
-          </div>
+          <FormErrorBanner :message="error" />
           <div class="flex items-center justify-end space-x-3">
             <button
               type="button"
@@ -103,7 +101,7 @@
             </button>
             <button
               type="button"
-              :disabled="saving || !!error"
+              :disabled="saving || hasError"
               class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
               @click="handleSubmit"
             >
@@ -120,6 +118,8 @@
 import { defineComponent, reactive, ref, watch, type PropType } from 'vue';
 import type { Site } from '../../interfaces/Site';
 import { SitesHttpClient } from '../../services/SitesHttpClient';
+import { useModalForm } from '../../composables/useModalForm';
+import FormErrorBanner from '../shared/FormErrorBanner.vue';
 
 function formatDateForInput(dateStr: string): string {
   if (!dateStr) return '';
@@ -133,14 +133,14 @@ function formatDateForInput(dateStr: string): string {
 
 export default defineComponent({
   name: 'SiteFormModal',
+  components: { FormErrorBanner },
   props: {
     visible: { type: Boolean, required: true },
     site: { type: Object as PropType<Site | null>, default: null },
   },
   emits: ['close', 'saved'],
   setup(props, { emit }) {
-    const saving = ref(false);
-    const error = ref('');
+    const { error, hasError, saving, setError, clearError, submit } = useModalForm();
     const client = new SitesHttpClient();
 
     const form = reactive({
@@ -154,13 +154,13 @@ export default defineComponent({
 
     const isEdit = ref(false);
 
-    watch(form, () => { error.value = ''; }, { deep: true });
+    watch(form, () => clearError(), { deep: true });
 
     watch(
       () => props.visible,
       (val) => {
         if (!val) return;
-        error.value = '';
+        clearError();
         if (props.site) {
           isEdit.value = true;
           form.siteName = props.site.siteName;
@@ -181,14 +181,12 @@ export default defineComponent({
       }
     );
 
-    const handleSubmit = async () => {
+    const handleSubmit = () => {
       if (!form.siteName || !form.inceptionDate) {
-        error.value = 'Please fill in all required fields.';
+        setError('Please fill in all required fields.');
         return;
       }
-      saving.value = true;
-      error.value = '';
-      try {
+      return submit(async () => {
         const data = {
           siteName: form.siteName,
           ruc: form.ruc || undefined,
@@ -205,14 +203,10 @@ export default defineComponent({
         }
         emit('saved');
         emit('close');
-      } catch (e: unknown) {
-        error.value = e instanceof Error ? e.message : 'An error occurred while saving.';
-      } finally {
-        saving.value = false;
-      }
+      });
     };
 
-    return { form, isEdit, saving, error, handleSubmit };
+    return { form, isEdit, saving, error, hasError, handleSubmit };
   },
 });
 </script>

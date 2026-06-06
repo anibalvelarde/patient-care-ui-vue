@@ -187,9 +187,7 @@
 
         <!-- Footer -->
         <div class="px-6 py-4 border-t border-slate-200 space-y-3">
-          <div v-if="error" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {{ error }}
-          </div>
+          <FormErrorBanner :message="error" />
           <div class="flex items-center justify-between">
           <div>
             <button
@@ -220,7 +218,7 @@
             <button
               v-if="step === 2"
               type="button"
-              :disabled="saving || !isFullyAllocated || !!error"
+              :disabled="saving || !isFullyAllocated || hasError"
               class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
               :title="!isFullyAllocated ? 'Payment must be fully allocated before saving' : ''"
               @click="handleSubmit"
@@ -241,9 +239,12 @@ import type { PaymentRecord, PaymentTypeInfo, UnpaidSessionSummary, SessionAlloc
 import type { Caretaker } from '../../interfaces/Caretaker';
 import { PaymentsHttpClient } from '../../services/PaymentsHttpClient';
 import { CaretakersHttpClient } from '../../services/CaretakersHttpClient';
+import { useModalForm } from '../../composables/useModalForm';
+import FormErrorBanner from '../shared/FormErrorBanner.vue';
 
 export default defineComponent({
   name: 'PaymentFormModal',
+  components: { FormErrorBanner },
   props: {
     visible: { type: Boolean, required: true },
     payment: { type: Object as PropType<PaymentRecord | null>, default: null },
@@ -255,8 +256,7 @@ export default defineComponent({
     const caretakersClient = new CaretakersHttpClient();
 
     const step = ref(1);
-    const saving = ref(false);
-    const error = ref('');
+    const { error, hasError, saving, setError, setFromException, clearError, submit } = useModalForm();
     const loadingSessions = ref(false);
 
     const caretakers = ref<Caretaker[]>([]);
@@ -334,7 +334,7 @@ export default defineComponent({
         caretakers.value = cts.sort((a, b) => a.caretakerName.localeCompare(b.caretakerName));
         paymentTypes.value = pts;
       } catch (e: unknown) {
-        error.value = e instanceof Error ? e.message : 'Failed to load reference data.';
+        setFromException(e, 'Failed to load reference data.');
       }
     };
 
@@ -344,7 +344,7 @@ export default defineComponent({
       try {
         unpaidSessions.value = await paymentsClient.getUnpaidSessions(form.caretakerId);
       } catch (e: unknown) {
-        error.value = e instanceof Error ? e.message : 'Failed to load unpaid sessions.';
+        setFromException(e, 'Failed to load unpaid sessions.');
       } finally {
         loadingSessions.value = false;
       }
@@ -359,28 +359,26 @@ export default defineComponent({
     };
 
     const goToStep2 = () => {
-      error.value = '';
+      clearError();
       if (!form.caretakerId) {
-        error.value = 'Please select a caretaker.';
+        setError('Please select a caretaker.');
         return;
       }
       if (form.amount <= 0) {
-        error.value = 'Amount must be greater than zero.';
+        setError('Amount must be greater than zero.');
         return;
       }
       if (!form.paymentTypeId) {
-        error.value = 'Please select a payment type.';
+        setError('Please select a payment type.');
         return;
       }
       step.value = 2;
       loadUnpaidSessions();
     };
 
-    const handleSubmit = async () => {
-      error.value = '';
-
+    const handleSubmit = () => {
       if (!isFullyAllocated.value) {
-        error.value = `Payment must be fully allocated. Allocated: $${totalAllocated.value.toFixed(2)}, Payment: $${form.amount.toFixed(2)}.`;
+        setError(`Payment must be fully allocated. Allocated: $${totalAllocated.value.toFixed(2)}, Payment: $${form.amount.toFixed(2)}.`);
         return;
       }
 
@@ -391,8 +389,7 @@ export default defineComponent({
           amountAllocated: amount,
         }));
 
-      saving.value = true;
-      try {
+      return submit(async () => {
         const requestData = {
           amount: form.amount,
           paymentDate: new Date(form.paymentDate).toISOString(),
@@ -409,20 +406,16 @@ export default defineComponent({
         }
         emit('saved');
         emit('close');
-      } catch (e: unknown) {
-        error.value = e instanceof Error ? e.message : 'An error occurred while saving.';
-      } finally {
-        saving.value = false;
-      }
+      });
     };
 
-    watch(form, () => { error.value = ''; }, { deep: true });
+    watch(form, () => clearError(), { deep: true });
 
     watch(
       () => props.visible,
       (val) => {
         if (!val) return;
-        error.value = '';
+        clearError();
         step.value = 1;
 
         // Clear allocations
@@ -458,6 +451,7 @@ export default defineComponent({
       step,
       saving,
       error,
+      hasError,
       loadingSessions,
       caretakers,
       paymentTypes,
