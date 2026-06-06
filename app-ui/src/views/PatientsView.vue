@@ -99,6 +99,7 @@ import { PatientsHttpClient } from '../services/PatientsHttpClient';
 import type { Patient } from '../interfaces/Patient';
 import { isTemporaryMrn } from '../interfaces/Patient';
 import type { DelinquentPatient } from '../interfaces/Delinquency';
+import { useFormError } from '../composables/useFormError';
 
 export default defineComponent({
   name: 'PatientsView',
@@ -116,7 +117,7 @@ export default defineComponent({
     });
     const patients = ref<Patient[]>([]);
     const loading = ref(false);
-    const error = ref('');
+    const { message: error, setError, setFromException, clear: clearError } = useFormError();
     const modalVisible = ref(false);
     const editingPatient = ref<Patient | null>(null);
     const tempMrnBanner = ref('');
@@ -128,11 +129,11 @@ export default defineComponent({
 
     const loadPatients = async () => {
       loading.value = true;
-      error.value = '';
+      clearError();
       try {
         patients.value = await client.getPatients();
       } catch (e: unknown) {
-        error.value = e instanceof Error ? e.message : 'Failed to load patients.';
+        setFromException(e, 'Failed to load patients.');
       } finally {
         loading.value = false;
       }
@@ -151,7 +152,7 @@ export default defineComponent({
     const toggleActive = async (patient: Patient) => {
       // Guard: cannot activate a patient with a temporary MRN
       if (!patient.isActive && isTemporaryMrn(patient.medicalRecordNumber)) {
-        error.value = 'Cannot activate a patient with a temporary MRN. Edit the patient to assign a permanent MRN first.';
+        setError('Cannot activate a patient with a temporary MRN. Edit the patient to assign a permanent MRN first.');
         return;
       }
       try {
@@ -169,7 +170,7 @@ export default defineComponent({
         await loadPatients();
         pastDueLoaded.value = false;
       } catch (e: unknown) {
-        error.value = e instanceof Error ? e.message : 'Failed to update patient status.';
+        setFromException(e, 'Failed to update patient status.');
       }
     };
 
@@ -179,7 +180,7 @@ export default defineComponent({
         pastDuePatients.value = await client.getPastDuePatients();
         pastDueLoaded.value = true;
       } catch (e: unknown) {
-        error.value = e instanceof Error ? e.message : 'Failed to load delinquent patients.';
+        setFromException(e, 'Failed to load delinquent patients.');
       }
     };
 

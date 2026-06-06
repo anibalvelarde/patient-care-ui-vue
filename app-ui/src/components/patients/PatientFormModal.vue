@@ -160,9 +160,7 @@
 
         <!-- Footer -->
         <div class="px-6 py-4 border-t border-slate-200 space-y-3">
-          <div v-if="error" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {{ error }}
-          </div>
+          <FormErrorBanner :message="error" />
           <div class="flex items-center justify-end space-x-3">
             <button
               type="button"
@@ -173,7 +171,7 @@
             </button>
             <button
               type="button"
-              :disabled="saving || !!error"
+              :disabled="saving || hasError"
               class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
               @click="handleSubmit"
             >
@@ -190,6 +188,8 @@
 import { defineComponent, reactive, ref, computed, watch, type PropType } from 'vue';
 import type { Patient } from '../../interfaces/Patient';
 import { isTemporaryMrn } from '../../interfaces/Patient';
+import { useFormError } from '../../composables/useFormError';
+import FormErrorBanner from '../shared/FormErrorBanner.vue';
 
 function parseName(patientName: string) {
   const [last, rest] = patientName.split(', ');
@@ -222,6 +222,7 @@ function formatDobForApi(dob: string): string {
 
 export default defineComponent({
   name: 'PatientFormModal',
+  components: { FormErrorBanner },
   props: {
     visible: { type: Boolean, required: true },
     patient: { type: Object as PropType<Patient | null>, default: null },
@@ -229,7 +230,7 @@ export default defineComponent({
   emits: ['close', 'saved', 'created-temp-mrn'],
   setup(props, { emit }) {
     const saving = ref(false);
-    const error = ref('');
+    const { message: error, hasError, setError, setFromException, clear: clearError } = useFormError();
 
     const form = reactive({
       firstName: '',
@@ -248,13 +249,13 @@ export default defineComponent({
     const hasTemporaryMrn = computed(() => isEdit.value && isTemporaryMrn(form.medicalRecordNumber));
     const cannotActivate = computed(() => hasTemporaryMrn.value && !form.activeStatus);
 
-    watch(form, () => { error.value = ''; }, { deep: true });
+    watch(form, () => clearError(), { deep: true });
 
     watch(
       () => props.visible,
       (val) => {
         if (!val) return;
-        error.value = '';
+        clearError();
         if (props.patient) {
           isEdit.value = true;
           const parsed = parseName(props.patient.patientName);
@@ -284,16 +285,16 @@ export default defineComponent({
 
     const handleSubmit = async () => {
       if (!form.firstName || !form.lastName || !form.dateOfBirth || !form.email || !form.phoneNumber || !form.gender) {
-        error.value = 'Please fill in all required fields.';
+        setError('Please fill in all required fields.');
         return;
       }
       saving.value = true;
-      error.value = '';
+      clearError();
       try {
         if (isEdit.value && props.patient) {
           // Validate: cannot activate with temporary MRN still in place
           if (form.activeStatus && isTemporaryMrn(form.medicalRecordNumber)) {
-            error.value = 'Cannot activate a patient with a temporary MRN. Assign a permanent MRN first.';
+            setError('Cannot activate a patient with a temporary MRN. Assign a permanent MRN first.');
             saving.value = false;
             return;
           }
@@ -349,13 +350,13 @@ export default defineComponent({
         emit('saved');
         emit('close');
       } catch (e: unknown) {
-        error.value = e instanceof Error ? e.message : 'An error occurred while saving.';
+        setFromException(e, 'An error occurred while saving.');
       } finally {
         saving.value = false;
       }
     };
 
-    return { form, isEdit, saving, error, hasTemporaryMrn, cannotActivate, handleSubmit };
+    return { form, isEdit, saving, error, hasError, hasTemporaryMrn, cannotActivate, handleSubmit };
   },
 });
 </script>
