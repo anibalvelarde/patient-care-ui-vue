@@ -10,7 +10,7 @@
     <!-- Nav Items -->
     <nav class="flex-1 flex flex-col items-center py-6 space-y-2">
       <component
-        v-for="item in navItems"
+        v-for="item in visibleNavItems"
         :key="item.label"
         :is="item.to.startsWith('/') ? 'router-link' : 'button'"
         :to="item.to.startsWith('/') ? item.to : undefined"
@@ -31,6 +31,7 @@
     <div class="flex flex-col items-center pb-6 space-y-2">
       <div class="w-10 border-t border-violet-800 mb-1"></div>
       <router-link
+        v-if="isSystemAdmin"
         to="/admin"
         :class="[
           'w-12 h-12 rounded-xl flex flex-col items-center justify-center transition-all duration-150',
@@ -48,8 +49,9 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { computed, defineComponent } from 'vue';
 import { useRoute } from 'vue-router';
+import { useClaims } from '../../composables/useClaims';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import {
@@ -72,8 +74,12 @@ export default defineComponent({
   components: { FontAwesomeIcon },
   setup() {
     const route = useRoute();
+    const { isSystemAdmin, hasClaim } = useClaims();
 
-    const navItems = [
+    // `claim` is optional and currently unset on all items: with only the SA wildcard seeded today,
+    // every authenticated user sees the full business nav. Once the granular RoleClaim catalogue is
+    // seeded, add e.g. `claim: ['Permission', 'Patients.FullAccess']` to gate an item — no other change.
+    const navItems: Array<{ label: string; icon: string; to: string; title?: string; claim?: [string, string] }> = [
       { label: 'Dashboard', icon: 'chart-pie', to: '/' },
       { label: 'Patients', icon: 'users', to: '/patients' },
       { label: 'Therapists', icon: 'user-md', to: '/therapists' },
@@ -84,12 +90,16 @@ export default defineComponent({
       { label: 'Statements', icon: 'file-alt', to: '/statements' },
     ];
 
+    const visibleNavItems = computed(() =>
+      navItems.filter((item) => !item.claim || hasClaim(item.claim[0], item.claim[1])),
+    );
+
     const isActive = (to: string) => {
       if (to === '#') return false;
       return route.path === to;
     };
 
-    return { navItems, isActive };
+    return { visibleNavItems, isActive, isSystemAdmin };
   },
 });
 </script>
