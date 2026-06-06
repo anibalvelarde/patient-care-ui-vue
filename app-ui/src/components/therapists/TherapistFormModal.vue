@@ -318,7 +318,8 @@ export default defineComponent({
           form.email = props.therapist.email ?? '';
           form.phoneNumber = props.therapist.phoneNumber ?? '';
           form.feePerSession = props.therapist.feePerSession;
-          form.feePctPerSession = props.therapist.feePctPerSession;
+          // Stored as a 0–1 fraction; the input edits a 0–100 percentage (converted back on save).
+          form.feePctPerSession = Number((props.therapist.feePctPerSession * 100).toFixed(2));
           form.activeStatus = props.therapist.isActive;
           selectedSpecialtyIds.value = new Set(
             props.therapist.specialties?.map((s) => s.specialtyId) ?? []
@@ -359,7 +360,7 @@ export default defineComponent({
             email: form.email,
             phoneNumber: form.phoneNumber,
             feePerSession: form.feePerSession,
-            feePctPerSession: form.feePctPerSession,
+            feePctPerSession: form.feePctPerSession / 100,
             activeStatus: form.activeStatus,
             specialtyIds,
           });
@@ -371,7 +372,7 @@ export default defineComponent({
             email: form.email,
             phoneNumber: form.phoneNumber,
             feePerSession: form.feePerSession,
-            feePctPerSession: form.feePctPerSession,
+            feePctPerSession: form.feePctPerSession / 100,
             specialtyIds,
           });
         }
