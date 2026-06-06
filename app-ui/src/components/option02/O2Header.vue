@@ -44,9 +44,10 @@
         <button
           @click="onLogout"
           title="Sign out"
-          class="p-2 text-gray-400 hover:text-red-500 transition-colors"
+          class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-500 border border-gray-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
         >
-          <font-awesome-icon :icon="['fas', 'right-from-bracket']" class="text-base" />
+          <font-awesome-icon :icon="['fas', 'right-from-bracket']" />
+          <span class="hidden sm:inline">Sign out</span>
         </button>
       </div>
     </div>
