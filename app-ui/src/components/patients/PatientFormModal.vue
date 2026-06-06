@@ -188,8 +188,9 @@
 import { defineComponent, reactive, ref, computed, watch, type PropType } from 'vue';
 import type { Patient } from '../../interfaces/Patient';
 import { isTemporaryMrn } from '../../interfaces/Patient';
-import { useFormError } from '../../composables/useFormError';
+import { useModalForm } from '../../composables/useModalForm';
 import FormErrorBanner from '../shared/FormErrorBanner.vue';
+import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 
 function parseName(patientName: string) {
   const [last, rest] = patientName.split(', ');
@@ -229,8 +230,7 @@ export default defineComponent({
   },
   emits: ['close', 'saved', 'created-temp-mrn'],
   setup(props, { emit }) {
-    const saving = ref(false);
-    const { message: error, hasError, setError, setFromException, clear: clearError } = useFormError();
+    const { error, hasError, saving, setError, clearError, submit } = useModalForm();
 
     const form = reactive({
       firstName: '',
@@ -283,23 +283,19 @@ export default defineComponent({
       }
     );
 
-    const handleSubmit = async () => {
+    const handleSubmit = () => {
       if (!form.firstName || !form.lastName || !form.dateOfBirth || !form.email || !form.phoneNumber || !form.gender) {
         setError('Please fill in all required fields.');
         return;
       }
-      saving.value = true;
-      clearError();
-      try {
+      // Cannot activate a patient while a temporary MRN is still in place.
+      if (isEdit.value && props.patient && form.activeStatus && isTemporaryMrn(form.medicalRecordNumber)) {
+        setError('Cannot activate a patient with a temporary MRN. Assign a permanent MRN first.');
+        return;
+      }
+      return submit(async () => {
+        const client = new PatientsHttpClient();
         if (isEdit.value && props.patient) {
-          // Validate: cannot activate with temporary MRN still in place
-          if (form.activeStatus && isTemporaryMrn(form.medicalRecordNumber)) {
-            setError('Cannot activate a patient with a temporary MRN. Assign a permanent MRN first.');
-            saving.value = false;
-            return;
-          }
-          const { PatientsHttpClient } = await import('../../services/PatientsHttpClient');
-          const client = new PatientsHttpClient();
           const originalMrn = props.patient.medicalRecordNumber || '';
           const assigningPermanentMrn = isTemporaryMrn(originalMrn) && form.medicalRecordNumber && !isTemporaryMrn(form.medicalRecordNumber);
           const baseFields = {
@@ -331,8 +327,6 @@ export default defineComponent({
             });
           }
         } else {
-          const { PatientsHttpClient } = await import('../../services/PatientsHttpClient');
-          const client = new PatientsHttpClient();
           const created = await client.createPatient({
             firstName: form.firstName,
             middleName: form.middleName || undefined,
@@ -349,11 +343,7 @@ export default defineComponent({
         }
         emit('saved');
         emit('close');
-      } catch (e: unknown) {
-        setFromException(e, 'An error occurred while saving.');
-      } finally {
-        saving.value = false;
-      }
+      });
     };
 
     return { form, isEdit, saving, error, hasError, hasTemporaryMrn, cannotActivate, handleSubmit };

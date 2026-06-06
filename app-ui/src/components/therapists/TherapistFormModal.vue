@@ -199,9 +199,7 @@
 
         <!-- Footer -->
         <div class="px-6 py-4 border-t border-slate-200 space-y-3">
-          <div v-if="error" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {{ error }}
-          </div>
+          <FormErrorBanner :message="error" />
           <div class="flex items-center justify-end space-x-3">
             <button
               type="button"
@@ -212,7 +210,7 @@
             </button>
             <button
               type="button"
-              :disabled="saving || !!error"
+              :disabled="saving || hasError"
               class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
               @click="handleSubmit"
             >
@@ -229,6 +227,10 @@
 import { defineComponent, reactive, ref, watch, type PropType } from 'vue';
 import type { Therapist } from '../../interfaces/Therapist';
 import type { LookupItem } from '../../interfaces/Lookups';
+import { TherapistsHttpClient } from '../../services/TherapistsHttpClient';
+import { LookupHttpClient } from '../../services/LookupHttpClient';
+import { useModalForm } from '../../composables/useModalForm';
+import FormErrorBanner from '../shared/FormErrorBanner.vue';
 
 function parseName(therapistName: string) {
   const [last, rest] = therapistName.split(', ');
@@ -238,14 +240,14 @@ function parseName(therapistName: string) {
 
 export default defineComponent({
   name: 'TherapistFormModal',
+  components: { FormErrorBanner },
   props: {
     visible: { type: Boolean, required: true },
     therapist: { type: Object as PropType<Therapist | null>, default: null },
   },
   emits: ['close', 'saved'],
   setup(props, { emit }) {
-    const saving = ref(false);
-    const error = ref('');
+    const { error, hasError, saving, setError, clearError, submit } = useModalForm();
     const specialtyError = ref('');
 
     const profileSectionOpen = ref(true);
@@ -284,7 +286,6 @@ export default defineComponent({
     const loadSpecialtyOptions = async () => {
       loadingSpecialties.value = true;
       try {
-        const { LookupHttpClient } = await import('../../services/LookupHttpClient');
         const client = new LookupHttpClient();
         specialtyOptions.value = await client.getAll('specialty-types');
       } catch {
@@ -294,14 +295,14 @@ export default defineComponent({
       }
     };
 
-    watch(form, () => { error.value = ''; }, { deep: true });
-    watch(selectedSpecialtyIds, () => { error.value = ''; specialtyError.value = ''; }, { deep: true });
+    watch(form, () => clearError(), { deep: true });
+    watch(selectedSpecialtyIds, () => { clearError(); specialtyError.value = ''; }, { deep: true });
 
     watch(
       () => props.visible,
       (val) => {
         if (!val) return;
-        error.value = '';
+        clearError();
         specialtyError.value = '';
         profileSectionOpen.value = true;
         specialtiesSectionOpen.value = true;
@@ -337,20 +338,17 @@ export default defineComponent({
       }
     );
 
-    const handleSubmit = async () => {
+    const handleSubmit = () => {
       if (!form.firstName || !form.lastName || !form.email || !form.phoneNumber) {
-        error.value = 'Please fill in all required fields.';
+        setError('Please fill in all required fields.');
         return;
       }
       if (selectedSpecialtyIds.value.size === 0) {
         specialtyError.value = 'At least one specialty is required.';
         return;
       }
-      saving.value = true;
-      error.value = '';
       specialtyError.value = '';
-      try {
-        const { TherapistsHttpClient } = await import('../../services/TherapistsHttpClient');
+      return submit(async () => {
         const client = new TherapistsHttpClient();
         const specialtyIds = Array.from(selectedSpecialtyIds.value);
         if (isEdit.value && props.therapist) {
@@ -379,11 +377,7 @@ export default defineComponent({
         }
         emit('saved');
         emit('close');
-      } catch (e: unknown) {
-        error.value = e instanceof Error ? e.message : 'An error occurred while saving.';
-      } finally {
-        saving.value = false;
-      }
+      });
     };
 
     return {
@@ -391,6 +385,7 @@ export default defineComponent({
       isEdit,
       saving,
       error,
+      hasError,
       specialtyError,
       profileSectionOpen,
       specialtiesSectionOpen,
