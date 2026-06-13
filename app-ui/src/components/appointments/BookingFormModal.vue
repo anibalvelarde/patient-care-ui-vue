@@ -94,7 +94,8 @@
               <label class="block text-sm font-medium text-slate-700 mb-1">Discount</label>
               <input v-model.number="form.discount" type="number" min="0" step="0.01" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500" />
             </div>
-            <div>
+            <!-- WP-17C: cosmetic only — the API still returns ProviderAmount to anyone with Appointments.View; true field-level enforcement needs API response-shaping (deferred). -->
+            <div v-if="hasClaim('Permission', Permissions.AppointmentsProviderAmount)">
               <label class="block text-sm font-medium text-slate-700 mb-1">Provider Amt</label>
               <input v-model.number="form.providerAmount" type="number" min="0" step="0.01" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500" />
             </div>
@@ -118,6 +119,7 @@
               Cancel
             </button>
             <button
+              v-if="hasClaim('Permission', Permissions.AppointmentsBook)"
               @click="handleSubmit"
               :disabled="saving || !isValid || !!saveError"
               :class="[
@@ -148,6 +150,7 @@ import type { Therapist } from '../../interfaces/Therapist';
 import type { LookupItem } from '../../interfaces/Lookups';
 import { isDiscoverySpecialty } from '../../interfaces/TreatmentPlan';
 import { TIME_MIN, TIME_MAX, TIME_STEP } from '../../utils/timeSlots';
+import { useClaims, Permissions } from '../../composables/useClaims';
 
 export default defineComponent({
   name: 'BookingFormModal',
@@ -158,6 +161,7 @@ export default defineComponent({
   },
   emits: ['close', 'saved'],
   setup(props, { emit }) {
+    const { hasClaim } = useClaims();
     const sessionsClient = new SessionsHttpClient();
     const patientsClient = new PatientsHttpClient();
     const therapistsClient = new TherapistsHttpClient();
@@ -190,6 +194,10 @@ export default defineComponent({
     // Bidirectional filtering: specialty ↔ therapist (with discovery-first)
     const filteredSpecialties = computed(() => {
       let specs = specialtyTypes.value;
+      // WP-17C F1: cosmetic only. Discovery sessions are still creatable by FD via the normal POST /api/sessions booking flow; the real fix (a dedicated discovery-start endpoint, or relaxing the matrix to allow FD) is deferred to the discovery-first workflow. Hiding the option here is presentation, not enforcement.
+      if (!hasClaim('Permission', Permissions.PatientsStartDiscovery)) {
+        specs = specs.filter(s => !isDiscoverySpecialty(s.abbreviation));
+      }
       // Discovery-first: only discovery types when patient needs discovery
       if (needsDiscovery.value) {
         specs = specs.filter(s => isDiscoverySpecialty(s.abbreviation));
@@ -325,7 +333,7 @@ export default defineComponent({
       }
     };
 
-    return { form, patients, filteredTherapists, filteredSpecialties, saving, saveError, caretakerWarning, needsDiscovery, isValid, handleSubmit, timeMin: TIME_MIN, timeMax: TIME_MAX, timeStep: TIME_STEP };
+    return { form, patients, filteredTherapists, filteredSpecialties, saving, saveError, caretakerWarning, needsDiscovery, isValid, handleSubmit, timeMin: TIME_MIN, timeMax: TIME_MAX, timeStep: TIME_STEP, hasClaim, Permissions };
   },
 });
 </script>

@@ -102,7 +102,8 @@
                   <label class="block text-xs font-medium text-slate-600 mb-1">Discount</label>
                   <input v-model.number="financialForm.discount" type="number" min="0" step="0.01" class="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
                 </div>
-                <div>
+                <!-- WP-17C: cosmetic only — the API still returns ProviderAmount to anyone with Appointments.View; true field-level enforcement needs API response-shaping (deferred). -->
+                <div v-if="hasClaim('Permission', Permissions.AppointmentsProviderAmount)">
                   <label class="block text-xs font-medium text-slate-600 mb-1">Provider</label>
                   <input v-model.number="financialForm.providerAmount" type="number" min="0" step="0.01" class="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
                 </div>
@@ -126,7 +127,7 @@
           </div>
 
           <!-- Confirm Section (only for Proposed) -->
-          <div v-if="showConfirmSection" class="space-y-3">
+          <div v-if="showConfirmSection && hasClaim('Permission', Permissions.AppointmentsBook)" class="space-y-3">
             <h3 class="text-sm font-semibold text-slate-700">Record Confirmation Attempt</h3>
             <div>
               <label class="block text-xs font-medium text-slate-600 mb-1">Method</label>
@@ -205,7 +206,7 @@
           </div>
 
           <!-- Status Actions -->
-          <div class="space-y-2">
+          <div v-if="hasClaim('Permission', Permissions.AppointmentsBook)" class="space-y-2">
             <div class="flex items-center justify-between">
               <h3 class="text-sm font-semibold text-slate-700">Change Status</h3>
               <span v-if="isTerminalStatus" class="text-xs text-slate-400">Correction mode</span>
@@ -240,7 +241,7 @@
           </div>
 
           <!-- Cancel with reason -->
-          <div v-if="showCancelSection" class="space-y-2">
+          <div v-if="showCancelSection && hasClaim('Permission', Permissions.AppointmentsBook)" class="space-y-2">
             <h3 class="text-sm font-semibold text-slate-700">Cancel Appointment</h3>
             <input v-model="cancelReason" type="text" placeholder="Reason (optional)" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
             <button
@@ -268,6 +269,7 @@ import { useRouter } from 'vue-router';
 import StatusBadge from './StatusBadge.vue';
 import { SessionsHttpClient } from '../../services/SessionsHttpClient';
 import type { Appointment } from '../../interfaces/Appointment';
+import { useClaims, Permissions } from '../../composables/useClaims';
 
 const TERMINAL_STATUSES = [3, 4, 5]; // Cancelled, Completed, NoShow
 
@@ -280,6 +282,7 @@ export default defineComponent({
   },
   emits: ['close', 'updated'],
   setup(props, { emit }) {
+    const { hasClaim } = useClaims();
     const router = useRouter();
     const client = new SessionsHttpClient();
     const actionInProgress = ref(false);
@@ -450,6 +453,7 @@ export default defineComponent({
       isCompletedDiscovery, createPlanFromDiscovery, viewPatientPlans,
       startEditFinancials, saveFinancials,
       handleConfirm, handleStatusChange, handleCancel,
+      hasClaim, Permissions,
     };
   },
 });

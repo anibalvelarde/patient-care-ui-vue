@@ -15,6 +15,7 @@
           <div class="mb-6 print:hidden border-b border-slate-200">
             <nav class="-mb-px flex gap-6" aria-label="Statement tabs">
               <button
+                v-if="hasClaim('Permission', Permissions.StatementsCaretakerView)"
                 type="button"
                 class="py-3 px-1 border-b-2 text-sm font-medium transition-colors"
                 :class="activeTab === 'caretaker'
@@ -25,6 +26,7 @@
                 Caretaker
               </button>
               <button
+                v-if="hasClaim('Permission', Permissions.StatementsTherapistView)"
                 type="button"
                 class="py-3 px-1 border-b-2 text-sm font-medium transition-colors"
                 :class="activeTab === 'therapist'
@@ -170,6 +172,7 @@ import TherapistStatementScreen from '../components/statements/TherapistStatemen
 import { CaretakersHttpClient } from '../services/CaretakersHttpClient';
 import { TherapistsHttpClient } from '../services/TherapistsHttpClient';
 import { StatementsHttpClient } from '../services/StatementsHttpClient';
+import { useClaims, Permissions } from '../composables/useClaims';
 import type { AccountStatement } from '../interfaces/Statement';
 import type { TherapistStatement } from '../interfaces/TherapistStatement';
 
@@ -198,6 +201,7 @@ export default defineComponent({
     TherapistStatementScreen,
   },
   setup() {
+    const { hasClaim } = useClaims();
     const caretakersClient = new CaretakersHttpClient();
     const therapistsClient = new TherapistsHttpClient();
     const statementsClient = new StatementsHttpClient();
@@ -306,6 +310,8 @@ export default defineComponent({
       therapistError,
       onTherapistGenerate,
       onTherapistBack,
+      hasClaim,
+      Permissions,
     };
   },
 });

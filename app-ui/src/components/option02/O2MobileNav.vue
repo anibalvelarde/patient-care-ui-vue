@@ -29,7 +29,7 @@
   <!-- Mobile nav drawer -->
   <div v-if="mobileOpen" class="md:hidden bg-violet-900 text-white px-4 pb-4 space-y-1">
     <component
-      v-for="item in navItems"
+      v-for="item in visibleNavItems"
       :key="item.label"
       :is="item.to.startsWith('/') ? 'router-link' : 'button'"
       :to="item.to.startsWith('/') ? item.to : undefined"
@@ -44,8 +44,9 @@
       <font-awesome-icon :icon="['fas', item.icon]" class="w-5" />
       <span>{{ item.label }}</span>
     </component>
-    <div class="border-t border-violet-800 my-1"></div>
+    <div v-if="isSystemAdmin" class="border-t border-violet-800 my-1"></div>
     <router-link
+      v-if="isSystemAdmin"
       to="/admin"
       :class="[
         'flex items-center space-x-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors',
@@ -62,8 +63,9 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue';
+import { computed, defineComponent, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import { useClaims, Permissions } from '../../composables/useClaims';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import {
@@ -86,23 +88,29 @@ export default defineComponent({
   setup() {
     const route = useRoute();
     const mobileOpen = ref(false);
+    const { isSystemAdmin, hasClaim } = useClaims();
 
-    const navItems = [
-      { label: 'Dashboard', icon: 'chart-pie', to: '/' },
-      { label: 'Patients', icon: 'users', to: '/patients' },
-      { label: 'Therapists', icon: 'user-md', to: '/therapists' },
-      { label: 'Caretakers', icon: 'hand-holding-heart', to: '/caretakers' },
-      { label: 'Schedule', icon: 'calendar-check', to: '/appointments' },
-      { label: 'Billing', icon: 'credit-card', to: '/payments' },
-      { label: 'Statements', icon: 'file-alt', to: '/statements' },
+    // Each item gated on its coarse page-access claim (WP-17C), mirroring the sidebar + router guard.
+    const navItems: Array<{ label: string; icon: string; to: string; claim?: [string, string] }> = [
+      { label: 'Dashboard', icon: 'chart-pie', to: '/', claim: ['Permission', Permissions.DashboardView] },
+      { label: 'Patients', icon: 'users', to: '/patients', claim: ['Permission', Permissions.PatientsView] },
+      { label: 'Therapists', icon: 'user-md', to: '/therapists', claim: ['Permission', Permissions.TherapistsView] },
+      { label: 'Caretakers', icon: 'hand-holding-heart', to: '/caretakers', claim: ['Permission', Permissions.CaretakersView] },
+      { label: 'Schedule', icon: 'calendar-check', to: '/appointments', claim: ['Permission', Permissions.AppointmentsView] },
+      { label: 'Billing', icon: 'credit-card', to: '/payments', claim: ['Permission', Permissions.PaymentsView] },
+      { label: 'Statements', icon: 'file-alt', to: '/statements', claim: ['Permission', Permissions.StatementsView] },
     ];
+
+    const visibleNavItems = computed(() =>
+      navItems.filter((item) => !item.claim || hasClaim(item.claim[0], item.claim[1])),
+    );
 
     const isActive = (to: string) => {
       if (to === '#') return false;
       return route.path === to;
     };
 
-    return { navItems, isActive, mobileOpen };
+    return { visibleNavItems, isActive, mobileOpen, isSystemAdmin };
   },
 });
 </script>

@@ -55,6 +55,7 @@
                 </svg>
               </button>
               <button
+                v-if="hasClaim('Permission', Permissions.CaretakersEdit)"
                 class="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                 title="Edit caretaker"
                 @click="$emit('edit', caretaker)"
@@ -64,6 +65,7 @@
                 </svg>
               </button>
               <button
+                v-if="hasClaim('Permission', Permissions.CaretakersEdit)"
                 class="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
                 :title="caretaker.isActive ? 'Deactivate caretaker' : 'Activate caretaker'"
                 @click="$emit('toggle-active', caretaker)"
@@ -121,12 +123,14 @@
           Patients
         </button>
         <button
+          v-if="hasClaim('Permission', Permissions.CaretakersEdit)"
           class="px-3 py-1.5 rounded-lg text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors"
           @click="$emit('edit', caretaker)"
         >
           Edit
         </button>
         <button
+          v-if="hasClaim('Permission', Permissions.CaretakersEdit)"
           class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
           :class="caretaker.isActive ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'"
           @click="$emit('toggle-active', caretaker)"
@@ -144,6 +148,7 @@
 <script lang="ts">
 import { defineComponent, ref, computed, type PropType } from 'vue';
 import type { Caretaker } from '../../interfaces/Caretaker';
+import { useClaims, Permissions } from '../../composables/useClaims';
 
 export default defineComponent({
   name: 'CaretakerTable',
@@ -152,6 +157,7 @@ export default defineComponent({
   },
   emits: ['edit', 'toggle-active', 'view-patients'],
   setup(props) {
+    const { hasClaim } = useClaims();
     const sortKey = ref('caretakerName');
     const sortAsc = ref(true);
 
@@ -199,7 +205,7 @@ export default defineComponent({
       return list;
     });
 
-    return { columns, sortKey, sortAsc, sortedCaretakers, toggleSort };
+    return { columns, sortKey, sortAsc, sortedCaretakers, toggleSort, hasClaim, Permissions };
   },
 });
 </script>

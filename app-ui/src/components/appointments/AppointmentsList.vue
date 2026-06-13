@@ -38,12 +38,14 @@
       </div>
       <div class="flex items-center space-x-2">
         <button
+          v-if="hasClaim('Permission', Permissions.AppointmentsBook)"
           @click="$emit('book')"
           class="px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700 transition-colors"
         >
           + Book Appointment
         </button>
         <button
+          v-if="hasClaim('Permission', Permissions.AppointmentsBook)"
           @click="$emit('walkin')"
           class="px-4 py-2 bg-blue-50 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-100 transition-colors border border-blue-200"
         >
@@ -79,6 +81,7 @@
 import { defineComponent, computed, type PropType } from 'vue';
 import AppointmentsTable from './AppointmentsTable.vue';
 import type { Appointment } from '../../interfaces/Appointment';
+import { useClaims, Permissions } from '../../composables/useClaims';
 
 export default defineComponent({
   name: 'AppointmentsList',
@@ -91,6 +94,7 @@ export default defineComponent({
   },
   emits: ['book', 'walkin', 'retry', 'filter-change', 'status-change', 'show-actions'],
   setup(props) {
+    const { hasClaim } = useClaims();
     const filterTabs = [
       { label: 'All', value: 'all' },
       { label: 'Proposed', value: 'Proposed' },
@@ -143,7 +147,7 @@ export default defineComponent({
       ];
     });
 
-    return { filterTabs, filteredAppointments, summaryCards };
+    return { filterTabs, filteredAppointments, summaryCards, hasClaim, Permissions };
   },
 });
 </script>

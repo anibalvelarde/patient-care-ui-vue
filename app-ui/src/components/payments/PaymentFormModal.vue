@@ -216,7 +216,7 @@
               Next
             </button>
             <button
-              v-if="step === 2"
+              v-if="step === 2 && hasClaim('Permission', isEdit ? Permissions.PaymentsAdjust : Permissions.PaymentsRecord)"
               type="button"
               :disabled="saving || !isFullyAllocated || hasError"
               class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
@@ -241,6 +241,7 @@ import { PaymentsHttpClient } from '../../services/PaymentsHttpClient';
 import { CaretakersHttpClient } from '../../services/CaretakersHttpClient';
 import { useModalForm } from '../../composables/useModalForm';
 import FormErrorBanner from '../shared/FormErrorBanner.vue';
+import { useClaims, Permissions } from '../../composables/useClaims';
 
 export default defineComponent({
   name: 'PaymentFormModal',
@@ -252,6 +253,7 @@ export default defineComponent({
   },
   emits: ['close', 'saved'],
   setup(props, { emit }) {
+    const { hasClaim } = useClaims();
     const paymentsClient = new PaymentsHttpClient();
     const caretakersClient = new CaretakersHttpClient();
 
@@ -473,6 +475,8 @@ export default defineComponent({
       onCaretakerChange,
       goToStep2,
       handleSubmit,
+      hasClaim,
+      Permissions,
     };
   },
 });

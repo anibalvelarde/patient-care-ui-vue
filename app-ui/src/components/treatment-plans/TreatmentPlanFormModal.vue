@@ -225,7 +225,7 @@
               Cancel
             </button>
             <button
-              v-if="isEditing && plan && plan.planStatus === 'Draft'"
+              v-if="isEditing && plan && plan.planStatus === 'Draft' && hasClaim('Permission', Permissions.TreatmentPlansBook)"
               @click="handleActivate"
               :disabled="saving || lineCountMismatch"
               :title="lineCountMismatch ? 'Line count must match sessions per week before activating' : ''"
@@ -239,7 +239,20 @@
               {{ saving ? 'Saving...' : 'Activate' }}
             </button>
             <button
-              v-if="!isEditing || (plan && plan.planStatus === 'Draft')"
+              v-if="!isEditing && hasClaim('Permission', Permissions.TreatmentPlansBook)"
+              @click="handleSave"
+              :disabled="saving"
+              :class="[
+                'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+                saving
+                  ? 'bg-violet-300 text-white cursor-not-allowed'
+                  : 'bg-violet-600 text-white hover:bg-violet-700',
+              ]"
+            >
+              {{ saving ? 'Saving...' : 'Save as Draft' }}
+            </button>
+            <button
+              v-if="isEditing && plan && plan.planStatus === 'Draft' && hasClaim('Permission', Permissions.TreatmentPlansEdit)"
               @click="handleSave"
               :disabled="saving"
               :class="[
@@ -269,6 +282,7 @@ import { DAY_OF_WEEK_LABELS, isDiscoverySpecialty, planStatusBadgeClass } from '
 import type { LookupItem } from '../../interfaces/Lookups';
 import type { Therapist } from '../../interfaces/Therapist';
 import { TIME_MIN, TIME_MAX, TIME_STEP } from '../../utils/timeSlots';
+import { useClaims, Permissions } from '../../composables/useClaims';
 
 interface FormLine {
   specialtyTypeId: number;
@@ -289,6 +303,7 @@ export default defineComponent({
   },
   emits: ['close', 'saved'],
   setup(props, { emit }) {
+    const { hasClaim } = useClaims();
     const plansClient = new TreatmentPlansHttpClient();
     const lookupClient = new LookupHttpClient();
     const therapistsClient = new TherapistsHttpClient();
@@ -507,6 +522,8 @@ export default defineComponent({
       timeMin: TIME_MIN,
       timeMax: TIME_MAX,
       timeStep: TIME_STEP,
+      hasClaim,
+      Permissions,
     };
   },
 });

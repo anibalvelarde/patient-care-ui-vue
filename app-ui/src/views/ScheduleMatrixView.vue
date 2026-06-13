@@ -86,6 +86,7 @@
 
     <!-- Booking modal -->
     <BookingFormModal
+      v-if="hasClaim('Permission', Permissions.ScheduleBook)"
       :visible="bookingVisible"
       @close="bookingVisible = false"
       @saved="onBookingSaved"
@@ -106,11 +107,13 @@ import { SessionsHttpClient } from '../services/SessionsHttpClient';
 import { SitesHttpClient } from '../services/SitesHttpClient';
 import type { ScheduleMatrixResponse } from '../interfaces/ScheduleMatrix';
 import type { Site } from '../interfaces/Site';
+import { useClaims, Permissions } from '../composables/useClaims';
 
 export default defineComponent({
   name: 'ScheduleMatrixView',
   components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, ScheduleMatrix, BookingFormModal },
   setup() {
+    const { hasClaim } = useClaims();
     const route = useRoute();
     const router = useRouter();
     const sessionsClient = new SessionsHttpClient();
@@ -206,6 +209,8 @@ export default defineComponent({
       onView,
       bookingVisible,
       onBookingSaved,
+      hasClaim,
+      Permissions,
     };
   },
 });

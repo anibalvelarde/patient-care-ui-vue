@@ -84,7 +84,8 @@
               <span class="text-green-700 font-bold">{{ formatCurrency(settledFinancials.totalPaid) }}</span>
             </div>
           </div>
-          <p v-if="settledFinancials.totalProvider > 0" class="mt-2 text-[10px] text-gray-400 italic">
+          <!-- WP-17C: cosmetic only — the API still returns ProviderAmount to anyone with Dashboard.View; true field-level enforcement needs API response-shaping (deferred). -->
+          <p v-if="settledFinancials.totalProvider > 0 && hasClaim('Permission', Permissions.DashboardProviderAmount)" class="mt-2 text-[10px] text-gray-400 italic">
             Includes {{ formatCurrency(settledFinancials.totalProvider) }} provider fees
             ({{ settledFinancials.providerPercent }}% of collected)
           </p>
@@ -117,7 +118,8 @@
               <span class="text-red-700 font-bold">{{ formatCurrency(pastDueFinancials.totalDue) }}</span>
             </div>
           </div>
-          <p v-if="pastDueFinancials.totalProvider > 0" class="mt-2 text-[10px] text-gray-400 italic">
+          <!-- WP-17C: cosmetic only — the API still returns ProviderAmount to anyone with Dashboard.View; true field-level enforcement needs API response-shaping (deferred). -->
+          <p v-if="pastDueFinancials.totalProvider > 0 && hasClaim('Permission', Permissions.DashboardProviderAmount)" class="mt-2 text-[10px] text-gray-400 italic">
             Includes {{ formatCurrency(pastDueFinancials.totalProvider) }} provider fees
             ({{ pastDueFinancials.providerPercent }}% of outstanding)
           </p>
@@ -131,6 +133,7 @@
 import { defineComponent, computed, PropType } from 'vue';
 import { Appointment } from '../../interfaces/Appointment';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { useClaims, Permissions } from '../../composables/useClaims';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import {
@@ -153,6 +156,7 @@ export default defineComponent({
     },
   },
   setup(props) {
+    const { hasClaim } = useClaims();
     const stats = computed(() => {
       const total = props.appointments.length;
       const paid = props.appointments.filter((a) => a.isPaidOff).length;
@@ -244,6 +248,8 @@ export default defineComponent({
       paidPercent,
       unpaidPercent,
       formatCurrency,
+      hasClaim,
+      Permissions,
     };
   },
 });

@@ -86,6 +86,7 @@
                     <span class="text-amber-700 font-medium">No remaining sessions scheduled</span>
                   </div>
                   <button
+                    v-if="hasClaim('Permission', Permissions.TreatmentPlansBook)"
                     @click="goToSchedulePlan(ap)"
                     class="text-xs font-medium text-violet-600 hover:text-violet-800 whitespace-nowrap ml-3"
                   >
@@ -147,11 +148,13 @@ import { PatientsHttpClient } from '../services/PatientsHttpClient';
 import { TreatmentPlansHttpClient } from '../services/TreatmentPlansHttpClient';
 import { SessionsHttpClient } from '../services/SessionsHttpClient';
 import type { TreatmentPlan, DiscoverySessionSummary, ActivePlanSummary } from '../interfaces/TreatmentPlan';
+import { useClaims, Permissions } from '../composables/useClaims';
 
 export default defineComponent({
   name: 'TreatmentPlansView',
   components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, TreatmentPlanList, TreatmentPlanFormModal, SchedulePlanWizard },
   setup() {
+    const { hasClaim } = useClaims();
     const route = useRoute();
     const router = useRouter();
     const patientsClient = new PatientsHttpClient();
@@ -334,6 +337,8 @@ export default defineComponent({
       onScheduled,
       attentionPlans,
       goToSchedulePlan,
+      hasClaim,
+      Permissions,
     };
   },
 });

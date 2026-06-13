@@ -145,8 +145,18 @@
             </div>
           </div>
 
-          <!-- Specialties Accordion Section -->
-          <div class="border border-slate-200 rounded-lg overflow-hidden">
+          <!-- Specialties Accordion Section.
+               Visible on create (initial specialty assignment is part of creating a therapist,
+               governed by Therapists.Edit which AM/MGR hold), but on EDIT of an existing therapist
+               it's the "manage specialties" capability — reserved for MGR (Therapists.ManageSpecialties).
+               AM editing keeps the therapist's existing specialties (preloaded) without a picker.
+               NOTE (audit F2): this is cosmetic — the API carries specialtyIds on UpdateTherapist
+               (Therapists.Edit = AM/MGR), so an AM could still change specialties server-side until F2
+               is resolved. Do not rely on this gate for enforcement. -->
+          <div
+            v-if="!isEdit || hasClaim('Permission', Permissions.TherapistsManageSpecialties)"
+            class="border border-slate-200 rounded-lg overflow-hidden"
+          >
             <button
               type="button"
               class="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors"
@@ -230,6 +240,7 @@ import type { LookupItem } from '../../interfaces/Lookups';
 import { TherapistsHttpClient } from '../../services/TherapistsHttpClient';
 import { LookupHttpClient } from '../../services/LookupHttpClient';
 import { useModalForm } from '../../composables/useModalForm';
+import { useClaims, Permissions } from '../../composables/useClaims';
 import FormErrorBanner from '../shared/FormErrorBanner.vue';
 
 function parseName(therapistName: string) {
@@ -247,6 +258,7 @@ export default defineComponent({
   },
   emits: ['close', 'saved'],
   setup(props, { emit }) {
+    const { hasClaim } = useClaims();
     const { error, hasError, saving, setError, clearError, submit } = useModalForm();
     const specialtyError = ref('');
 
@@ -395,6 +407,8 @@ export default defineComponent({
       selectedSpecialtyIds,
       toggleSpecialty,
       handleSubmit,
+      hasClaim,
+      Permissions,
     };
   },
 });

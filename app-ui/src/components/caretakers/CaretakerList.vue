@@ -14,6 +14,7 @@
         />
       </div>
       <button
+        v-if="hasClaim('Permission', Permissions.CaretakersEdit)"
         class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
         @click="$emit('add')"
       >
@@ -78,6 +79,7 @@
 import { defineComponent, ref, computed, onMounted, type PropType } from 'vue';
 import type { Caretaker } from '../../interfaces/Caretaker';
 import CaretakerTable from './CaretakerTable.vue';
+import { useClaims, Permissions } from '../../composables/useClaims';
 
 export default defineComponent({
   name: 'CaretakerList',
@@ -90,6 +92,7 @@ export default defineComponent({
   },
   emits: ['add', 'edit', 'toggle-active', 'retry', 'tab-change', 'view-patients'],
   setup(props, { emit }) {
+    const { hasClaim } = useClaims();
     const search = ref('');
     const activeFilter = ref<'all' | 'active' | 'inactive'>(props.initialTab);
 
@@ -132,7 +135,7 @@ export default defineComponent({
       return list;
     });
 
-    return { search, activeFilter, tabs, filteredCaretakers, onTabClick };
+    return { search, activeFilter, tabs, filteredCaretakers, onTabClick, hasClaim, Permissions };
   },
 });
 </script>

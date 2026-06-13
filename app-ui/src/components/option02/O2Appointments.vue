@@ -60,8 +60,11 @@
             <!-- Mobile financial summary -->
             <p class="md:hidden text-[10px] mt-0.5 truncate">
               <span class="text-gray-500">{{ formatCurrency(appt.amount) }} billed</span>
-              <span class="text-gray-300"> &middot; </span>
-              <span class="text-violet-600">{{ formatCurrency(appt.providerAmount) }} provider</span>
+              <!-- WP-17C: cosmetic only — the API still returns ProviderAmount to anyone with Dashboard.View; true field-level enforcement needs API response-shaping (deferred). -->
+              <template v-if="hasClaim('Permission', Permissions.DashboardProviderAmount)">
+                <span class="text-gray-300"> &middot; </span>
+                <span class="text-violet-600">{{ formatCurrency(appt.providerAmount) }} provider</span>
+              </template>
               <span class="text-gray-300"> &middot; </span>
               <span v-if="appt.isPastDue" class="text-red-600 font-medium">{{ formatCurrency(appt.amountDue) }} due</span>
               <span v-else class="text-green-600 font-medium">{{ formatCurrency(appt.amountPaid) }} paid</span>
@@ -74,7 +77,8 @@
               <p class="text-xs font-medium text-gray-600">{{ formatCurrency(appt.amount) }}</p>
               <p class="text-[10px] text-gray-400">Billed</p>
             </div>
-            <div class="w-16 text-right">
+            <!-- WP-17C: cosmetic only — the API still returns ProviderAmount to anyone with Dashboard.View; true field-level enforcement needs API response-shaping (deferred). -->
+            <div v-if="hasClaim('Permission', Permissions.DashboardProviderAmount)" class="w-16 text-right">
               <p class="text-xs font-medium text-violet-600">{{ formatCurrency(appt.providerAmount) }}</p>
               <p class="text-[10px] text-gray-400">Provider</p>
             </div>
@@ -106,6 +110,7 @@
 
           <!-- Reassign therapist -->
           <button
+            v-if="hasClaim('Permission', Permissions.AppointmentsReassign)"
             class="flex-shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
             title="Reassign therapist"
             @click.stop="$emit('reassign', appt)"
@@ -166,6 +171,7 @@
 import { defineComponent, ref, watch, computed, onMounted, nextTick } from 'vue';
 import { Appointment } from '../../interfaces/Appointment';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { useClaims, Permissions } from '../../composables/useClaims';
 import { SessionsHttpClient } from '../../services/SessionsHttpClient';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -200,6 +206,7 @@ export default defineComponent({
   },
   emits: ['appointments-loaded', 'view-payments', 'pay', 'reassign'],
   setup(props, { emit }) {
+    const { hasClaim } = useClaims();
     const sessionsHttpClient = new SessionsHttpClient();
     const allAppointments = ref<Appointment[]>([]);
     const activeTab = ref<'all' | 'am' | 'pm'>('all');
@@ -276,6 +283,8 @@ export default defineComponent({
       tabs,
       highlightedEl,
       formatCurrency,
+      hasClaim,
+      Permissions,
     };
   },
 });

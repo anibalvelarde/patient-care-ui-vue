@@ -38,6 +38,7 @@
           </td>
           <td class="px-4 py-3 whitespace-nowrap text-sm text-right">
             <button
+              v-if="hasClaim('Permission', Permissions.PaymentsAdjust)"
               class="text-blue-600 hover:text-blue-800 text-sm font-medium"
               @click="$emit('edit', payment)"
             >
@@ -58,6 +59,7 @@
 <script lang="ts">
 import { defineComponent, type PropType } from 'vue';
 import type { PaymentRecord } from '../../interfaces/Payment';
+import { useClaims, Permissions } from '../../composables/useClaims';
 
 export default defineComponent({
   name: 'PaymentTable',
@@ -66,6 +68,7 @@ export default defineComponent({
   },
   emits: ['edit'],
   setup() {
+    const { hasClaim } = useClaims();
     const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
 
     const formatDate = (dateStr: string) => {
@@ -85,7 +88,7 @@ export default defineComponent({
       return 'bg-red-100 text-red-800';
     };
 
-    return { formatCurrency, formatDate, statusLabel, statusClass };
+    return { formatCurrency, formatDate, statusLabel, statusClass, hasClaim, Permissions };
   },
 });
 </script>

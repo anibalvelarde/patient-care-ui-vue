@@ -1,0 +1,5 @@
+# Pin the WP-17C generated access-control artifacts to LF so the generator's `--check`
+# drift tripwire (WP-17D CI) never trips on a Windows (CRLF) checkout.
+app-ui/src/generated/permissions.ts            text eol=lf
+app-ui/src/generated/access-control-matrix.json text eol=lf
+tools/generate-ui-permissions.sh               text eol=lf
