@@ -56,6 +56,7 @@
           <td class="px-4 py-3 text-right">
             <div class="flex items-center justify-end space-x-2">
               <button
+                v-if="hasClaim('Permission', Permissions.TherapistsEdit)"
                 class="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                 title="Edit therapist"
                 @click="$emit('edit', therapist)"
@@ -65,6 +66,7 @@
                 </svg>
               </button>
               <button
+                v-if="hasClaim('Permission', Permissions.TherapistsEdit)"
                 class="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
                 :title="therapist.isActive ? 'Deactivate therapist' : 'Activate therapist'"
                 @click="$emit('toggle-active', therapist)"
@@ -124,12 +126,14 @@
       </div>
       <div class="flex items-center justify-end space-x-2 border-t border-slate-100 pt-2">
         <button
+          v-if="hasClaim('Permission', Permissions.TherapistsEdit)"
           class="px-3 py-1.5 rounded-lg text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors"
           @click="$emit('edit', therapist)"
         >
           Edit
         </button>
         <button
+          v-if="hasClaim('Permission', Permissions.TherapistsEdit)"
           class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
           :class="therapist.isActive ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'"
           @click="$emit('toggle-active', therapist)"
@@ -147,6 +151,7 @@
 <script lang="ts">
 import { defineComponent, ref, computed, type PropType } from 'vue';
 import type { Therapist } from '../../interfaces/Therapist';
+import { useClaims, Permissions } from '../../composables/useClaims';
 
 export default defineComponent({
   name: 'TherapistTable',
@@ -155,6 +160,7 @@ export default defineComponent({
   },
   emits: ['edit', 'toggle-active'],
   setup(props) {
+    const { hasClaim } = useClaims();
     const sortKey = ref('therapistName');
     const sortAsc = ref(true);
 
@@ -195,7 +201,7 @@ export default defineComponent({
       return list;
     });
 
-    return { columns, sortKey, sortAsc, sortedTherapists, toggleSort };
+    return { columns, sortKey, sortAsc, sortedTherapists, toggleSort, hasClaim, Permissions };
   },
 });
 </script>

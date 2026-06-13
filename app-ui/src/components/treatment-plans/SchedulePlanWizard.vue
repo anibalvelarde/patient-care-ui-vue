@@ -264,7 +264,7 @@
               Next
             </button>
             <button
-              v-if="step === 2"
+              v-if="step === 2 && hasClaim('Permission', Permissions.TreatmentPlansBook)"
               :disabled="submitting"
               class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 transition-colors disabled:bg-violet-300"
               @click="submitSchedule"
@@ -300,6 +300,7 @@ import { SitesHttpClient } from '../../services/SitesHttpClient';
 import { TherapistsHttpClient } from '../../services/TherapistsHttpClient';
 import type { Site } from '../../interfaces/Site';
 import type { Therapist } from '../../interfaces/Therapist';
+import { useClaims, Permissions } from '../../composables/useClaims';
 
 interface LineEdit {
   lineId: number;
@@ -322,6 +323,7 @@ export default defineComponent({
   },
   emits: ['close', 'scheduled'],
   setup(props, { emit }) {
+    const { hasClaim } = useClaims();
     const plansClient = new TreatmentPlansHttpClient();
     const sitesClient = new SitesHttpClient();
     const therapistsClient = new TherapistsHttpClient();
@@ -536,6 +538,8 @@ export default defineComponent({
       toggleAlternative,
       applyAlternatives,
       goBack,
+      hasClaim,
+      Permissions,
     };
   },
 });

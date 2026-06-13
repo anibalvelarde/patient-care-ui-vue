@@ -14,6 +14,7 @@
         />
       </div>
       <button
+        v-if="hasClaim('Permission', Permissions.TherapistsEdit)"
         class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
         @click="$emit('add')"
       >
@@ -28,7 +29,7 @@
     <div class="flex items-center justify-between">
       <div class="inline-flex rounded-lg bg-slate-100 p-0.5">
         <button
-          v-for="tab in tabs"
+          v-for="tab in visibleTabs"
           :key="tab.value"
           :class="[
             'px-4 py-1.5 rounded-md text-sm font-medium transition-colors',
@@ -89,6 +90,7 @@
 import { defineComponent, ref, computed, onMounted, type PropType } from 'vue';
 import type { Therapist } from '../../interfaces/Therapist';
 import type { DelinquentTherapist } from '../../interfaces/Delinquency';
+import { useClaims, Permissions } from '../../composables/useClaims';
 import TherapistTable from './TherapistTable.vue';
 import TherapistDelinquentTable from './TherapistDelinquentTable.vue';
 
@@ -104,6 +106,7 @@ export default defineComponent({
   },
   emits: ['add', 'edit', 'toggle-active', 'retry', 'tab-change'],
   setup(props, { emit }) {
+    const { hasClaim } = useClaims();
     const search = ref('');
     const activeFilter = ref<'all' | 'active' | 'inactive' | 'delinquent'>(props.initialTab);
 
@@ -117,8 +120,14 @@ export default defineComponent({
       { label: 'All', value: 'all' as const },
       { label: 'Active', value: 'active' as const },
       { label: 'Inactive', value: 'inactive' as const },
-      { label: 'Delinquent', value: 'delinquent' as const },
+      { label: 'Delinquent', value: 'delinquent' as const, claim: Permissions.TherapistsDelinquentView },
     ];
+
+    // The Delinquent tab is gated on Therapists.Delinquent.View (FD excluded). Filtering it from the
+    // tab list also makes it unreachable directly — the past-due data load only fires on tab-change.
+    const visibleTabs = computed(() =>
+      tabs.filter((t) => !('claim' in t) || hasClaim('Permission', t.claim as string)),
+    );
 
     const onTabClick = (value: 'all' | 'active' | 'inactive' | 'delinquent') => {
       activeFilter.value = value;
@@ -146,7 +155,7 @@ export default defineComponent({
       return list;
     });
 
-    return { search, activeFilter, tabs, filteredTherapists, onTabClick };
+    return { search, activeFilter, visibleTabs, filteredTherapists, onTabClick, hasClaim, Permissions };
   },
 });
 </script>

@@ -33,7 +33,7 @@
               <div class="flex items-center justify-end space-x-1">
                 <!-- Next logical action button -->
                 <button
-                  v-if="nextAction(appt)"
+                  v-if="nextAction(appt) && hasClaim('Permission', Permissions.AppointmentsBook)"
                   @click="$emit('status-change', appt, nextAction(appt)!.action)"
                   :class="[
                     'px-2 py-1 text-xs font-medium rounded-md transition-colors',
@@ -71,6 +71,7 @@
 import { defineComponent, type PropType } from 'vue';
 import StatusBadge from './StatusBadge.vue';
 import type { Appointment } from '../../interfaces/Appointment';
+import { useClaims, Permissions } from '../../composables/useClaims';
 
 interface ActionInfo {
   label: string;
@@ -86,6 +87,7 @@ export default defineComponent({
   },
   emits: ['status-change', 'show-actions'],
   setup() {
+    const { hasClaim } = useClaims();
     const nextAction = (appt: Appointment): ActionInfo | null => {
       switch (appt.appointmentStatusId) {
         case 1: // Proposed
@@ -101,7 +103,7 @@ export default defineComponent({
       }
     };
 
-    return { nextAction };
+    return { nextAction, hasClaim, Permissions };
   },
 });
 </script>

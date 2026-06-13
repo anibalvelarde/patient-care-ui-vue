@@ -51,7 +51,7 @@
 <script lang="ts">
 import { computed, defineComponent } from 'vue';
 import { useRoute } from 'vue-router';
-import { useClaims } from '../../composables/useClaims';
+import { useClaims, Permissions } from '../../composables/useClaims';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import {
@@ -76,18 +76,18 @@ export default defineComponent({
     const route = useRoute();
     const { isSystemAdmin, hasClaim } = useClaims();
 
-    // `claim` is optional and currently unset on all items: with only the SA wildcard seeded today,
-    // every authenticated user sees the full business nav. Once the granular RoleClaim catalogue is
-    // seeded, add e.g. `claim: ['Permission', 'Patients.FullAccess']` to gate an item — no other change.
+    // Each item is gated on its coarse page-access claim (WP-17C), mirroring the router guard.
+    // SYSADMIN passes via the wildcard inside hasClaim; at the seeded roles the only hidden item is
+    // Statements for FD (no Statements.View). Claims are generated constants so a typo fails vue-tsc.
     const navItems: Array<{ label: string; icon: string; to: string; title?: string; claim?: [string, string] }> = [
-      { label: 'Dashboard', icon: 'chart-pie', to: '/' },
-      { label: 'Patients', icon: 'users', to: '/patients' },
-      { label: 'Therapists', icon: 'user-md', to: '/therapists' },
-      { label: 'Caretakers', icon: 'hand-holding-heart', to: '/caretakers' },
-      { label: 'Appts', icon: 'calendar-check', to: '/appointments', title: 'Appointments' },
-      { label: 'Schedule', icon: 'calendar-week', to: '/schedule', title: 'Weekly Schedule' },
-      { label: 'Billing', icon: 'credit-card', to: '/payments' },
-      { label: 'Statements', icon: 'file-alt', to: '/statements' },
+      { label: 'Dashboard', icon: 'chart-pie', to: '/', claim: ['Permission', Permissions.DashboardView] },
+      { label: 'Patients', icon: 'users', to: '/patients', claim: ['Permission', Permissions.PatientsView] },
+      { label: 'Therapists', icon: 'user-md', to: '/therapists', claim: ['Permission', Permissions.TherapistsView] },
+      { label: 'Caretakers', icon: 'hand-holding-heart', to: '/caretakers', claim: ['Permission', Permissions.CaretakersView] },
+      { label: 'Appts', icon: 'calendar-check', to: '/appointments', title: 'Appointments', claim: ['Permission', Permissions.AppointmentsView] },
+      { label: 'Schedule', icon: 'calendar-week', to: '/schedule', title: 'Weekly Schedule', claim: ['Permission', Permissions.ScheduleView] },
+      { label: 'Billing', icon: 'credit-card', to: '/payments', claim: ['Permission', Permissions.PaymentsView] },
+      { label: 'Statements', icon: 'file-alt', to: '/statements', claim: ['Permission', Permissions.StatementsView] },
     ];
 
     const visibleNavItems = computed(() =>

@@ -44,6 +44,7 @@
           </span>
         </div>
         <button
+          v-if="hasClaim('Permission', Permissions.PatientsLinkCaretaker)"
           class="px-3 py-1 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
           @click="confirmRemove(lc)"
         >
@@ -81,7 +82,7 @@
     <!-- Add caretaker section -->
     <div class="border-t border-slate-200 pt-4">
       <button
-        v-if="!showAddForm"
+        v-if="!showAddForm && hasClaim('Permission', Permissions.PatientsLinkCaretaker)"
         class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors"
         @click="showAddForm = true"
       >
@@ -172,6 +173,7 @@ import type { Patient, PatientCaretakerSummary } from '../../interfaces/Patient'
 import type { Caretaker } from '../../interfaces/Caretaker';
 import { CaretakersHttpClient } from '../../services/CaretakersHttpClient';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
+import { useClaims, Permissions } from '../../composables/useClaims';
 
 export default defineComponent({
   name: 'PatientCaretakerPanel',
@@ -180,6 +182,7 @@ export default defineComponent({
   },
   emits: ['close', 'updated'],
   setup(props, { emit }) {
+    const { hasClaim } = useClaims();
     const caretakerClient = new CaretakersHttpClient();
     const patientClient = new PatientsHttpClient();
 
@@ -270,6 +273,8 @@ export default defineComponent({
       doRemove,
       doAdd,
       resetAddForm,
+      hasClaim,
+      Permissions,
     };
   },
 });

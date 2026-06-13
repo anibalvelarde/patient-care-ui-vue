@@ -55,6 +55,7 @@
         </button>
       </div>
       <button
+        v-if="hasClaim('Permission', Permissions.TreatmentPlansBook)"
         :disabled="!canCreate"
         :title="!canCreate ? 'Patient needs a completed discovery session first' : 'Create a new treatment plan'"
         :class="[
@@ -142,7 +143,7 @@
         <!-- Card footer -->
         <div class="mt-3 pt-3 border-t border-slate-100 flex justify-end space-x-2">
           <button
-            v-if="plan.planStatus === 'Draft'"
+            v-if="plan.planStatus === 'Draft' && hasClaim('Permission', Permissions.TreatmentPlansEdit)"
             class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
             @click="$emit('edit', plan)"
           >
@@ -152,7 +153,7 @@
             Edit
           </button>
           <button
-            v-if="plan.planStatus === 'Draft'"
+            v-if="plan.planStatus === 'Draft' && hasClaim('Permission', Permissions.TreatmentPlansBook)"
             :disabled="hasLineCountMismatch(plan)"
             :title="hasLineCountMismatch(plan) ? `Line count (${plan.lines.length}) must match sessions per week (${plan.weeklyFrequency})` : ''"
             :class="[
@@ -169,7 +170,7 @@
             Activate
           </button>
           <button
-            v-if="plan.planStatus === 'Active'"
+            v-if="plan.planStatus === 'Active' && hasClaim('Permission', Permissions.TreatmentPlansBook)"
             class="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-violet-600 hover:bg-violet-700 transition-colors"
             @click="$emit('schedule', plan)"
           >
@@ -179,7 +180,7 @@
             Schedule Sessions
           </button>
           <button
-            v-if="plan.planStatus === 'Active'"
+            v-if="plan.planStatus === 'Active' && hasClaim('Permission', Permissions.TreatmentPlansBook)"
             class="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-gray-500 hover:bg-gray-600 transition-colors"
             @click="$emit('complete', plan)"
           >
@@ -189,7 +190,7 @@
             Complete
           </button>
           <button
-            v-if="plan.planStatus === 'Draft' || plan.planStatus === 'Active'"
+            v-if="(plan.planStatus === 'Draft' || plan.planStatus === 'Active') && hasClaim('Permission', Permissions.TreatmentPlansBook)"
             class="px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 transition-colors"
             @click="$emit('cancel', plan)"
           >
@@ -209,6 +210,7 @@ import { defineComponent, ref, computed, type PropType } from 'vue';
 import type { TreatmentPlan, PlanStatus } from '../../interfaces/TreatmentPlan';
 import { planStatusBadgeClass, DAY_OF_WEEK_LABELS } from '../../interfaces/TreatmentPlan';
 import PlanProgressCard from './PlanProgressCard.vue';
+import { useClaims, Permissions } from '../../composables/useClaims';
 
 export default defineComponent({
   name: 'TreatmentPlanList',
@@ -222,6 +224,7 @@ export default defineComponent({
   },
   emits: ['create', 'edit', 'activate', 'complete', 'cancel', 'schedule'],
   setup(props) {
+    const { hasClaim } = useClaims();
     const tabs = ['All', 'Draft', 'Active', 'Completed', 'Cancelled'];
     const activeTab = ref(props.initialTab);
 
@@ -256,6 +259,8 @@ export default defineComponent({
       formatDate,
       dayOfWeekLabel: (dow: number) => DAY_OF_WEEK_LABELS[dow] ?? '',
       formatTime: (time: string) => time?.replace(/:00$/, '') ?? '',
+      hasClaim,
+      Permissions,
     };
   },
 });

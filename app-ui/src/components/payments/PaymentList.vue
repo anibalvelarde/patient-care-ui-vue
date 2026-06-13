@@ -11,6 +11,7 @@
         />
       </div>
       <button
+        v-if="hasClaim('Permission', Permissions.PaymentsRecord)"
         class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
         @click="$emit('add')"
       >
@@ -50,6 +51,7 @@
 import { defineComponent, ref, computed, type PropType } from 'vue';
 import type { PaymentRecord } from '../../interfaces/Payment';
 import PaymentTable from './PaymentTable.vue';
+import { useClaims, Permissions } from '../../composables/useClaims';
 
 export default defineComponent({
   name: 'PaymentList',
@@ -61,6 +63,7 @@ export default defineComponent({
   },
   emits: ['add', 'edit', 'retry'],
   setup(props) {
+    const { hasClaim } = useClaims();
     const searchQuery = ref('');
 
     const filteredPayments = computed(() => {
@@ -71,7 +74,7 @@ export default defineComponent({
       );
     });
 
-    return { searchQuery, filteredPayments };
+    return { searchQuery, filteredPayments, hasClaim, Permissions };
   },
 });
 </script>

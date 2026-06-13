@@ -51,6 +51,7 @@
             Plans
           </button>
           <button
+            v-if="hasClaim('Permission', Permissions.CaretakersLinkPatient)"
             class="px-3 py-1 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
             @click="confirmUnlink(lp)"
           >
@@ -89,7 +90,7 @@
     <!-- Link patient section -->
     <div class="border-t border-slate-200 pt-4">
       <button
-        v-if="!showLinkForm"
+        v-if="!showLinkForm && hasClaim('Permission', Permissions.CaretakersLinkPatient)"
         class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors"
         @click="showLinkForm = true"
       >
@@ -181,6 +182,7 @@ import type { Caretaker, CaretakerPatientSummary } from '../../interfaces/Careta
 import type { Patient } from '../../interfaces/Patient';
 import { CaretakersHttpClient } from '../../services/CaretakersHttpClient';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
+import { useClaims, Permissions } from '../../composables/useClaims';
 
 export default defineComponent({
   name: 'CaretakerPatientsList',
@@ -189,6 +191,7 @@ export default defineComponent({
   },
   emits: ['close', 'updated'],
   setup(props, { emit }) {
+    const { hasClaim } = useClaims();
     const router = useRouter();
     const caretakerClient = new CaretakersHttpClient();
     const patientClient = new PatientsHttpClient();
@@ -285,6 +288,8 @@ export default defineComponent({
       doLink,
       resetLinkForm,
       viewPlans,
+      hasClaim,
+      Permissions,
     };
   },
 });

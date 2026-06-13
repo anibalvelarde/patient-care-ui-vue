@@ -10,6 +10,14 @@
         <p class="text-xs text-gray-400">Sign in to continue</p>
       </div>
 
+      <!-- Authenticated but no app access: the guard signs such a principal out and redirects here. -->
+      <p
+        v-if="deniedMessage"
+        class="mb-4 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2"
+      >
+        {{ deniedMessage }}
+      </p>
+
       <form @submit.prevent="onSubmit" class="space-y-4">
         <div>
           <label class="block text-xs font-medium text-gray-600 mb-1" for="email">Email</label>
@@ -52,7 +60,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue';
+import { computed, defineComponent, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 
@@ -67,6 +75,13 @@ export default defineComponent({
     const password = ref('');
     const error = ref('');
     const loading = ref(false);
+
+    // The guard redirects a successfully-authenticated-but-claimless principal here with this flag.
+    const deniedMessage = computed(() =>
+      route.query.denied === 'no-access'
+        ? 'This account doesn’t have access to the application. Please contact an administrator.'
+        : '',
+    );
 
     const onSubmit = async () => {
       error.value = '';
@@ -86,7 +101,7 @@ export default defineComponent({
       }
     };
 
-    return { email, password, error, loading, onSubmit };
+    return { email, password, error, loading, onSubmit, deniedMessage };
   },
 });
 </script>
