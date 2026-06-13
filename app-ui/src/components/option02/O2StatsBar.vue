@@ -202,7 +202,8 @@ export default defineComponent({
     const pastDueFinancials = computed(() => {
       const pastDue = props.appointments.filter((a) => a.isPastDue);
       const totalDue = pastDue.reduce((sum, a) => sum + a.amountDue, 0);
-      const totalProvider = pastDue.reduce((sum, a) => sum + a.providerAmount, 0);
+      // WP-17: providerAmount is optional (API omits it for callers lacking the claim) — treat absent as 0.
+      const totalProvider = pastDue.reduce((sum, a) => sum + (a.providerAmount ?? 0), 0);
       return {
         count: pastDue.length,
         totalAmount: pastDue.reduce((sum, a) => sum + a.amount, 0),
@@ -217,7 +218,8 @@ export default defineComponent({
     const settledFinancials = computed(() => {
       const settled = props.appointments.filter((a) => a.isPaidOff);
       const totalPaid = settled.reduce((sum, a) => sum + a.amountPaid, 0);
-      const totalProvider = settled.reduce((sum, a) => sum + a.providerAmount, 0);
+      // WP-17: providerAmount is optional (API omits it for callers lacking the claim) — treat absent as 0.
+      const totalProvider = settled.reduce((sum, a) => sum + (a.providerAmount ?? 0), 0);
       return {
         count: settled.length,
         totalAmount: settled.reduce((sum, a) => sum + a.amount, 0),

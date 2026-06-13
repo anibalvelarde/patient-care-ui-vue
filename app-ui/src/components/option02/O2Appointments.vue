@@ -60,10 +60,12 @@
             <!-- Mobile financial summary -->
             <p class="md:hidden text-[10px] mt-0.5 truncate">
               <span class="text-gray-500">{{ formatCurrency(appt.amount) }} billed</span>
-              <!-- WP-17C: cosmetic only — the API still returns ProviderAmount to anyone with Dashboard.View; true field-level enforcement needs API response-shaping (deferred). -->
+              <!-- WP-17: enforced both ways — the API omits ProviderAmount for callers lacking
+                   Appointments.ProviderAmount (ProviderAmountResultFilter), and this gate hides the
+                   widget; Dashboard.ProviderAmount has the same grants (MGR/AM), so they stay consistent. -->
               <template v-if="hasClaim('Permission', Permissions.DashboardProviderAmount)">
                 <span class="text-gray-300"> &middot; </span>
-                <span class="text-violet-600">{{ formatCurrency(appt.providerAmount) }} provider</span>
+                <span class="text-violet-600">{{ formatCurrency(appt.providerAmount ?? 0) }} provider</span>
               </template>
               <span class="text-gray-300"> &middot; </span>
               <span v-if="appt.isPastDue" class="text-red-600 font-medium">{{ formatCurrency(appt.amountDue) }} due</span>
@@ -77,9 +79,10 @@
               <p class="text-xs font-medium text-gray-600">{{ formatCurrency(appt.amount) }}</p>
               <p class="text-[10px] text-gray-400">Billed</p>
             </div>
-            <!-- WP-17C: cosmetic only — the API still returns ProviderAmount to anyone with Dashboard.View; true field-level enforcement needs API response-shaping (deferred). -->
+            <!-- WP-17: enforced server-side now (API omits ProviderAmount without the claim); this gate
+                 hides the column. Dashboard.ProviderAmount and Appointments.ProviderAmount share grants. -->
             <div v-if="hasClaim('Permission', Permissions.DashboardProviderAmount)" class="w-16 text-right">
-              <p class="text-xs font-medium text-violet-600">{{ formatCurrency(appt.providerAmount) }}</p>
+              <p class="text-xs font-medium text-violet-600">{{ formatCurrency(appt.providerAmount ?? 0) }}</p>
               <p class="text-[10px] text-gray-400">Provider</p>
             </div>
             <div class="w-16 text-right">
