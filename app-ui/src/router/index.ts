@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { Permissions, type Permission } from '../generated/permissions';
 
@@ -94,8 +94,18 @@ const router = createRouter({
   ],
 });
 
-// Global guard: enforce authentication, the must-change-password gate, and SA-only routes.
-router.beforeEach(async (to) => {
+/** Does the signed-in user have a usable entry into the operator app? */
+function hasAppAccess(auth: ReturnType<typeof useAuthStore>): boolean {
+  // Dashboard is every operator role's landing page (granted to MGR/AM/FD and the SA wildcard).
+  // A principal without it — e.g. a Caretaker-only / claimless user — has no usable page at all.
+  return auth.isSystemAdmin || auth.hasClaim('Permission', Permissions.DashboardView);
+}
+
+/**
+ * Global navigation guard: authentication, the must-change-password gate, SA-only routes, and the
+ * WP-17C coarse page-access gate. Exported for unit testing (see __tests__/router-guard.spec.ts).
+ */
+export async function accessGuard(to: RouteLocationNormalized) {
   const auth = useAuthStore();
 
   // Restore a session from the stored refresh token before the first protected navigation.
@@ -112,6 +122,15 @@ router.beforeEach(async (to) => {
   // A signed-in user who still owes a password change can only reach the change-password screen.
   if (auth.isAuthenticated && auth.mustChangePassword && to.name !== 'change-password') {
     return { name: 'change-password' };
+  }
+
+  // Authenticated but with no usable app access (e.g. a Caretaker-only / claimless principal). Without
+  // this, such a user bounces off every page's permission gate and loops on the dashboard fallback, so
+  // the navigation aborts and the UI shows nothing. Sign them out and send them to login with a flag
+  // the screen explains. (WP-17C — login still authenticates; it's the authorization that's empty.)
+  if (auth.isAuthenticated && !auth.mustChangePassword && !hasAppAccess(auth)) {
+    auth.logout();
+    return to.name === 'login' ? true : { name: 'login', query: { denied: 'no-access' } };
   }
 
   // Don't show the login page to an already-authenticated user.
@@ -132,6 +151,8 @@ router.beforeEach(async (to) => {
   }
 
   return true;
-});
+}
+
+router.beforeEach(accessGuard);
 
 export default router;
