@@ -30,3 +30,13 @@ jobs:
       - name: Lint
         working-directory: app-ui
         run: npm run lint
+
+      - name: Unit tests (Vitest — incl. claim-gating + codegen no-drift)
+        working-directory: app-ui
+        run: npm test
+
+      # WP-17D: access-control drift tripwire. Regenerates permissions.ts from the
+      # vendored manifest and fails if it differs from the committed file. Cross-repo
+      # reconciliation against the canonical super manifest runs in patient-care-super.
+      - name: Access-control codegen drift check
+        run: bash tools/generate-ui-permissions.sh --check
