@@ -58,3 +58,28 @@ export interface QuincenaWindow {
   from: string
   to: string
 }
+
+// WP-14.5 "Run Payroll" (batch all-therapists).
+export interface PayrollPreviewTherapist {
+  therapistId: number
+  therapistName: string
+  sessionCount: number
+  totalRemaining: number
+  sessions: UnpaidProviderSessionSummary[]
+}
+
+export interface BatchPayrollRequest {
+  from?: string | null
+  to?: string | null
+  paymentDate: string
+  paymentTypeId: number
+  referenceNumber?: string | null
+  notes?: string | null
+  therapistIds: number[]
+}
+
+export interface BatchPayrollResult {
+  payments: ServicePaymentRecord[]
+  therapistCount: number
+  totalPaid: number
+}

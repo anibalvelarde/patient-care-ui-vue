@@ -18,6 +18,15 @@
                 v-if="canRecord"
                 type="button"
                 class="py-3 px-1 border-b-2 text-sm font-medium transition-colors"
+                :class="activeTab === 'run' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                @click="activeTab = 'run'"
+              >
+                Run Payroll
+              </button>
+              <button
+                v-if="canRecord"
+                type="button"
+                class="py-3 px-1 border-b-2 text-sm font-medium transition-colors"
                 :class="activeTab === 'issue' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
                 @click="activeTab = 'issue'"
               >
@@ -36,6 +45,10 @@
 
           <div v-if="loadError" class="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
             <p class="text-sm text-red-700">{{ loadError }}</p>
+          </div>
+
+          <div v-show="activeTab === 'run' && canRecord">
+            <RunPayrollWizard :payment-types="paymentTypes" @completed="onCreated" />
           </div>
 
           <div v-show="activeTab === 'issue' && canRecord">
@@ -58,6 +71,7 @@ import O2MobileNav from '../components/option02/O2MobileNav.vue';
 import O2Sidebar from '../components/option02/O2Sidebar.vue';
 import O2Header from '../components/option02/O2Header.vue';
 import O2Footer from '../components/option02/O2Footer.vue';
+import RunPayrollWizard from '../components/service-payments/RunPayrollWizard.vue';
 import PayTherapistWizard from '../components/service-payments/PayTherapistWizard.vue';
 import ServicePaymentsList from '../components/service-payments/ServicePaymentsList.vue';
 import { TherapistsHttpClient } from '../services/TherapistsHttpClient';
@@ -72,7 +86,7 @@ interface TherapistOption {
 
 export default defineComponent({
   name: 'ServicePaymentsView',
-  components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, PayTherapistWizard, ServicePaymentsList },
+  components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, RunPayrollWizard, PayTherapistWizard, ServicePaymentsList },
   setup() {
     const { hasClaim } = useClaims();
     const canRecord = hasClaim('Permission', Permissions.ServicePaymentsRecord);
@@ -83,8 +97,8 @@ export default defineComponent({
     const therapists = ref<TherapistOption[]>([]);
     const paymentTypes = ref<PaymentTypeInfo[]>([]);
     const loadError = ref('');
-    // MGR lands on the Pay Therapist tab; AM (view-only) lands on History.
-    const activeTab = ref<'issue' | 'history'>(canRecord ? 'issue' : 'history');
+    // MGR lands on Run Payroll (the headline batch flow); AM (view-only) lands on History.
+    const activeTab = ref<'run' | 'issue' | 'history'>(canRecord ? 'run' : 'history');
 
     const onCreated = () => {
       activeTab.value = 'history';
