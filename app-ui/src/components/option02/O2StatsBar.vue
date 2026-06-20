@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Stat Tiles -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div :class="['grid grid-cols-2 gap-4', stats.length >= 5 ? 'lg:grid-cols-5' : 'lg:grid-cols-4']">
       <div
         v-for="stat in stats"
         :key="stat.label"
@@ -10,12 +10,13 @@
           stat.borderClass,
         ]"
       >
-        <div :class="['w-10 h-10 rounded-lg flex items-center justify-center', stat.iconBg]">
+        <div :class="['w-10 h-10 rounded-lg flex items-center justify-center shrink-0', stat.iconBg]">
           <font-awesome-icon :icon="['fas', stat.icon]" :class="stat.iconColor" />
         </div>
-        <div>
-          <p class="text-2xl font-bold text-gray-800">{{ stat.value }}</p>
+        <div class="min-w-0">
+          <p class="text-2xl font-bold text-gray-800 truncate">{{ stat.value }}</p>
           <p class="text-xs text-gray-400">{{ stat.label }}</p>
+          <p v-if="stat.subtitle" class="text-[11px] text-gray-400 mt-0.5">{{ stat.subtitle }}</p>
         </div>
       </div>
     </div>
@@ -130,8 +131,10 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, computed, PropType } from 'vue';
+import { defineComponent, computed, ref, onMounted, PropType } from 'vue';
 import { Appointment } from '../../interfaces/Appointment';
+import { PendingPayrollSummary } from '../../interfaces/ServicePayment';
+import { ServicePaymentsHttpClient } from '../../services/ServicePaymentsHttpClient';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import { library } from '@fortawesome/fontawesome-svg-core';
@@ -142,9 +145,20 @@ import {
   faExclamationTriangle,
   faCheckCircle,
   faDollarSign,
+  faMoneyBillWave,
 } from '@fortawesome/free-solid-svg-icons';
 
-library.add(faCalendarDay, faHourglassHalf, faExclamationTriangle, faCheckCircle, faDollarSign);
+library.add(faCalendarDay, faHourglassHalf, faExclamationTriangle, faCheckCircle, faDollarSign, faMoneyBillWave);
+
+interface StatTile {
+  label: string;
+  value: number | string;
+  subtitle?: string;
+  icon: string;
+  iconBg: string;
+  iconColor: string;
+  borderClass: string;
+}
 
 export default defineComponent({
   name: 'O2StatsBar',
@@ -157,13 +171,27 @@ export default defineComponent({
   },
   setup(props) {
     const { hasClaim } = useClaims();
-    const stats = computed(() => {
+
+    // WP-14.5: clinic-wide gross still owed to therapists. Payout-derived, so MGR/AM only — FD
+    // lacks ServicePayments.View and the API would 403, so we don't even fetch for them.
+    const canViewPayroll = hasClaim('Permission', Permissions.ServicePaymentsView);
+    const pendingPayroll = ref<PendingPayrollSummary | null>(null);
+    onMounted(async () => {
+      if (!canViewPayroll) return;
+      try {
+        pendingPayroll.value = await new ServicePaymentsHttpClient().getPendingSummary();
+      } catch {
+        pendingPayroll.value = null; // tile is simply omitted if the summary can't be loaded
+      }
+    });
+
+    const stats = computed<StatTile[]>(() => {
       const total = props.appointments.length;
       const paid = props.appointments.filter((a) => a.isPaidOff).length;
       const pastDue = props.appointments.filter((a) => a.isPastDue).length;
       const pending = total - paid - pastDue;
 
-      return [
+      const tiles: StatTile[] = [
         {
           label: "Today's Appointments",
           value: total,
@@ -197,6 +225,21 @@ export default defineComponent({
           borderClass: pastDue > 0 ? 'border-red-200' : 'border-gray-200',
         },
       ];
+
+      const summary = pendingPayroll.value;
+      if (canViewPayroll && summary) {
+        tiles.push({
+          label: 'Pending Therapist Pay',
+          value: formatCurrency(summary.totalPending),
+          subtitle: `${summary.therapistCount} therapist${summary.therapistCount === 1 ? '' : 's'} owed`,
+          icon: 'money-bill-wave',
+          iconBg: 'bg-sky-100',
+          iconColor: 'text-sky-600',
+          borderClass: summary.totalPending > 0 ? 'border-sky-200' : 'border-gray-200',
+        });
+      }
+
+      return tiles;
     });
 
     const pastDueFinancials = computed(() => {

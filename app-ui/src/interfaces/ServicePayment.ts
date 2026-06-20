@@ -83,3 +83,10 @@ export interface BatchPayrollResult {
   therapistCount: number
   totalPaid: number
 }
+
+// WP-14.5 "Pending therapist payments" dashboard tile — clinic-wide gross still owed to therapists.
+export interface PendingPayrollSummary {
+  totalPending: number
+  therapistCount: number
+  sessionCount: number
+}

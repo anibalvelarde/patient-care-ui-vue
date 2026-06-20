@@ -8,6 +8,7 @@ import type {
   PayrollPreviewTherapist,
   BatchPayrollRequest,
   BatchPayrollResult,
+  PendingPayrollSummary,
 } from '../interfaces/ServicePayment';
 
 export class ServicePaymentsHttpClient extends HttpClientBase {
@@ -50,5 +51,14 @@ export class ServicePaymentsHttpClient extends HttpClientBase {
 
   async runBatchPayroll(data: BatchPayrollRequest): Promise<BatchPayrollResult> {
     return this.post<BatchPayrollResult>('/api/service-payments/batch', data);
+  }
+
+  // Clinic-wide gross still owed to therapists. No range -> all-time outstanding (the dashboard tile default).
+  async getPendingSummary(from?: string, to?: string): Promise<PendingPayrollSummary> {
+    const params = new URLSearchParams();
+    if (from) params.append('from', from);
+    if (to) params.append('to', to);
+    const query = params.toString();
+    return this.get<PendingPayrollSummary>(`/api/service-payments/pending-summary${query ? `?${query}` : ''}`);
   }
 }
