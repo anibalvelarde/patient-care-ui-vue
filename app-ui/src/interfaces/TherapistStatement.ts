@@ -26,7 +26,7 @@ export interface TherapistStatementPatient {
   nonBillableCount: number        // Cancelled + NoShow
 }
 
-// Reserved for the Therapist Payroll WP (WP-14). Always empty in WP-13B.
+// Therapist Payroll (WP-14). Populated once service payments touch in-range sessions.
 export interface ServicePaymentAllocation {
   sessionId: number
   amountApplied: number
@@ -48,7 +48,7 @@ export interface TherapistStatementSummary {
   totalFee: number
   totalDiscount: number
   totalProviderAmount: number         // billable only
-  totalServicePaymentsApplied: number // 0 in WP-13B
+  totalServicePaymentsApplied: number // sum of in-range service-payment allocations (WP-14)
   estimatedAmountDue: number          // = totalProviderAmount - totalServicePaymentsApplied
 }
 
@@ -58,8 +58,8 @@ export interface TherapistStatement {
   statementDate: string               // yyyy-MM-dd
   periodStart: string
   periodEnd: string
-  isProForma: boolean                 // true until WP-14 ships
+  isProForma: boolean                 // false once any service payment touches an in-range session (WP-14)
   patients: TherapistStatementPatient[]
-  servicePayments: ServicePaymentItem[]  // always [] in WP-13B
+  servicePayments: ServicePaymentItem[]  // populated since WP-14
   summary: TherapistStatementSummary
 }

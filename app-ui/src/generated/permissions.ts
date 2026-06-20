@@ -8,7 +8,7 @@
 //   app-ui/src/generated/access-control-matrix.json, then re-run
 //   tools/generate-ui-permissions.sh.
 //
-//   Access-control manifest semantic hash: b88f98dc47d7
+//   Access-control manifest semantic hash: b10682734edf
 // </auto-generated>
 
 /**
@@ -56,6 +56,8 @@ export const Permissions = {
   ScheduleBook: 'Schedule.Book',
   ScheduleRebook: 'Schedule.Rebook',
   ScheduleView: 'Schedule.View',
+  ServicePaymentsRecord: 'ServicePayments.Record',
+  ServicePaymentsView: 'ServicePayments.View',
   StatementsCaretakerView: 'Statements.Caretaker.View',
   StatementsTherapistView: 'Statements.Therapist.View',
   StatementsView: 'Statements.View',
@@ -73,4 +75,4 @@ export const Permissions = {
 export type Permission = (typeof Permissions)[keyof typeof Permissions];
 
 /** Access-control manifest semantic hash this module was generated from (WP-17 anchor). */
-export const ACCESS_CONTROL_MANIFEST_HASH = 'b88f98dc47d7';
+export const ACCESS_CONTROL_MANIFEST_HASH = 'b10682734edf';
