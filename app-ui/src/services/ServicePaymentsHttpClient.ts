@@ -5,6 +5,9 @@ import type {
   ServicePaymentCreateRequest,
   UnpaidProviderSessionSummary,
   QuincenaWindow,
+  PayrollPreviewTherapist,
+  BatchPayrollRequest,
+  BatchPayrollResult,
 } from '../interfaces/ServicePayment';
 
 export class ServicePaymentsHttpClient extends HttpClientBase {
@@ -35,5 +38,17 @@ export class ServicePaymentsHttpClient extends HttpClientBase {
 
   async createServicePayment(data: ServicePaymentCreateRequest): Promise<ServicePaymentRecord> {
     return this.post<ServicePaymentRecord>('/api/service-payments', data);
+  }
+
+  async getPayrollPreview(from?: string, to?: string): Promise<PayrollPreviewTherapist[]> {
+    const params = new URLSearchParams();
+    if (from) params.append('from', from);
+    if (to) params.append('to', to);
+    const query = params.toString();
+    return this.get<PayrollPreviewTherapist[]>(`/api/service-payments/payroll-preview${query ? `?${query}` : ''}`);
+  }
+
+  async runBatchPayroll(data: BatchPayrollRequest): Promise<BatchPayrollResult> {
+    return this.post<BatchPayrollResult>('/api/service-payments/batch', data);
   }
 }
