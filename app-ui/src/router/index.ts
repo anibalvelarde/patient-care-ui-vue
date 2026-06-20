@@ -68,6 +68,12 @@ const router = createRouter({
       meta: { permission: Permissions.StatementsView },
     },
     {
+      path: '/service-payments',
+      name: 'service-payments',
+      component: () => import('../views/ServicePaymentsView.vue'),
+      meta: { permission: Permissions.ServicePaymentsView },
+    },
+    {
       path: '/appointments',
       name: 'appointments',
       component: () => import('../views/AppointmentsView.vue'),

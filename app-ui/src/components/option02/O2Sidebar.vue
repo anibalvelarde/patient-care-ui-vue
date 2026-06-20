@@ -65,9 +65,10 @@ import {
   faGear,
   faArrowLeft,
   faCalendarWeek,
+  faMoneyBillTransfer,
 } from '@fortawesome/free-solid-svg-icons';
 
-library.add(faChartPie, faUsers, faUserMd, faHandHoldingHeart, faCalendarCheck, faCalendarWeek, faCreditCard, faFileAlt, faGear, faArrowLeft);
+library.add(faChartPie, faUsers, faUserMd, faHandHoldingHeart, faCalendarCheck, faCalendarWeek, faCreditCard, faFileAlt, faMoneyBillTransfer, faGear, faArrowLeft);
 
 export default defineComponent({
   name: 'O2Sidebar',
@@ -88,6 +89,7 @@ export default defineComponent({
       { label: 'Schedule', icon: 'calendar-week', to: '/schedule', title: 'Weekly Schedule', claim: ['Permission', Permissions.ScheduleView] },
       { label: 'Billing', icon: 'credit-card', to: '/payments', claim: ['Permission', Permissions.PaymentsView] },
       { label: 'Statements', icon: 'file-alt', to: '/statements', claim: ['Permission', Permissions.StatementsView] },
+      { label: 'Payroll', icon: 'money-bill-transfer', to: '/service-payments', title: 'Service Payments', claim: ['Permission', Permissions.ServicePaymentsView] },
     ];
 
     const visibleNavItems = computed(() =>
