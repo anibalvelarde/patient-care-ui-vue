@@ -36,7 +36,9 @@
             activeFilter === tab.value
               ? tab.value === 'delinquent'
                 ? 'bg-white text-amber-700 shadow-sm'
-                : 'bg-white text-slate-800 shadow-sm'
+                : tab.value === 'pending-pay'
+                  ? 'bg-white text-sky-700 shadow-sm'
+                  : 'bg-white text-slate-800 shadow-sm'
               : 'text-slate-500 hover:text-slate-700',
           ]"
           @click="onTabClick(tab.value)"
@@ -44,11 +46,14 @@
           {{ tab.label }}
         </button>
       </div>
-      <span v-if="activeFilter !== 'delinquent'" class="text-sm text-slate-500">
-        {{ filteredTherapists.length }} therapist{{ filteredTherapists.length !== 1 ? 's' : '' }}
-      </span>
-      <span v-else class="text-sm text-amber-600">
+      <span v-if="activeFilter === 'delinquent'" class="text-sm text-amber-600">
         {{ pastDueTherapists.length }} therapist{{ pastDueTherapists.length !== 1 ? 's' : '' }} past due
+      </span>
+      <span v-else-if="activeFilter === 'pending-pay'" class="text-sm text-sky-600">
+        {{ pendingPayCount }} therapist{{ pendingPayCount !== 1 ? 's' : '' }} owed
+      </span>
+      <span v-else class="text-sm text-slate-500">
+        {{ filteredTherapists.length }} therapist{{ filteredTherapists.length !== 1 ? 's' : '' }}
       </span>
     </div>
 
@@ -76,6 +81,13 @@
       :search="search"
     />
 
+    <!-- Pending Pay tab (read-only payroll-liability breakdown) -->
+    <TherapistPendingPayTable
+      v-else-if="activeFilter === 'pending-pay'"
+      :report="pendingPayReport"
+      :search="search"
+    />
+
     <!-- Standard therapist table -->
     <TherapistTable
       v-else
@@ -90,17 +102,22 @@
 import { defineComponent, ref, computed, onMounted, type PropType } from 'vue';
 import type { Therapist } from '../../interfaces/Therapist';
 import type { DelinquentTherapist } from '../../interfaces/Delinquency';
+import type { PendingPayReport } from '../../interfaces/ServicePayment';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import TherapistTable from './TherapistTable.vue';
 import TherapistDelinquentTable from './TherapistDelinquentTable.vue';
+import TherapistPendingPayTable from './TherapistPendingPayTable.vue';
+
+type TherapistTab = 'all' | 'active' | 'inactive' | 'delinquent' | 'pending-pay';
 
 export default defineComponent({
   name: 'TherapistList',
-  components: { TherapistTable, TherapistDelinquentTable },
+  components: { TherapistTable, TherapistDelinquentTable, TherapistPendingPayTable },
   props: {
     therapists: { type: Array as PropType<Therapist[]>, required: true },
     pastDueTherapists: { type: Array as PropType<DelinquentTherapist[]>, default: () => [] },
-    initialTab: { type: String as PropType<'all' | 'active' | 'inactive' | 'delinquent'>, default: 'all' },
+    pendingPayReport: { type: Object as PropType<PendingPayReport | null>, default: null },
+    initialTab: { type: String as PropType<TherapistTab>, default: 'all' },
     loading: { type: Boolean, default: false },
     error: { type: String, default: '' },
   },
@@ -108,7 +125,7 @@ export default defineComponent({
   setup(props, { emit }) {
     const { hasClaim } = useClaims();
     const search = ref('');
-    const activeFilter = ref<'all' | 'active' | 'inactive' | 'delinquent'>(props.initialTab);
+    const activeFilter = ref<TherapistTab>(props.initialTab);
 
     onMounted(() => {
       if (props.initialTab !== 'all') {
@@ -121,15 +138,18 @@ export default defineComponent({
       { label: 'Active', value: 'active' as const },
       { label: 'Inactive', value: 'inactive' as const },
       { label: 'Delinquent', value: 'delinquent' as const, claim: Permissions.TherapistsDelinquentView },
+      { label: 'Pending Pay', value: 'pending-pay' as const, claim: Permissions.ServicePaymentsView },
     ];
 
-    // The Delinquent tab is gated on Therapists.Delinquent.View (FD excluded). Filtering it from the
-    // tab list also makes it unreachable directly — the past-due data load only fires on tab-change.
+    // Claim-gated tabs (Delinquent, Pending Pay) drop out of the list for callers who lack the claim
+    // (e.g. FD), which also makes them unreachable directly — their data loads only fire on tab-change.
     const visibleTabs = computed(() =>
       tabs.filter((t) => !('claim' in t) || hasClaim('Permission', t.claim as string)),
     );
 
-    const onTabClick = (value: 'all' | 'active' | 'inactive' | 'delinquent') => {
+    const pendingPayCount = computed(() => props.pendingPayReport?.rows.length ?? 0);
+
+    const onTabClick = (value: TherapistTab) => {
       activeFilter.value = value;
       emit('tab-change', value);
     };
@@ -155,7 +175,7 @@ export default defineComponent({
       return list;
     });
 
-    return { search, activeFilter, visibleTabs, filteredTherapists, onTabClick, hasClaim, Permissions };
+    return { search, activeFilter, visibleTabs, filteredTherapists, pendingPayCount, onTabClick, hasClaim, Permissions };
   },
 });
 </script>

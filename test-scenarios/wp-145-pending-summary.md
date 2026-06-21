@@ -31,3 +31,23 @@ The summary is never fetched for FD (they lack `ServicePayments.View`; the API w
 ## 5. Resilience
 1. If the summary endpoint is unavailable, the tile is simply omitted (the other four tiles render
    normally) — no error banner, no broken layout.
+
+## 6. Thousands separator (formatCurrency)
+1. Anywhere a currency figure shows (the tile, the dashboard financial summary, payments), large
+   amounts now group with commas: **$28,470.50**, **$1,050,433.50** (not `$28470.50`). Small amounts
+   still read `$7.10`, `$0.00`.
+
+## 7. Therapists › Pending Pay tab (read-only drill-down) — MGR/AM
+This is the per-therapist decomposition of the dashboard tile (NOT the Delinquent tab, which is
+patient-billing/AR — a different ledger).
+1. Sign in as **MGR/AM** → **Therapists** → a **Pending Pay** tab appears (sky-blue) next to Delinquent.
+2. Click it → a table with one row per therapist owed money: **Therapist · Sessions · Session Dates
+   (first–last) · Patients (distinct) · Clinic Made (gross billed, pre-discount) · Owed · % Owed**,
+   plus a totals footer.
+**Expect:** the footer **Owed** total equals the dashboard "Pending Therapist Pay" tile amount, and the
+row count equals the tile's "{n} therapists owed".
+3. Search filters rows by therapist name; the totals footer recomputes to the visible rows.
+
+## 8. Pending Pay tab — FD excluded
+1. Sign in as **FrontDesk** → **Therapists** → there is **no** Pending Pay tab (gated
+   `ServicePayments.View`); the report is never fetched.

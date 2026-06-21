@@ -9,6 +9,7 @@ import type {
   BatchPayrollRequest,
   BatchPayrollResult,
   PendingPayrollSummary,
+  PendingPayReport,
 } from '../interfaces/ServicePayment';
 
 export class ServicePaymentsHttpClient extends HttpClientBase {
@@ -60,5 +61,14 @@ export class ServicePaymentsHttpClient extends HttpClientBase {
     if (to) params.append('to', to);
     const query = params.toString();
     return this.get<PendingPayrollSummary>(`/api/service-payments/pending-summary${query ? `?${query}` : ''}`);
+  }
+
+  // Per-therapist breakdown behind the tile (Therapists › Pending Pay). No range -> all-time.
+  async getPendingPayReport(from?: string, to?: string): Promise<PendingPayReport> {
+    const params = new URLSearchParams();
+    if (from) params.append('from', from);
+    if (to) params.append('to', to);
+    const query = params.toString();
+    return this.get<PendingPayReport>(`/api/service-payments/pending-pay-report${query ? `?${query}` : ''}`);
   }
 }
