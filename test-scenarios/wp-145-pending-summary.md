@@ -12,6 +12,9 @@ the JWT carries `ServicePayments.View`.
 **Expect:** a fifth tile **"Pending Therapist Pay"** appears in the stats bar with a sky-blue
 money icon, a large currency value (gross still owed), and a subtitle like **"4 therapists owed"**.
 The stats bar lays out as 5 tiles across on large screens (2-up on small).
+2. The tile is **clickable** (hover shows a sky border + pointer) → navigates to
+   **Therapists › Pending Pay** (`/therapists?tab=pending-pay`), opening that tab with the breakdown
+   loaded. The other four tiles are not links.
 
 ## 2. Value matches Run Payroll
 1. Note the tile's amount. Go to **Payroll → Run Payroll**, set From to a very early date and To to

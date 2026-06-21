@@ -2,12 +2,15 @@
   <div>
     <!-- Stat Tiles -->
     <div :class="['grid grid-cols-2 gap-4', stats.length >= 5 ? 'lg:grid-cols-5' : 'lg:grid-cols-4']">
-      <div
+      <component
+        :is="stat.to ? 'router-link' : 'div'"
         v-for="stat in stats"
         :key="stat.label"
+        :to="stat.to"
         :class="[
           'bg-white rounded-xl border px-5 py-4 flex items-center gap-4',
           stat.borderClass,
+          stat.to ? 'hover:border-sky-300 hover:shadow-sm transition-colors cursor-pointer' : '',
         ]"
       >
         <div :class="['w-10 h-10 rounded-lg flex items-center justify-center shrink-0', stat.iconBg]">
@@ -18,7 +21,7 @@
           <p class="text-xs text-gray-400">{{ stat.label }}</p>
           <p v-if="stat.subtitle" class="text-[11px] text-gray-400 mt-0.5">{{ stat.subtitle }}</p>
         </div>
-      </div>
+      </component>
     </div>
 
     <!-- Financial Summary: Progress Banner -->
@@ -132,6 +135,7 @@
 
 <script lang="ts">
 import { defineComponent, computed, ref, onMounted, PropType } from 'vue';
+import type { RouteLocationRaw } from 'vue-router';
 import { Appointment } from '../../interfaces/Appointment';
 import { PendingPayrollSummary } from '../../interfaces/ServicePayment';
 import { ServicePaymentsHttpClient } from '../../services/ServicePaymentsHttpClient';
@@ -158,6 +162,7 @@ interface StatTile {
   iconBg: string;
   iconColor: string;
   borderClass: string;
+  to?: RouteLocationRaw;   // when set, the tile renders as a router-link
 }
 
 export default defineComponent({
@@ -236,6 +241,7 @@ export default defineComponent({
           iconBg: 'bg-sky-100',
           iconColor: 'text-sky-600',
           borderClass: summary.totalPending > 0 ? 'border-sky-200' : 'border-gray-200',
+          to: { path: '/therapists', query: { tab: 'pending-pay' } },
         });
       }
 
