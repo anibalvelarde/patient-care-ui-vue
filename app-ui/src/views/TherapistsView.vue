@@ -16,6 +16,7 @@
           :loading="loading"
           :error="error"
           :past-due-therapists="pastDueTherapists"
+          :pending-pay-report="pendingPayReport"
           @add="openAdd"
           @edit="openEdit"
           @toggle-active="toggleActive"
@@ -46,8 +47,10 @@ import O2Footer from '../components/option02/O2Footer.vue';
 import TherapistList from '../components/therapists/TherapistList.vue';
 import TherapistFormModal from '../components/therapists/TherapistFormModal.vue';
 import { TherapistsHttpClient } from '../services/TherapistsHttpClient';
+import { ServicePaymentsHttpClient } from '../services/ServicePaymentsHttpClient';
 import type { Therapist } from '../interfaces/Therapist';
 import type { DelinquentTherapist } from '../interfaces/Delinquency';
+import type { PendingPayReport } from '../interfaces/ServicePayment';
 
 export default defineComponent({
   name: 'TherapistsView',
@@ -55,8 +58,9 @@ export default defineComponent({
   setup() {
     const route = useRoute();
     const client = new TherapistsHttpClient();
+    const servicePaymentsClient = new ServicePaymentsHttpClient();
 
-    const validTabs = ['all', 'active', 'inactive', 'delinquent'] as const;
+    const validTabs = ['all', 'active', 'inactive', 'delinquent', 'pending-pay'] as const;
     type TabValue = typeof validTabs[number];
     const initialTab = computed<TabValue>(() => {
       const tab = route.query.tab as string | undefined;
@@ -69,6 +73,8 @@ export default defineComponent({
     const editingTherapist = ref<Therapist | null>(null);
     const pastDueTherapists = ref<DelinquentTherapist[]>([]);
     const pastDueLoaded = ref(false);
+    const pendingPayReport = ref<PendingPayReport | null>(null);
+    const pendingPayLoaded = ref(false);
 
     const loadTherapists = async () => {
       loading.value = true;
@@ -107,6 +113,7 @@ export default defineComponent({
         });
         await loadTherapists();
         pastDueLoaded.value = false;
+        pendingPayLoaded.value = false;
       } catch (e: unknown) {
         error.value = e instanceof Error ? e.message : 'Failed to update therapist status.';
       }
@@ -122,15 +129,28 @@ export default defineComponent({
       }
     };
 
+    const loadPendingPayReport = async () => {
+      if (pendingPayLoaded.value) return;
+      try {
+        pendingPayReport.value = await servicePaymentsClient.getPendingPayReport();
+        pendingPayLoaded.value = true;
+      } catch (e: unknown) {
+        error.value = e instanceof Error ? e.message : 'Failed to load pending therapist pay.';
+      }
+    };
+
     const onTabChange = (tab: string) => {
       if (tab === 'delinquent') {
         loadPastDueTherapists();
+      } else if (tab === 'pending-pay') {
+        loadPendingPayReport();
       }
     };
 
     const onSaved = () => {
       loadTherapists();
       pastDueLoaded.value = false;
+      pendingPayLoaded.value = false;
     };
 
     onMounted(loadTherapists);
@@ -142,6 +162,7 @@ export default defineComponent({
       modalVisible,
       editingTherapist,
       pastDueTherapists,
+      pendingPayReport,
       initialTab,
       loadTherapists,
       openAdd,

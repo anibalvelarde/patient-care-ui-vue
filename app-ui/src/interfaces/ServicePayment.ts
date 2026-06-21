@@ -83,3 +83,32 @@ export interface BatchPayrollResult {
   therapistCount: number
   totalPaid: number
 }
+
+// WP-14.5 "Pending therapist payments" dashboard tile — clinic-wide gross still owed to therapists.
+export interface PendingPayrollSummary {
+  totalPending: number
+  therapistCount: number
+  sessionCount: number
+}
+
+// WP-14.5 read-only "Pending Pay" report (Therapists › Pending Pay tab) — per-therapist breakdown.
+export interface PendingPayReportRow {
+  therapistId: number
+  therapistName: string
+  sessionCount: number
+  firstSessionDate: string        // yyyy-MM-dd
+  lastSessionDate: string         // yyyy-MM-dd
+  distinctPatientCount: number
+  grossBilled: number             // Σ session Amount (pre-discount)
+  amountOwed: number              // Σ (ProviderAmount − applied)
+  owedPctOfGross: number          // amountOwed / grossBilled * 100
+}
+
+export interface PendingPayReport {
+  rows: PendingPayReportRow[]
+  therapistCount: number
+  sessionCount: number
+  totalGrossBilled: number
+  totalOwed: number
+  owedPctOfGross: number
+}
