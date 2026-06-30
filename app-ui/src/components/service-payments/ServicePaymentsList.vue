@@ -141,6 +141,7 @@ import { ServicePaymentsHttpClient } from '../../services/ServicePaymentsHttpCli
 import type { ServicePaymentRecord } from '../../interfaces/ServicePayment';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { toLocalYmd } from '../../utils/localDate';
 
 interface TherapistOption {
   therapistId: number
@@ -158,19 +159,23 @@ export default defineComponent({
     const canAdjust = computed(() => hasClaim('Permission', Permissions.ServicePaymentsAdjust));
 
     const selectedTherapistId = ref<number | null>(null);
-    const toIso = (d: Date) => d.toISOString().split('T')[0];
     const today = new Date();
     const ninetyDaysAgo = new Date(today);
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-    const fromDate = ref(toIso(ninetyDaysAgo));
-    const toDate = ref(toIso(today));
+    const fromDate = ref(toLocalYmd(ninetyDaysAgo));
+    const toDate = ref(toLocalYmd(today));
 
     const payments = ref<ServicePaymentRecord[]>([]);
     const loaded = ref(false);
     const loading = ref(false);
     const error = ref('');
 
-    const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    // Render the stored business date by its date components, so the displayed day never shifts with
+    // the browser timezone (a bare `new Date("yyyy-MM-dd")` would be parsed as UTC and could show -1 day).
+    const formatDate = (dateStr: string) => {
+      const [y, m, d] = dateStr.slice(0, 10).split('-').map(Number);
+      return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
 
     const load = async () => {
       if (!selectedTherapistId.value) return;
@@ -207,7 +212,10 @@ export default defineComponent({
       reverseSubmitting.value = true;
       reverseError.value = '';
       try {
-        await client.reverseServicePayment(reverseTarget.value.servicePaymentId, { reason: reverseReason.value.trim() });
+        await client.reverseServicePayment(reverseTarget.value.servicePaymentId, {
+          reason: reverseReason.value.trim(),
+          paymentDate: toLocalYmd(new Date()),   // stamp the reversal with the user's local "today"
+        });
         reverseTarget.value = null;
         await load();
       } catch (e: unknown) {
