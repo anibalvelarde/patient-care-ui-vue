@@ -61,6 +61,17 @@
               required
               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
+            <p v-if="age" class="mt-1 text-xs text-slate-400">Age: {{ age }}</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Cedula</label>
+            <input
+              v-model="form.cedula"
+              type="text"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Government ID (optional)"
+            />
           </div>
 
           <div>
@@ -191,6 +202,7 @@ import { isTemporaryMrn } from '../../interfaces/Patient';
 import { useModalForm } from '../../composables/useModalForm';
 import FormErrorBanner from '../shared/FormErrorBanner.vue';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
+import { formatAge } from '../../utils/age';
 
 function parseName(patientName: string) {
   const [last, rest] = patientName.split(', ');
@@ -241,6 +253,7 @@ export default defineComponent({
       phoneNumber: '',
       gender: '',
       medicalRecordNumber: '',
+      cedula: '',
       activeStatus: true,
     });
 
@@ -248,6 +261,7 @@ export default defineComponent({
 
     const hasTemporaryMrn = computed(() => isEdit.value && isTemporaryMrn(form.medicalRecordNumber));
     const cannotActivate = computed(() => hasTemporaryMrn.value && !form.activeStatus);
+    const age = computed(() => formatAge(form.dateOfBirth));
 
     watch(form, () => clearError(), { deep: true });
 
@@ -267,6 +281,7 @@ export default defineComponent({
           form.phoneNumber = props.patient.phoneNumber ?? '';
           form.gender = props.patient.gender ?? '';
           form.medicalRecordNumber = props.patient.medicalRecordNumber ?? '';
+          form.cedula = props.patient.cedula ?? '';
           form.activeStatus = props.patient.isActive;
         } else {
           isEdit.value = false;
@@ -278,6 +293,7 @@ export default defineComponent({
           form.phoneNumber = '';
           form.gender = '';
           form.medicalRecordNumber = '';
+          form.cedula = '';
           form.activeStatus = true;
         }
       }
@@ -306,6 +322,7 @@ export default defineComponent({
             email: form.email,
             phoneNumber: form.phoneNumber,
             gender: form.gender,
+            cedula: form.cedula || undefined,
           };
 
           if (assigningPermanentMrn && form.activeStatus) {
@@ -336,6 +353,7 @@ export default defineComponent({
             phoneNumber: form.phoneNumber,
             gender: form.gender,
             medicalRecordNumber: form.medicalRecordNumber || undefined,
+            cedula: form.cedula || undefined,
           });
           if (isTemporaryMrn(created.medicalRecordNumber ?? '')) {
             emit('created-temp-mrn', created);
@@ -346,7 +364,7 @@ export default defineComponent({
       });
     };
 
-    return { form, isEdit, saving, error, hasError, hasTemporaryMrn, cannotActivate, handleSubmit };
+    return { form, isEdit, saving, error, hasError, hasTemporaryMrn, cannotActivate, age, handleSubmit };
   },
 });
 </script>

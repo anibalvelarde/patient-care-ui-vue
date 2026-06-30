@@ -166,6 +166,7 @@ export default defineComponent({
           phoneNumber: patient.phoneNumber ?? '',
           gender: patient.gender ?? '',
           activeStatus: !patient.isActive,
+          cedula: patient.cedula ?? undefined,
         });
         await loadPatients();
         pastDueLoaded.value = false;

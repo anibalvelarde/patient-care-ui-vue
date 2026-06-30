@@ -38,7 +38,11 @@
             </span>
             <span v-else class="text-slate-600">{{ patient.medicalRecordNumber }}</span>
           </td>
-          <td class="px-4 py-3 text-sm text-slate-600">{{ formatDate(patient.dateOfBirth) }}</td>
+          <td class="px-4 py-3 text-sm text-slate-600">{{ patient.cedula }}</td>
+          <td class="px-4 py-3 text-sm text-slate-600">
+            {{ formatDate(patient.dateOfBirth) }}
+            <span v-if="formatAge(patient.dateOfBirth)" class="block text-xs text-slate-400">{{ formatAge(patient.dateOfBirth) }}</span>
+          </td>
           <td class="px-4 py-3 text-sm text-slate-600">{{ patient.gender }}</td>
           <td class="px-4 py-3 text-sm text-slate-600">{{ patient.email }}</td>
           <td class="px-4 py-3 text-sm text-slate-600">{{ patient.phoneNumber }}</td>
@@ -115,7 +119,7 @@
           </td>
         </tr>
         <tr v-if="sortedPatients.length === 0">
-          <td colspan="9" class="px-4 py-12 text-center text-sm text-slate-400">
+          <td colspan="10" class="px-4 py-12 text-center text-sm text-slate-400">
             No patients found.
           </td>
         </tr>
@@ -150,8 +154,12 @@
         </span>
       </div>
       <div class="grid grid-cols-2 gap-2 text-xs text-slate-500 mb-3">
-        <div><span class="font-medium">DOB:</span> {{ formatDate(patient.dateOfBirth) }}</div>
+        <div>
+          <span class="font-medium">DOB:</span> {{ formatDate(patient.dateOfBirth) }}
+          <span v-if="formatAge(patient.dateOfBirth)" class="text-slate-400">({{ formatAge(patient.dateOfBirth) }})</span>
+        </div>
         <div><span class="font-medium">Gender:</span> {{ patient.gender }}</div>
+        <div><span class="font-medium">Cedula:</span> {{ patient.cedula || '—' }}</div>
         <div><span class="font-medium">Email:</span> {{ patient.email }}</div>
         <div><span class="font-medium">Phone:</span> {{ patient.phoneNumber }}</div>
         <div class="col-span-2">
@@ -206,6 +214,7 @@
 import { defineComponent, ref, computed, type PropType } from 'vue';
 import type { Patient } from '../../interfaces/Patient';
 import { isTemporaryMrn } from '../../interfaces/Patient';
+import { formatAge } from '../../utils/age';
 import { useClaims, Permissions } from '../../composables/useClaims';
 
 export default defineComponent({
@@ -222,6 +231,7 @@ export default defineComponent({
     const columns = [
       { key: 'patientName', label: 'Name' },
       { key: 'medicalRecordNumber', label: 'MRN' },
+      { key: 'cedula', label: 'Cedula' },
       { key: 'dateOfBirth', label: 'DOB' },
       { key: 'gender', label: 'Gender' },
       { key: 'email', label: 'Email' },
@@ -276,7 +286,7 @@ export default defineComponent({
       return primary ? primary.caretakerName : '';
     };
 
-    return { columns, sortKey, sortAsc, sortedPatients, toggleSort, formatDate, isTemporaryMrn, primaryCaretakerName, hasClaim, Permissions };
+    return { columns, sortKey, sortAsc, sortedPatients, toggleSort, formatDate, formatAge, isTemporaryMrn, primaryCaretakerName, hasClaim, Permissions };
   },
 });
 </script>

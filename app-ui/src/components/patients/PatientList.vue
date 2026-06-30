@@ -151,6 +151,7 @@ export default defineComponent({
         list = list.filter((p) =>
           p.patientName.toLowerCase().includes(q) ||
           (p.medicalRecordNumber ?? '').toLowerCase().includes(q) ||
+          (p.cedula ?? '').toLowerCase().includes(q) ||
           (p.email ?? '').toLowerCase().includes(q) ||
           (p.phoneNumber ?? '').includes(q)
         );
