@@ -170,7 +170,20 @@ export default defineComponent({
     const loading = ref(false);
     const error = ref('');
 
-    const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    // Browser-local calendar day as yyyy-MM-dd (NOT toISOString, which is UTC and can roll the day).
+    const localYmd = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    // Render the stored business date by its date components, so the displayed day never shifts with
+    // the browser timezone (a bare `new Date("yyyy-MM-dd")` would be parsed as UTC and could show -1 day).
+    const formatDate = (dateStr: string) => {
+      const [y, m, d] = dateStr.slice(0, 10).split('-').map(Number);
+      return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
 
     const load = async () => {
       if (!selectedTherapistId.value) return;
@@ -207,7 +220,10 @@ export default defineComponent({
       reverseSubmitting.value = true;
       reverseError.value = '';
       try {
-        await client.reverseServicePayment(reverseTarget.value.servicePaymentId, { reason: reverseReason.value.trim() });
+        await client.reverseServicePayment(reverseTarget.value.servicePaymentId, {
+          reason: reverseReason.value.trim(),
+          paymentDate: localYmd(new Date()),   // stamp the reversal with the user's local "today"
+        });
         reverseTarget.value = null;
         await load();
       } catch (e: unknown) {

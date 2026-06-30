@@ -28,7 +28,15 @@ amount.
 - A **Reversal of #N** entry has no Reverse action (can't reverse a reversal).
 - Submitting with a blank reason is blocked client-side; the API also rejects it (400).
 
-## 4. Permissions
+## 4. Date & ordering (MGR)
+1. Reverse a payment late in the day (browser timezone west of UTC).
+**Expect:** the reversal row is dated **today** in your local timezone — not tomorrow (the earlier bug
+stamped it with `DateTime.UtcNow`, which rolled to the next calendar day).
+2. After a reversal + re-issuance on the same day, check the History order.
+**Expect:** within that date, **newest action first** — re-issuance above the reversal above the older
+original — because same-day rows tie-break by issuance order, not an undefined date-only sort.
+
+## 5. Permissions
 - **AM:** History is visible (view-only), but there is **no Actions column / Reverse button** — AM lacks
   `ServicePayments.Adjust`. Direct `POST /api/service-payments/{id}/reverse` returns **403**.
 - **FD:** no **Payroll** nav at all; `/service-payments` redirects to the dashboard.

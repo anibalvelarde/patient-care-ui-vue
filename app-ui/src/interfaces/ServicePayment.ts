@@ -47,6 +47,7 @@ export interface ServicePaymentRecord {
 // WP-14.5 — append-only reversal of an issued payment.
 export interface ReverseServicePaymentRequest {
   reason: string
+  paymentDate: string   // local business date (yyyy-MM-dd) the reversal is stamped with — sent as browser-local "today"
 }
 
 export interface UnpaidProviderSessionSummary {
