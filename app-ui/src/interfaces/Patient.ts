@@ -6,6 +6,7 @@ export interface Patient {
   userId: number;
   patientName: string;       // "Last, First Middle" from API
   medicalRecordNumber: string | null;
+  cedula: string | null;
   dateOfBirth: string;
   email: string | null;
   phoneNumber: string | null;
@@ -33,6 +34,7 @@ export interface PatientCreateRequest {
   phoneNumber: string;
   gender: string;
   medicalRecordNumber?: string;
+  cedula?: string;
 }
 
 // Maps to API's PatientProfileUpdateRequest (PUT)
@@ -46,6 +48,7 @@ export interface PatientUpdateRequest {
   gender: string;
   activeStatus: boolean;
   medicalRecordNumber?: string;
+  cedula?: string;
 }
 
 // Temporary MRN helper
