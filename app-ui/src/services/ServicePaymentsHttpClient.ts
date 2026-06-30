@@ -3,6 +3,7 @@ import { HttpClientBase } from './HttpClientBase';
 import type {
   ServicePaymentRecord,
   ServicePaymentCreateRequest,
+  ReverseServicePaymentRequest,
   UnpaidProviderSessionSummary,
   QuincenaWindow,
   PayrollPreviewTherapist,
@@ -40,6 +41,11 @@ export class ServicePaymentsHttpClient extends HttpClientBase {
 
   async createServicePayment(data: ServicePaymentCreateRequest): Promise<ServicePaymentRecord> {
     return this.post<ServicePaymentRecord>('/api/service-payments', data);
+  }
+
+  // WP-14.5 — reverse an issued payment via an append-only offsetting entry. Returns the reversal record.
+  async reverseServicePayment(id: number, data: ReverseServicePaymentRequest): Promise<ServicePaymentRecord> {
+    return this.post<ServicePaymentRecord>(`/api/service-payments/${id}/reverse`, data);
   }
 
   async getPayrollPreview(from?: string, to?: string): Promise<PayrollPreviewTherapist[]> {

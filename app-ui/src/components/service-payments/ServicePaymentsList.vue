@@ -54,28 +54,93 @@
               <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Reference</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Sessions</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Notes</th>
+              <th v-if="canAdjust" class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-slate-200">
             <tr v-for="p in payments" :key="p.servicePaymentId" class="hover:bg-slate-50">
               <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-900">{{ formatDate(p.paymentDate) }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-slate-900">{{ formatCurrency(p.amount) }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-medium" :class="p.amount < 0 ? 'text-red-600' : 'text-slate-900'">
+                {{ formatCurrency(p.amount) }}
+              </td>
               <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-900">{{ p.paymentType?.name || '—' }}</td>
               <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-900">{{ p.referenceNumber || '—' }}</td>
               <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-900">{{ p.allocations.length }}</td>
-              <td class="px-4 py-3 text-sm text-slate-600">{{ p.notes || '—' }}</td>
+              <td class="px-4 py-3 text-sm text-slate-600">
+                <span
+                  v-if="p.reversesServicePaymentId"
+                  class="inline-flex items-center px-2 py-0.5 mr-2 rounded text-xs font-medium bg-amber-100 text-amber-800"
+                >Reversal of #{{ p.reversesServicePaymentId }}</span>
+                <span
+                  v-else-if="p.isReversed"
+                  class="inline-flex items-center px-2 py-0.5 mr-2 rounded text-xs font-medium bg-slate-200 text-slate-600"
+                >Reversed</span>
+                {{ p.notes || '—' }}
+              </td>
+              <td v-if="canAdjust" class="px-4 py-3 whitespace-nowrap text-sm text-right">
+                <button
+                  v-if="!p.isReversed && !p.reversesServicePaymentId"
+                  class="text-red-600 hover:text-red-800 text-sm font-medium"
+                  @click="openReverse(p)"
+                >
+                  Reverse
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Reverse confirmation modal -->
+    <div v-if="reverseTarget" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
+        <h3 class="text-lg font-semibold text-slate-900">Reverse payment #{{ reverseTarget.servicePaymentId }}</h3>
+        <p class="text-sm text-slate-600">
+          This writes an offsetting <span class="font-medium">{{ formatCurrency(-reverseTarget.amount) }}</span>
+          entry; the original is kept for the audit trail and the
+          {{ reverseTarget.allocations.length }} session(s) it covered become unpaid again. This cannot be undone —
+          to re-pay, issue a new payment from the <span class="font-medium">Pay Therapist</span> tab.
+        </p>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Reason <span class="text-red-600">*</span></label>
+          <textarea
+            v-model="reverseReason"
+            rows="3"
+            placeholder="e.g. Issued to the wrong therapist"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+          ></textarea>
+        </div>
+        <div v-if="reverseError" class="bg-red-50 border border-red-200 rounded-lg p-3">
+          <p class="text-sm text-red-700">{{ reverseError }}</p>
+        </div>
+        <div class="flex justify-end gap-3 pt-2">
+          <button
+            class="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200"
+            :disabled="reverseSubmitting"
+            @click="cancelReverse"
+          >
+            Cancel
+          </button>
+          <button
+            class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="reverseSubmitting || !reverseReason.trim()"
+            @click="confirmReverse"
+          >
+            {{ reverseSubmitting ? 'Reversing…' : 'Reverse payment' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, type PropType } from 'vue';
+import { defineComponent, ref, computed, type PropType } from 'vue';
 import { ServicePaymentsHttpClient } from '../../services/ServicePaymentsHttpClient';
 import type { ServicePaymentRecord } from '../../interfaces/ServicePayment';
+import { useClaims, Permissions } from '../../composables/useClaims';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 interface TherapistOption {
   therapistId: number
@@ -89,6 +154,8 @@ export default defineComponent({
   },
   setup() {
     const client = new ServicePaymentsHttpClient();
+    const { hasClaim } = useClaims();
+    const canAdjust = computed(() => hasClaim('Permission', Permissions.ServicePaymentsAdjust));
 
     const selectedTherapistId = ref<number | null>(null);
     const toIso = (d: Date) => d.toISOString().split('T')[0];
@@ -103,7 +170,6 @@ export default defineComponent({
     const loading = ref(false);
     const error = ref('');
 
-    const formatCurrency = (v: number) => `$${v.toFixed(2)}`;
     const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
     const load = async () => {
@@ -120,7 +186,43 @@ export default defineComponent({
       }
     };
 
-    return { selectedTherapistId, fromDate, toDate, payments, loaded, loading, error, formatCurrency, formatDate, load };
+    // ---- Reversal ----
+    const reverseTarget = ref<ServicePaymentRecord | null>(null);
+    const reverseReason = ref('');
+    const reverseError = ref('');
+    const reverseSubmitting = ref(false);
+
+    const openReverse = (p: ServicePaymentRecord) => {
+      reverseTarget.value = p;
+      reverseReason.value = '';
+      reverseError.value = '';
+    };
+
+    const cancelReverse = () => {
+      reverseTarget.value = null;
+    };
+
+    const confirmReverse = async () => {
+      if (!reverseTarget.value || !reverseReason.value.trim()) return;
+      reverseSubmitting.value = true;
+      reverseError.value = '';
+      try {
+        await client.reverseServicePayment(reverseTarget.value.servicePaymentId, { reason: reverseReason.value.trim() });
+        reverseTarget.value = null;
+        await load();
+      } catch (e: unknown) {
+        reverseError.value = e instanceof Error ? e.message : 'Failed to reverse the payment.';
+      } finally {
+        reverseSubmitting.value = false;
+      }
+    };
+
+    return {
+      selectedTherapistId, fromDate, toDate, payments, loaded, loading, error,
+      formatCurrency, formatDate, load, canAdjust,
+      reverseTarget, reverseReason, reverseError, reverseSubmitting,
+      openReverse, cancelReverse, confirmReverse,
+    };
   },
 });
 </script>
