@@ -146,6 +146,7 @@ import { defineComponent, ref, reactive, computed, onMounted, type PropType } fr
 import { ServicePaymentsHttpClient } from '../../services/ServicePaymentsHttpClient';
 import type { PaymentTypeInfo } from '../../interfaces/Payment';
 import type { PayrollPreviewTherapist, BatchPayrollResult } from '../../interfaces/ServicePayment';
+import { toLocalYmd } from '../../utils/localDate';
 
 export default defineComponent({
   name: 'RunPayrollWizard',
@@ -156,10 +157,9 @@ export default defineComponent({
   setup(props, { emit }) {
     const client = new ServicePaymentsHttpClient();
 
-    const toIso = (d: Date) => d.toISOString().split('T')[0];
-    const fromDate = ref(toIso(new Date()));
-    const toDate = ref(toIso(new Date()));
-    const paymentDate = ref(toIso(new Date()));
+    const fromDate = ref(toLocalYmd(new Date()));
+    const toDate = ref(toLocalYmd(new Date()));
+    const paymentDate = ref(toLocalYmd(new Date()));
     const paymentTypeId = ref<number | null>(null);
     const referenceNumber = ref('');
     const notes = ref('');

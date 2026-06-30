@@ -141,6 +141,7 @@ import { ServicePaymentsHttpClient } from '../../services/ServicePaymentsHttpCli
 import type { ServicePaymentRecord } from '../../interfaces/ServicePayment';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { toLocalYmd } from '../../utils/localDate';
 
 interface TherapistOption {
   therapistId: number
@@ -158,25 +159,16 @@ export default defineComponent({
     const canAdjust = computed(() => hasClaim('Permission', Permissions.ServicePaymentsAdjust));
 
     const selectedTherapistId = ref<number | null>(null);
-    const toIso = (d: Date) => d.toISOString().split('T')[0];
     const today = new Date();
     const ninetyDaysAgo = new Date(today);
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-    const fromDate = ref(toIso(ninetyDaysAgo));
-    const toDate = ref(toIso(today));
+    const fromDate = ref(toLocalYmd(ninetyDaysAgo));
+    const toDate = ref(toLocalYmd(today));
 
     const payments = ref<ServicePaymentRecord[]>([]);
     const loaded = ref(false);
     const loading = ref(false);
     const error = ref('');
-
-    // Browser-local calendar day as yyyy-MM-dd (NOT toISOString, which is UTC and can roll the day).
-    const localYmd = (d: Date) => {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${y}-${m}-${day}`;
-    };
 
     // Render the stored business date by its date components, so the displayed day never shifts with
     // the browser timezone (a bare `new Date("yyyy-MM-dd")` would be parsed as UTC and could show -1 day).
@@ -222,7 +214,7 @@ export default defineComponent({
       try {
         await client.reverseServicePayment(reverseTarget.value.servicePaymentId, {
           reason: reverseReason.value.trim(),
-          paymentDate: localYmd(new Date()),   // stamp the reversal with the user's local "today"
+          paymentDate: toLocalYmd(new Date()),   // stamp the reversal with the user's local "today"
         });
         reverseTarget.value = null;
         await load();
