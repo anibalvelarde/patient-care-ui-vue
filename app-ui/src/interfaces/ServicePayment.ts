@@ -40,6 +40,13 @@ export interface ServicePaymentRecord {
   allocations: ServiceAllocationDetail[]
   totalApplied: number
   unallocatedAmount: number
+  reversesServicePaymentId: number | null   // set when this record is itself a reversal entry (WP-14.5)
+  isReversed: boolean                        // true when a later reversal entry offsets this payment
+}
+
+// WP-14.5 — append-only reversal of an issued payment.
+export interface ReverseServicePaymentRequest {
+  reason: string
 }
 
 export interface UnpaidProviderSessionSummary {
