@@ -322,7 +322,9 @@ export default defineComponent({
             email: form.email,
             phoneNumber: form.phoneNumber,
             gender: form.gender,
-            cedula: form.cedula || undefined,
+            // Always send the field on update: '' expresses an explicit clear-to-NULL (the API
+            // treats omitted = leave as-is, blank = erase — intake 2026-06-29-001 item 3).
+            cedula: form.cedula.trim(),
           };
 
           if (assigningPermanentMrn && form.activeStatus) {

@@ -38,7 +38,17 @@
             </span>
             <span v-else class="text-slate-600">{{ patient.medicalRecordNumber }}</span>
           </td>
-          <td class="px-4 py-3 text-sm text-slate-600">{{ patient.cedula }}</td>
+          <!-- Cedula is PII: the grid only acknowledges a value exists; the raw ID stays in the
+               edit modal + search (intake 2026-06-29-001 item 1). The narrow badge also relieves
+               the column-width pressure that clipped Actions (item 2). -->
+          <td class="px-4 py-3 text-sm">
+            <span
+              v-if="patient.cedula"
+              class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700"
+              title="Cedula on file — open Edit to view"
+            >On file</span>
+            <span v-else class="text-slate-400">—</span>
+          </td>
           <td class="px-4 py-3 text-sm text-slate-600">
             {{ formatDate(patient.dateOfBirth) }}
             <span v-if="formatAge(patient.dateOfBirth)" class="block text-xs text-slate-400">{{ formatAge(patient.dateOfBirth) }}</span>
@@ -159,7 +169,7 @@
           <span v-if="formatAge(patient.dateOfBirth)" class="text-slate-400">({{ formatAge(patient.dateOfBirth) }})</span>
         </div>
         <div><span class="font-medium">Gender:</span> {{ patient.gender }}</div>
-        <div><span class="font-medium">Cedula:</span> {{ patient.cedula || '—' }}</div>
+        <div><span class="font-medium">Cedula:</span> {{ patient.cedula ? 'On file' : '—' }}</div>
         <div><span class="font-medium">Email:</span> {{ patient.email }}</div>
         <div><span class="font-medium">Phone:</span> {{ patient.phoneNumber }}</div>
         <div class="col-span-2">
@@ -254,7 +264,11 @@ export default defineComponent({
       list.sort((a, b) => {
         let aVal: unknown;
         let bVal: unknown;
-        if (sortKey.value === 'primaryCaretaker') {
+        if (sortKey.value === 'cedula') {
+          // Column shows on-file/not (PII), so sort by presence, not the raw value.
+          aVal = !!a.cedula;
+          bVal = !!b.cedula;
+        } else if (sortKey.value === 'primaryCaretaker') {
           const aPrimary = a.caretakers?.find((c) => c.isPrimaryCaretaker);
           const bPrimary = b.caretakers?.find((c) => c.isPrimaryCaretaker);
           aVal = aPrimary ? aPrimary.caretakerName : '';
