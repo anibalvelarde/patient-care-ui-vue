@@ -1,6 +1,8 @@
 <template>
   <!-- Desktop table -->
-  <div class="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
+  <!-- overflow-x-auto (not hidden): if the table's minimum width ever exceeds the container,
+       it scrolls horizontally instead of silently clipping the Actions column. -->
+  <div class="hidden md:block bg-white rounded-xl border border-slate-200 overflow-x-auto">
     <table class="w-full">
       <thead>
         <tr class="bg-slate-50 border-b border-slate-200">
@@ -54,8 +56,11 @@
             <span v-if="formatAge(patient.dateOfBirth)" class="block text-xs text-slate-400">{{ formatAge(patient.dateOfBirth) }}</span>
           </td>
           <td class="px-4 py-3 text-sm text-slate-600">{{ patient.gender }}</td>
-          <td class="px-4 py-3 text-sm text-slate-600">{{ patient.email }}</td>
-          <td class="px-4 py-3 text-sm text-slate-600">{{ patient.phoneNumber }}</td>
+          <td class="px-4 py-3 text-sm text-slate-600">
+            <!-- Email is the widest free-text column; truncate so it can't crowd Actions. -->
+            <span class="block max-w-[14rem] truncate" :title="patient.email ?? ''">{{ patient.email }}</span>
+          </td>
+          <td class="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{{ patient.phoneNumber }}</td>
           <td class="px-4 py-3 text-sm">
             <span
               v-if="primaryCaretakerName(patient)"

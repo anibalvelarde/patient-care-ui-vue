@@ -25,7 +25,10 @@
 **Setup:** Same grid, desktop width (the reporter's screen where Actions clipped before).
 
 **Expected:**
-- The right-hand **Actions** icons (caretakers / plans / edit / activate-deactivate) are fully visible — nothing pushed off-screen or chopped.
+- The right-hand **Actions** header label and icons (caretakers / plans / edit / activate-deactivate) are fully visible — nothing pushed off-screen or chopped.
+- The Patients page content area is wider than the other pages (`max-w-screen-2xl` vs the app-standard `max-w-7xl`), giving the 10-column table room.
+- Long email addresses truncate with an ellipsis (hover shows the full address in a tooltip) instead of stretching the column.
+- Safety net: if the window is narrowed (still ≥ md), the table pane scrolls horizontally rather than clipping the right edge.
 - The Cedula column is now badge-width instead of full-ID-width, relieving the column budget.
 
 ---

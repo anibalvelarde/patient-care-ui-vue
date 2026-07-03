@@ -5,7 +5,9 @@
       <O2Sidebar />
       <div class="flex-1 flex flex-col">
       <O2Header />
-      <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+      <!-- max-w-screen-2xl (not the app-standard 7xl): the 10-column patient table needs the extra
+           room so Actions isn't crowded at desktop width (intake 2026-06-29-001 item 2). -->
+      <main class="flex-1 max-w-screen-2xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
         <div class="mb-6">
           <h1 class="text-2xl font-bold text-slate-800">Patient Management</h1>
           <p class="text-sm text-slate-500 mt-1">View and manage patient records</p>
