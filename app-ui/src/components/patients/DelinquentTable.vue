@@ -7,6 +7,8 @@
           <th class="px-4 py-3 text-left text-xs font-semibold text-amber-700 uppercase tracking-wider w-8"></th>
           <th class="px-4 py-3 text-left text-xs font-semibold text-amber-700 uppercase tracking-wider">Patient</th>
           <th class="px-4 py-3 text-left text-xs font-semibold text-amber-700 uppercase tracking-wider">Past-Due Sessions</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-amber-700 uppercase tracking-wider">Oldest</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-amber-700 uppercase tracking-wider">Newest</th>
           <th class="px-4 py-3 text-left text-xs font-semibold text-amber-700 uppercase tracking-wider">Total Due</th>
           <th class="px-4 py-3 text-left text-xs font-semibold text-amber-700 uppercase tracking-wider">Paid So Far</th>
           <th class="px-4 py-3 text-left text-xs font-semibold text-amber-700 uppercase tracking-wider">Balance</th>
@@ -33,6 +35,8 @@
                 {{ dp.pastDueSessions }}
               </span>
             </td>
+            <td class="px-4 py-3 text-sm text-slate-600">{{ formatDate(pastDueRange(dp).oldest ?? '') || '—' }}</td>
+            <td class="px-4 py-3 text-sm text-slate-600">{{ formatDate(pastDueRange(dp).newest ?? '') || '—' }}</td>
             <td class="px-4 py-3 text-sm font-medium text-amber-700">${{ dp.pastDueTotalAmount.toFixed(2) }}</td>
             <td class="px-4 py-3 text-sm text-slate-600">${{ dp.amountPaidSoFar.toFixed(2) }}</td>
             <td class="px-4 py-3 text-sm font-semibold text-red-600">
@@ -56,7 +60,7 @@
               class="bg-amber-50/30"
             >
               <td class="px-4 py-2"></td>
-              <td colspan="5" class="px-4 py-2">
+              <td colspan="7" class="px-4 py-2">
                 <router-link
                   :to="{ path: '/', query: { date: session.sessionDate, highlightSession: String(session.sessionId), from: '/patients?tab=delinquent' } }"
                   class="flex items-center justify-between group hover:bg-amber-100/50 rounded-lg px-3 py-2 -mx-3 transition-colors"
@@ -80,7 +84,7 @@
           </template>
         </template>
         <tr v-if="filteredPatients.length === 0">
-          <td colspan="6" class="px-4 py-12 text-center text-sm text-slate-400">
+          <td colspan="8" class="px-4 py-12 text-center text-sm text-slate-400">
             No delinquent patients found.
           </td>
         </tr>
@@ -119,6 +123,11 @@
           <div><span class="font-medium">Paid:</span> ${{ dp.amountPaidSoFar.toFixed(2) }}</div>
           <div><span class="font-medium text-red-600">Balance:</span> <span class="text-red-600">${{ (dp.pastDueTotalAmount - dp.amountPaidSoFar).toFixed(2) }}</span></div>
         </div>
+        <div class="mt-1 text-xs text-slate-500">
+          <span class="font-medium">Oldest:</span> {{ formatDate(pastDueRange(dp).oldest ?? '') || '—' }}
+          <span class="mx-1 text-slate-300">·</span>
+          <span class="font-medium">Newest:</span> {{ formatDate(pastDueRange(dp).newest ?? '') || '—' }}
+        </div>
       </div>
 
       <!-- Expanded sessions -->
@@ -149,6 +158,7 @@
 <script lang="ts">
 import { defineComponent, ref, computed, type PropType } from 'vue';
 import type { DelinquentPatient } from '../../interfaces/Delinquency';
+import { pastDueDateRange, type SessionDateRange } from '../../utils/delinquencyRange';
 
 export default defineComponent({
   name: 'DelinquentTable',
@@ -185,7 +195,18 @@ export default defineComponent({
       return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
     };
 
-    return { expanded, toggleExpand, filteredPatients, formatDate };
+    // cached per row object — template reads it twice per row (Oldest + Newest)
+    const rangeCache = new WeakMap<DelinquentPatient, SessionDateRange>();
+    const pastDueRange = (dp: DelinquentPatient): SessionDateRange => {
+      let r = rangeCache.get(dp);
+      if (!r) {
+        r = pastDueDateRange(dp.delinquency);
+        rangeCache.set(dp, r);
+      }
+      return r;
+    };
+
+    return { expanded, toggleExpand, filteredPatients, formatDate, pastDueRange };
   },
 });
 </script>
