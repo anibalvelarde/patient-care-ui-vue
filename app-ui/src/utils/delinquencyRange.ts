@@ -8,11 +8,20 @@
 // sessionDate is the API's date-only string (yyyy-MM-dd), so lexicographic
 // comparison IS chronological comparison — no Date parsing (and no timezone
 // pitfalls) needed here.
-import type { DelinquentSession } from '../interfaces/Delinquency';
+import type { DelinquentPatient, DelinquentSession } from '../interfaces/Delinquency';
 
 export interface SessionDateRange {
   oldest: string | null;
   newest: string | null;
+}
+
+// Clinic-wide past-due receivable: what caretakers/patients still owe, summed as
+// the Delinquent tab's Balance column (past-due total minus paid-so-far) so the
+// dashboard tile always equals the tab it links to. Negative row balances
+// (overpayments) are kept as-is — same arithmetic as the tab.
+export function pastDueReceivable(patients: DelinquentPatient[]): number {
+  return patients.reduce(
+    (sum, dp) => sum + (dp.pastDueTotalAmount - dp.amountPaidSoFar), 0);
 }
 
 export function pastDueDateRange(sessions: DelinquentSession[]): SessionDateRange {

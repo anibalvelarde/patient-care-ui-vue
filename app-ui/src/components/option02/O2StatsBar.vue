@@ -1,7 +1,8 @@
 <template>
   <div>
     <!-- Stat Tiles -->
-    <div :class="['grid grid-cols-2 gap-4', stats.length >= 5 ? 'lg:grid-cols-5' : 'lg:grid-cols-4']">
+    <div :class="['grid grid-cols-2 gap-4',
+                  stats.length >= 6 ? 'lg:grid-cols-6' : stats.length >= 5 ? 'lg:grid-cols-5' : 'lg:grid-cols-4']">
       <component
         :is="stat.to ? 'router-link' : 'div'"
         v-for="stat in stats"
@@ -138,7 +139,10 @@ import { defineComponent, computed, ref, onMounted, PropType } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 import { Appointment } from '../../interfaces/Appointment';
 import { PendingPayrollSummary } from '../../interfaces/ServicePayment';
+import type { DelinquentPatient } from '../../interfaces/Delinquency';
 import { ServicePaymentsHttpClient } from '../../services/ServicePaymentsHttpClient';
+import { PatientsHttpClient } from '../../services/PatientsHttpClient';
+import { pastDueReceivable } from '../../utils/delinquencyRange';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import { library } from '@fortawesome/fontawesome-svg-core';
@@ -150,9 +154,11 @@ import {
   faCheckCircle,
   faDollarSign,
   faMoneyBillWave,
+  faHandHoldingDollar,
 } from '@fortawesome/free-solid-svg-icons';
 
-library.add(faCalendarDay, faHourglassHalf, faExclamationTriangle, faCheckCircle, faDollarSign, faMoneyBillWave);
+library.add(faCalendarDay, faHourglassHalf, faExclamationTriangle, faCheckCircle, faDollarSign,
+  faMoneyBillWave, faHandHoldingDollar);
 
 interface StatTile {
   label: string;
@@ -181,12 +187,22 @@ export default defineComponent({
     // lacks ServicePayments.View and the API would 403, so we don't even fetch for them.
     const canViewPayroll = hasClaim('Permission', Permissions.ServicePaymentsView);
     const pendingPayroll = ref<PendingPayrollSummary | null>(null);
+    // Clinic-wide past-due receivable (caretaker side). Same endpoint the Patients →
+    // Delinquent tab renders from, so the tile always equals the tab it links to.
+    // Patients.Delinquent.View is MGR/AM only — FD would 403, so no fetch for them.
+    const canViewDelinquency = hasClaim('Permission', Permissions.PatientsDelinquentView);
+    const delinquentPatients = ref<DelinquentPatient[] | null>(null);
     onMounted(async () => {
-      if (!canViewPayroll) return;
-      try {
-        pendingPayroll.value = await new ServicePaymentsHttpClient().getPendingSummary();
-      } catch {
-        pendingPayroll.value = null; // tile is simply omitted if the summary can't be loaded
+      // independent fetches: either tile is simply omitted if its summary can't load
+      if (canViewPayroll) {
+        new ServicePaymentsHttpClient().getPendingSummary()
+          .then((s) => { pendingPayroll.value = s; })
+          .catch(() => { pendingPayroll.value = null; });
+      }
+      if (canViewDelinquency) {
+        new PatientsHttpClient().getPastDuePatients()
+          .then((list) => { delinquentPatients.value = list; })
+          .catch(() => { delinquentPatients.value = null; });
       }
     });
 
@@ -242,6 +258,21 @@ export default defineComponent({
           iconColor: 'text-sky-600',
           borderClass: summary.totalPending > 0 ? 'border-sky-200' : 'border-gray-200',
           to: { path: '/therapists', query: { tab: 'pending-pay' } },
+        });
+      }
+
+      const delinquent = delinquentPatients.value;
+      if (canViewDelinquency && delinquent) {
+        const receivable = pastDueReceivable(delinquent);
+        tiles.push({
+          label: 'Pending Caretaker Pay',
+          value: formatCurrency(receivable),
+          subtitle: `${delinquent.length} patient${delinquent.length === 1 ? '' : 's'} past due`,
+          icon: 'hand-holding-dollar',
+          iconBg: 'bg-rose-100',
+          iconColor: 'text-rose-600',
+          borderClass: receivable > 0 ? 'border-rose-200' : 'border-gray-200',
+          to: { path: '/patients', query: { tab: 'delinquent' } },
         });
       }
 
