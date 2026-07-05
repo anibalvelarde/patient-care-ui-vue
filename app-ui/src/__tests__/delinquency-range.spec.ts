@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { pastDueDateRange } from '../utils/delinquencyRange';
-import type { DelinquentSession } from '../interfaces/Delinquency';
+import { pastDueDateRange, pastDueReceivable } from '../utils/delinquencyRange';
+import type { DelinquentPatient, DelinquentSession } from '../interfaces/Delinquency';
 
 function session(overrides: Partial<DelinquentSession>): DelinquentSession {
   return {
@@ -67,5 +67,31 @@ describe('pastDueDateRange', () => {
       session({ sessionId: 2, sessionDate: '2025-12-28' }),
     ]);
     expect(r).toEqual({ oldest: '2025-12-28', newest: '2026-01-02' });
+  });
+});
+
+function patient(pastDueTotalAmount: number, amountPaidSoFar: number): DelinquentPatient {
+  return {
+    partyType: 'Patient',
+    party: { id: 1, name: 'P', isValid: true },
+    pastDueSessions: 1,
+    pastDueTotalAmount,
+    amountPaidSoFar,
+    delinquency: [],
+  };
+}
+
+describe('pastDueReceivable', () => {
+  it('sums Balance (past-due total minus paid-so-far) across all patients', () => {
+    // mirrors the Delinquent tab's Balance column so the dashboard tile matches the tab
+    expect(pastDueReceivable([patient(300, 60), patient(75, 0)])).toBe(315);
+  });
+
+  it('returns 0 for an empty list', () => {
+    expect(pastDueReceivable([])).toBe(0);
+  });
+
+  it('keeps partial payments and cent amounts exact per row', () => {
+    expect(pastDueReceivable([patient(100.5, 25.25), patient(50, 50)])).toBeCloseTo(75.25, 2);
   });
 });
