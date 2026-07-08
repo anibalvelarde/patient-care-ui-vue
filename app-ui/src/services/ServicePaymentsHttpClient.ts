@@ -4,7 +4,7 @@ import type {
   ServicePaymentRecord,
   ServicePaymentCreateRequest,
   ReverseServicePaymentRequest,
-  UnpaidProviderSessionSummary,
+  UnpaidProviderSessionsResult,
   QuincenaWindow,
   PayrollPreviewTherapist,
   BatchPayrollRequest,
@@ -26,12 +26,13 @@ export class ServicePaymentsHttpClient extends HttpClientBase {
     return this.get<ServicePaymentRecord>(`/api/service-payments/${id}`);
   }
 
-  async getUnpaidSessions(therapistId: number, from?: string, to?: string): Promise<UnpaidProviderSessionSummary[]> {
+  // WP-20 — returns the envelope: payable sessions + a "paid in range" summary.
+  async getUnpaidSessions(therapistId: number, from?: string, to?: string): Promise<UnpaidProviderSessionsResult> {
     const params = new URLSearchParams();
     params.append('therapistId', String(therapistId));
     if (from) params.append('from', from);
     if (to) params.append('to', to);
-    return this.get<UnpaidProviderSessionSummary[]>(`/api/service-payments/unpaid-sessions?${params.toString()}`);
+    return this.get<UnpaidProviderSessionsResult>(`/api/service-payments/unpaid-sessions?${params.toString()}`);
   }
 
   async getQuincena(date?: string): Promise<QuincenaWindow> {
