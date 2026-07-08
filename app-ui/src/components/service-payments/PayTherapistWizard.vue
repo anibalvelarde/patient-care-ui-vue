@@ -71,7 +71,9 @@
     <!-- Unpaid sessions + payment form -->
     <template v-if="loaded && !successRecord">
       <div v-if="sessions.length === 0" class="bg-white rounded-lg shadow-sm border border-slate-200 p-8 text-center">
-        <p class="text-sm text-slate-500">No unpaid completed sessions for this therapist in the selected period.</p>
+        <!-- WP-20 — the all-paid range is the most confusing case: say WHY nothing is payable. -->
+        <PaidInRangeDisclosure v-if="paidInRange && paidInRange.totalApplied > 0" :paid="paidInRange" all-paid />
+        <p v-else class="text-sm text-slate-500">No unpaid completed sessions for this therapist in the selected period.</p>
       </div>
 
       <div v-else class="bg-white rounded-lg shadow-sm border border-slate-200">
@@ -82,6 +84,12 @@
             <button class="text-slate-500 hover:underline" @click="selectAll(false)">Clear</button>
           </div>
         </div>
+        <!-- WP-20 — paid-in-range disclosure -->
+        <PaidInRangeDisclosure
+          v-if="paidInRange && paidInRange.totalApplied > 0"
+          :paid="paidInRange"
+          class="px-6 py-2 border-b border-slate-200"
+        />
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-slate-200">
             <thead class="bg-slate-50">
@@ -166,8 +174,10 @@
 import { defineComponent, ref, reactive, computed, onMounted, type PropType } from 'vue';
 import { ServicePaymentsHttpClient } from '../../services/ServicePaymentsHttpClient';
 import type { PaymentTypeInfo } from '../../interfaces/Payment';
-import type { ServicePaymentRecord, UnpaidProviderSessionSummary } from '../../interfaces/ServicePayment';
+import type { PaidInRangeSummary, ServicePaymentRecord, UnpaidProviderSessionSummary } from '../../interfaces/ServicePayment';
 import { toLocalYmd } from '../../utils/localDate';
+import { formatCurrency } from '../../utils/formatCurrency';
+import PaidInRangeDisclosure from './PaidInRangeDisclosure.vue';
 
 interface TherapistOption {
   therapistId: number
@@ -176,6 +186,7 @@ interface TherapistOption {
 
 export default defineComponent({
   name: 'PayTherapistWizard',
+  components: { PaidInRangeDisclosure },
   props: {
     therapists: { type: Array as PropType<TherapistOption[]>, required: true },
     paymentTypes: { type: Array as PropType<PaymentTypeInfo[]>, required: true },
@@ -193,6 +204,7 @@ export default defineComponent({
     const notes = ref('');
 
     const sessions = ref<UnpaidProviderSessionSummary[]>([]);
+    const paidInRange = ref<PaidInRangeSummary | null>(null);  // WP-20
     const selected = reactive<Record<number, boolean>>({});
     const loaded = ref(false);
     const loading = ref(false);
@@ -205,7 +217,6 @@ export default defineComponent({
     const selectedTotal = computed(() => selectedSessions.value.reduce((sum, s) => sum + s.remainingProviderAmount, 0));
     const canSubmit = computed(() => !!selectedTherapistId.value && !!paymentTypeId.value && selectedTotal.value > 0);
 
-    const formatCurrency = (v: number) => `$${v.toFixed(2)}`;
     const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
     const selectAll = (value: boolean) => {
@@ -218,10 +229,11 @@ export default defineComponent({
       error.value = '';
       successRecord.value = null;
       try {
-        const list = await client.getUnpaidSessions(selectedTherapistId.value, fromDate.value, toDate.value);
-        sessions.value = list;
+        const result = await client.getUnpaidSessions(selectedTherapistId.value, fromDate.value, toDate.value);
+        sessions.value = result.sessions;
+        paidInRange.value = result.paidInRange;
         Object.keys(selected).forEach((k) => delete selected[Number(k)]);
-        list.forEach((s) => { selected[s.sessionId] = true; });
+        result.sessions.forEach((s) => { selected[s.sessionId] = true; });
         loaded.value = true;
       } catch (e: unknown) {
         error.value = e instanceof Error ? e.message : 'Failed to load unpaid sessions.';
@@ -250,6 +262,7 @@ export default defineComponent({
         successRecord.value = record;
         loaded.value = false;
         sessions.value = [];
+        paidInRange.value = null;
         emit('created', record);
       } catch (e: unknown) {
         error.value = e instanceof Error ? e.message : 'Failed to issue payment.';
@@ -280,7 +293,7 @@ export default defineComponent({
 
     return {
       selectedTherapistId, fromDate, toDate, paymentDate, paymentTypeId, referenceNumber, notes,
-      sessions, selected, loaded, loading, submitting, error, successRecord,
+      sessions, paidInRange, selected, loaded, loading, submitting, error, successRecord,
       selectedCount, selectedTotal, canSubmit,
       formatCurrency, formatDate, selectAll, loadSessions, submit, resetForNext,
     };

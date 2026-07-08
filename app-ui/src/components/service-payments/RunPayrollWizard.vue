@@ -79,7 +79,13 @@
                 <td class="px-4 py-3">
                   <input type="checkbox" v-model="selected[t.therapistId]" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
                 </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-900">{{ t.therapistName }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-900">
+                  {{ t.therapistName }}
+                  <!-- WP-20 — paid-in-range context sub-line -->
+                  <div v-if="t.paidSessionCount > 0" class="text-xs text-slate-400">
+                    {{ t.paidSessionCount }} paid &middot; {{ formatCurrency(t.paidTotal) }}
+                  </div>
+                </td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-slate-900">{{ t.sessionCount }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-slate-900">{{ formatCurrency(t.totalRemaining) }}</td>
               </tr>
@@ -147,6 +153,7 @@ import { ServicePaymentsHttpClient } from '../../services/ServicePaymentsHttpCli
 import type { PaymentTypeInfo } from '../../interfaces/Payment';
 import type { PayrollPreviewTherapist, BatchPayrollResult } from '../../interfaces/ServicePayment';
 import { toLocalYmd } from '../../utils/localDate';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 export default defineComponent({
   name: 'RunPayrollWizard',
@@ -176,8 +183,6 @@ export default defineComponent({
     const selectedCount = computed(() => selectedTherapists.value.length);
     const grandTotal = computed(() => selectedTherapists.value.reduce((sum, t) => sum + t.totalRemaining, 0));
     const canRun = computed(() => selectedCount.value > 0 && !!paymentTypeId.value);
-
-    const formatCurrency = (v: number) => `$${v.toFixed(2)}`;
 
     const selectAll = (value: boolean) => {
       preview.value.forEach((t) => { selected[t.therapistId] = value; });

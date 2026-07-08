@@ -62,6 +62,39 @@ export interface UnpaidProviderSessionSummary {
   remainingProviderAmount: number
 }
 
+// WP-20 — "paid in range" visibility on the unpaid-sessions envelope.
+export interface PaidByPaymentRef {
+  servicePaymentId: number
+  referenceNumber: string | null
+  paymentDate: string
+  amountApplied: number
+}
+
+export interface PaidProviderSessionDetail {
+  sessionId: number
+  sessionDate: string
+  sessionTime: string
+  patientName: string
+  therapyType: string
+  providerAmount: number
+  amountApplied: number
+  remainingProviderAmount: number   // > 0 marks a partially-paid session (also listed as payable)
+  paymentReferences: PaidByPaymentRef[]
+}
+
+export interface PaidInRangeSummary {
+  fullyPaidSessionCount: number
+  fullyPaidTotal: number            // Σ providerAmount of fully-paid sessions
+  totalApplied: number              // Σ amountApplied across ALL sessions in range (incl. partials)
+  sessions: PaidProviderSessionDetail[]
+}
+
+// WP-20 envelope for GET /api/service-payments/unpaid-sessions.
+export interface UnpaidProviderSessionsResult {
+  sessions: UnpaidProviderSessionSummary[]
+  paidInRange: PaidInRangeSummary
+}
+
 export interface QuincenaWindow {
   from: string
   to: string
@@ -73,6 +106,8 @@ export interface PayrollPreviewTherapist {
   therapistName: string
   sessionCount: number
   totalRemaining: number
+  paidSessionCount: number          // WP-20 — fully-paid session count in range (context only)
+  paidTotal: number                 // WP-20 — Σ amountApplied across the therapist's in-range sessions
   sessions: UnpaidProviderSessionSummary[]
 }
 
