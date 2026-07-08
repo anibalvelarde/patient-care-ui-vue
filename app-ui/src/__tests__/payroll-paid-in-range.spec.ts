@@ -176,6 +176,24 @@ describe('PayTherapistWizard — paid-in-range disclosure', () => {
     expect(w.findAll('input[type="checkbox"]').length).toBe(1);
   });
 
+  it('renders the all-paid disclosure when the payable list is empty', async () => {
+    const w = await mountPayWizard(paidInRange(), []);
+    expect(w.text()).toContain('No unpaid sessions in this range — 4 sessions ($85.00) were already paid');
+    // The generic empty-state copy is replaced in this case.
+    expect(w.text()).not.toContain('No unpaid completed sessions');
+    // Expand still works from the empty state.
+    const btn = disclosureButton(w);
+    await btn!.trigger('click');
+    expect(w.text()).toContain('Rivera, Ana');
+    expect(w.text()).toContain('PAYROLL-2026-05 ($21.25)');
+  });
+
+  it('keeps the plain empty state when nothing was paid in range', async () => {
+    const w = await mountPayWizard(null, []);
+    expect(w.text()).toContain('No unpaid completed sessions for this therapist in the selected period.');
+    expect(w.text()).not.toContain('already paid');
+  });
+
   it('collapses again on a second click', async () => {
     const w = await mountPayWizard(paidInRange());
     const btn = disclosureButton(w);

@@ -52,10 +52,15 @@ is selectable or payable. Visible wherever the wizards are (MGR/AM; issuing MGR)
 2. VERIFY it equals the therapist's total provider amount for all completed
    sessions in the range (invariant: Σ providerAmount = Σ remaining + Σ applied).
 
-## Scenario 6 — Issue payment clears the disclosure
+## Scenario 6 — All-paid range (issue payment, then re-query)
 1. From Scenario 1, issue the payment for the 16 sessions.
 2. VERIFY the success panel replaces the tables (no stale paid line lingering).
-3. Re-run Find Unpaid Sessions for the same range → VERIFY the empty state
-   ("No unpaid completed sessions…") renders. The disclosure line lives under the
-   Unpaid Sessions header, so it does not appear when nothing is payable (by
-   design — see the WP-20 plan).
+3. Re-run Find Unpaid Sessions for the same range → VERIFY the empty-state card
+   now explains itself: **"No unpaid sessions in this range — 20 sessions
+   ($448.40) were already paid"** with the chevron.
+4. Expand → VERIFY all 20 paid rows appear (the original 4 referencing
+   PAYROLL-2026-05 plus the 16 just issued with the new payment's reference),
+   every row badged **Full**.
+5. VERIFY the plain copy ("No unpaid completed sessions for this therapist in
+   the selected period.") appears **only** when the range truly has no prior
+   payments (Scenario 2), never in the all-paid case.
