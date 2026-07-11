@@ -117,6 +117,14 @@ jobs:
       # copies at the edges so the new build is live immediately after deploy.
       - name: Invalidate CloudFront
         run: |
+          # Guard: an unset secret expands to "" and the AWS CLI error is cryptic.
+          if [ -z "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" ]; then
+            echo "::error::CLOUDFRONT_DISTRIBUTION_ID repo secret is not set"
+            exit 1
+          fi
+          # CloudFront's control-plane API is global and served from us-east-1; resolving it
+          # through the job's AWS_REGION can hit an endpoint that answers "InvalidAction".
           aws cloudfront create-invalidation \
+            --region us-east-1 \
             --distribution-id "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" \
             --paths "/index.html" "/config.js" "/"
