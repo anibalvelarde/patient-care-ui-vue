@@ -123,22 +123,23 @@
 
           <div v-if="isEdit">
             <label class="block text-sm font-medium text-slate-700 mb-1">MRN</label>
-            <div v-if="hasTemporaryMrn">
-              <input
-                v-model="form.medicalRecordNumber"
-                type="text"
-                class="w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                placeholder="Enter permanent MRN"
-              />
-              <p class="mt-1 text-xs text-amber-600">
-                This patient has a temporary MRN. Assign a permanent MRN to enable activation.
-              </p>
-            </div>
-            <div v-else>
-              <p class="px-3 py-2 text-sm text-slate-600 bg-slate-50 rounded-lg border border-slate-200">
-                {{ form.medicalRecordNumber }}
-              </p>
-            </div>
+            <input
+              v-model="form.medicalRecordNumber"
+              type="text"
+              :class="[
+                'w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent',
+                hasTemporaryMrn
+                  ? 'border-amber-300 bg-amber-50 focus:ring-amber-500'
+                  : 'border-slate-300 focus:ring-blue-500',
+              ]"
+              placeholder="Enter MRN"
+            />
+            <p v-if="hasTemporaryMrn" class="mt-1 text-xs text-amber-600">
+              This patient has a temporary MRN. Assign a permanent MRN to enable activation.
+            </p>
+            <p v-else class="mt-1 text-xs text-slate-400">
+              Changing the MRN must keep it unique; leave blank to keep the current one.
+            </p>
           </div>
 
           <div v-if="isEdit" class="space-y-1">
@@ -259,7 +260,11 @@ export default defineComponent({
 
     const isEdit = ref(false);
 
-    const hasTemporaryMrn = computed(() => isEdit.value && isTemporaryMrn(form.medicalRecordNumber));
+    // Blank on edit means "keep the current MRN", so temp-ness is judged on the effective value.
+    const effectiveMrn = computed(
+      () => form.medicalRecordNumber.trim() || props.patient?.medicalRecordNumber || ''
+    );
+    const hasTemporaryMrn = computed(() => isEdit.value && isTemporaryMrn(effectiveMrn.value));
     const cannotActivate = computed(() => hasTemporaryMrn.value && !form.activeStatus);
     const age = computed(() => formatAge(form.dateOfBirth));
 
@@ -305,7 +310,7 @@ export default defineComponent({
         return;
       }
       // Cannot activate a patient while a temporary MRN is still in place.
-      if (isEdit.value && props.patient && form.activeStatus && isTemporaryMrn(form.medicalRecordNumber)) {
+      if (isEdit.value && props.patient && form.activeStatus && isTemporaryMrn(effectiveMrn.value)) {
         setError('Cannot activate a patient with a temporary MRN. Assign a permanent MRN first.');
         return;
       }
@@ -313,7 +318,11 @@ export default defineComponent({
         const client = new PatientsHttpClient();
         if (isEdit.value && props.patient) {
           const originalMrn = props.patient.medicalRecordNumber || '';
-          const assigningPermanentMrn = isTemporaryMrn(originalMrn) && form.medicalRecordNumber && !isTemporaryMrn(form.medicalRecordNumber);
+          // MRN is generally editable (B2): send a changed, non-blank value; blank keeps the
+          // current MRN (the API treats an omitted/empty MRN as "leave as-is"; uniqueness → 409).
+          const newMrn = form.medicalRecordNumber.trim();
+          const mrnChanged = newMrn !== '' && newMrn !== originalMrn;
+          const assigningPermanentMrn = isTemporaryMrn(originalMrn) && mrnChanged && !isTemporaryMrn(newMrn);
           const baseFields = {
             firstName: form.firstName,
             middleName: form.middleName || undefined,
@@ -332,7 +341,7 @@ export default defineComponent({
             await client.updatePatient(props.patient.patientId, {
               ...baseFields,
               activeStatus: false,
-              medicalRecordNumber: form.medicalRecordNumber,
+              medicalRecordNumber: newMrn,
             });
             await client.updatePatient(props.patient.patientId, {
               ...baseFields,
@@ -342,7 +351,7 @@ export default defineComponent({
             await client.updatePatient(props.patient.patientId, {
               ...baseFields,
               activeStatus: form.activeStatus,
-              medicalRecordNumber: assigningPermanentMrn ? form.medicalRecordNumber : undefined,
+              medicalRecordNumber: mrnChanged ? newMrn : undefined,
             });
           }
         } else {
