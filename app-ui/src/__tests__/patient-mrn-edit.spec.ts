@@ -132,6 +132,23 @@ describe('PatientFormModal — MRN is editable on edit (B2)', () => {
     );
   });
 
+  it('keeps the input mounted while typing a non-TEMP value char-by-char (repro: patient 917)', async () => {
+    // Pre-fix, the input sat behind v-if="hasTemporaryMrn", which reacts to the value being
+    // typed — clearing "TEMP-917" and typing the first character of a permanent MRN flipped
+    // the v-if and unmounted the input mid-keystroke ("textbox locks after one character").
+    const wrapper = await openEditModal(patient({ medicalRecordNumber: 'TEMP-917', isActive: false }));
+
+    for (const partial of ['', 'N', 'NC', 'NC-', 'NC-9', 'NC-91', 'NC-917']) {
+      const input = wrapper.find(mrnInput);
+      expect(input.exists()).toBe(true);
+      await input.setValue(partial);
+    }
+
+    const survivor = wrapper.find(mrnInput);
+    expect(survivor.exists()).toBe(true);
+    expect((survivor.element as HTMLInputElement).value).toBe('NC-917');
+  });
+
   it('still shows the temporary-MRN hint and two-step activate flow for TEMP- patients', async () => {
     const wrapper = await openEditModal(patient({ medicalRecordNumber: 'TEMP-5', isActive: false }));
     expect(wrapper.text()).toContain('temporary MRN');
