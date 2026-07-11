@@ -99,5 +99,24 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      # Cache strategy: hashed assets are immutable (cache forever); the entry documents
+      # (index.html, config.js) are what NAME the hashed chunks, so they must never be
+      # cached — a stale index.html referencing chunks that `--delete` already removed is
+      # exactly the "Failed to fetch dynamically imported module" dead-menu bug (2026-07-11).
       - name: Sync files to S3
-        run: aws s3 sync app-ui/dist/ s3://neurocorp --delete
+        run: |
+          aws s3 sync app-ui/dist/ s3://neurocorp --delete \
+            --exclude index.html --exclude config.js \
+            --cache-control "public,max-age=31536000,immutable"
+          aws s3 cp app-ui/dist/index.html s3://neurocorp/index.html \
+            --cache-control "no-cache, no-store, must-revalidate"
+          aws s3 cp app-ui/dist/config.js s3://neurocorp/config.js \
+            --cache-control "no-cache, no-store, must-revalidate"
+
+      # Belt-and-suspenders: even with no-cache going forward, drop any already-cached
+      # copies at the edges so the new build is live immediately after deploy.
+      - name: Invalidate CloudFront
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" \
+            --paths "/index.html" "/config.js" "/"
