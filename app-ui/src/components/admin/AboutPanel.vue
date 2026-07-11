@@ -14,6 +14,11 @@
       </div>
 
       <div class="py-3 flex items-baseline justify-between gap-4">
+        <dt class="text-sm font-medium text-slate-600">UI built</dt>
+        <dd class="font-mono text-sm text-slate-800">{{ formattedUiBuildTime }}</dd>
+      </div>
+
+      <div class="py-3 flex items-baseline justify-between gap-4">
         <dt class="text-sm font-medium text-slate-600">API</dt>
         <dd class="font-mono text-sm text-slate-800">
           <span v-if="apiLoading">…</span>
@@ -23,8 +28,12 @@
       </div>
 
       <div class="py-3 flex items-baseline justify-between gap-4">
-        <dt class="text-sm font-medium text-slate-600">Built</dt>
-        <dd class="font-mono text-sm text-slate-800">{{ formattedBuildTime }}</dd>
+        <dt class="text-sm font-medium text-slate-600">API built</dt>
+        <dd class="font-mono text-sm text-slate-800">
+          <span v-if="apiLoading">…</span>
+          <span v-else-if="apiError || !apiBuildTime" class="text-slate-400">—</span>
+          <span v-else>{{ formattedApiBuildTime }}</span>
+        </dd>
       </div>
     </dl>
   </div>
@@ -34,6 +43,19 @@
 import { defineComponent, ref, computed, onMounted } from 'vue'
 import { HealthHttpClient } from '../../services/HealthHttpClient'
 
+function formatTimestamp(value: string): string {
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return value
+  return d.toLocaleString('en-US', {
+    month: 'numeric',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
+
 export default defineComponent({
   name: 'AboutPanel',
   setup() {
@@ -42,6 +64,7 @@ export default defineComponent({
     const buildTime = __APP_BUILD_TIME__
 
     const apiVersion = ref('')
+    const apiBuildTime = ref('')
     const apiLoading = ref(true)
     const apiError = ref(false)
 
@@ -50,23 +73,16 @@ export default defineComponent({
       return `${versionPart} (${uiCommit})`
     })
 
-    const formattedBuildTime = computed(() => {
-      const d = new Date(buildTime)
-      if (Number.isNaN(d.getTime())) return buildTime
-      return d.toLocaleString('en-US', {
-        month: 'numeric',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      })
-    })
+    const formattedUiBuildTime = computed(() => formatTimestamp(buildTime))
+    const formattedApiBuildTime = computed(() => formatTimestamp(apiBuildTime.value))
 
     onMounted(async () => {
       try {
         const data = await new HealthHttpClient().getHealthChecks()
         apiVersion.value = data.version
+        // Absent on API builds ≤ v120; "unknown" if the assembly missed the stamp.
+        apiBuildTime.value =
+          data.buildTimeUtc && data.buildTimeUtc !== 'unknown' ? data.buildTimeUtc : ''
       } catch {
         apiError.value = true
       } finally {
@@ -74,7 +90,15 @@ export default defineComponent({
       }
     })
 
-    return { uiDisplay, apiVersion, apiLoading, apiError, formattedBuildTime }
+    return {
+      uiDisplay,
+      apiVersion,
+      apiBuildTime,
+      apiLoading,
+      apiError,
+      formattedUiBuildTime,
+      formattedApiBuildTime,
+    }
   },
 })
 </script>

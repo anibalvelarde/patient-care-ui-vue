@@ -10,5 +10,7 @@ export interface HealthCheckStatus {
 
 export interface HealthCheckResponse {
   version: string;
+  /** ISO-8601 UTC compile-time stamp; absent on API builds ≤ v120 (H2). */
+  buildTimeUtc?: string;
   statuses: HealthCheckStatus[];
 }
