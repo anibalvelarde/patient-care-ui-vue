@@ -34,6 +34,20 @@
                 <span class="font-medium text-slate-800">{{ appointment.therapist }}</span>
               </div>
               <div class="flex justify-between">
+                <span class="text-slate-500">Caretaker</span>
+                <span class="font-medium text-slate-800">{{ appointment.caretakerName || '—' }}</span>
+              </div>
+              <div v-if="appointment.caretakerName" class="flex justify-between">
+                <span class="text-slate-500">Caretaker Phone</span>
+                <span class="text-slate-700">{{ appointment.caretakerPhone || '—' }}</span>
+              </div>
+              <div v-if="appointment.caretakerName" class="flex justify-between gap-2">
+                <span class="text-slate-500 flex-shrink-0">Caretaker Email</span>
+                <span class="text-slate-700 truncate" :title="appointment.caretakerEmail || undefined">
+                  {{ appointment.caretakerEmail || '—' }}
+                </span>
+              </div>
+              <div class="flex justify-between">
                 <span class="text-slate-500">Date</span>
                 <span class="text-slate-700">{{ appointment.sessionDate }}</span>
               </div>

@@ -55,7 +55,8 @@
           <div class="flex-1 min-w-0">
             <p class="text-sm font-medium text-gray-800 truncate">{{ appt.patient }}</p>
             <p class="text-xs text-gray-400 truncate">
-              {{ appt.therapyTypes }} &middot; {{ appt.therapist }}
+              <!-- B4: prefer the resolved Specialty Type name over the raw therapy-type code -->
+              {{ appt.specialtyName || appt.therapyTypes || 'N/A' }} &middot; {{ appt.therapist }}
             </p>
             <!-- Mobile financial summary -->
             <p class="md:hidden text-[10px] mt-0.5 truncate">

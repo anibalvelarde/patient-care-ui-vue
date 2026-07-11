@@ -25,6 +25,11 @@ export interface Appointment {
     specialtyAbbreviation: string | null;
     specialtyName: string | null;
     isDiscovery: boolean | null;
+    // B3: primary caretaker contact info (first link as fallback; null when the patient
+    // has no caretaker) — see _contracts/sessions-api.md.
+    caretakerName: string | null;
+    caretakerPhone: string | null;
+    caretakerEmail: string | null;
     // WP-17: confidential (matrix grants Appointments.ProviderAmount to MGR/AM only). The API omits
     // this field from the response for callers lacking the claim (e.g. FrontDesk), so it is optional.
     providerAmount?: number;
