@@ -14,7 +14,8 @@ declare module 'vue-router' {
 }
 
 // `meta.permission` (a generated coarse `*.View` claim) gates page access: the global guard below
-// redirects to the dashboard when the signed-in user lacks it (WP-17C). SYSADMIN passes everything
+// redirects to the user's landing route (first allowed page) when they lack it (WP-17C; landing
+// order added for Questionnaire A roles — ACCT has no Dashboard.View). SYSADMIN passes everything
 // via the wildcard. `/admin` stays SYSADMIN-only this WP — honoring the matrix's MGR `Admin.View`
 // (read-only) is a tracked 17C follow-up (needs AdminView's Manage controls split first).
 const router = createRouter({
@@ -100,11 +101,34 @@ const router = createRouter({
   ],
 });
 
+// Landing candidates in preference order. Not every operator role holds Dashboard.View
+// (Questionnaire A: ACCT doesn't), so redirects resolve to the user's FIRST allowed page
+// instead of a hard-coded dashboard — which would sign such users out / loop them.
+// `/admin` is excluded: it's SA-only in the UI for now (17C follow-up).
+const LANDING_ORDER: ReadonlyArray<readonly [Permission, string]> = [
+  [Permissions.DashboardView, 'dashboard'],
+  [Permissions.PatientsView, 'patients'],
+  [Permissions.TherapistsView, 'therapists'],
+  [Permissions.CaretakersView, 'caretakers'],
+  [Permissions.PaymentsView, 'payments'],
+  [Permissions.StatementsView, 'statements'],
+  [Permissions.ServicePaymentsView, 'service-payments'],
+  [Permissions.AppointmentsView, 'appointments'],
+  [Permissions.TreatmentPlansView, 'treatment-plans'],
+  [Permissions.ScheduleView, 'schedule'],
+];
+
+/** The signed-in user's landing route: first page they may open, or null if none. */
+function landingRoute(auth: ReturnType<typeof useAuthStore>): string | null {
+  if (auth.isSystemAdmin) return 'dashboard';
+  const hit = LANDING_ORDER.find(([claim]) => auth.hasClaim('Permission', claim));
+  return hit ? hit[1] : null;
+}
+
 /** Does the signed-in user have a usable entry into the operator app? */
 function hasAppAccess(auth: ReturnType<typeof useAuthStore>): boolean {
-  // Dashboard is every operator role's landing page (granted to MGR/AM/FD and the SA wildcard).
-  // A principal without it — e.g. a Caretaker-only / claimless user — has no usable page at all.
-  return auth.isSystemAdmin || auth.hasClaim('Permission', Permissions.DashboardView);
+  // A principal with no reachable page at all — e.g. a Caretaker-only / claimless user.
+  return landingRoute(auth) !== null;
 }
 
 /**
@@ -141,19 +165,20 @@ export async function accessGuard(to: RouteLocationNormalized) {
 
   // Don't show the login page to an already-authenticated user.
   if (auth.isAuthenticated && to.name === 'login') {
-    return { name: 'dashboard' };
+    return { name: landingRoute(auth)! };
   }
 
   if (to.meta.requiresSystemAdmin && !auth.isSystemAdmin) {
-    return { name: 'dashboard' };
+    return { name: landingRoute(auth)! };
   }
 
   // Coarse page-access gate: a route with a `meta.permission` requires that claim (WP-17C).
-  // SYSADMIN passes via the wildcard inside hasClaim. Unauthorized users land on the dashboard
-  // (which itself requires Dashboard.View — granted to every operator role).
+  // SYSADMIN passes via the wildcard inside hasClaim. Unauthorized users land on their landing
+  // route — their first allowed page, which passes this gate by construction (no redirect loop).
+  // landingRoute() is non-null here: hasAppAccess() above already signed out users without one.
   const permission = to.meta.permission;
   if (typeof permission === 'string' && !auth.hasClaim('Permission', permission)) {
-    return { name: 'dashboard' };
+    return { name: landingRoute(auth)! };
   }
 
   return true;

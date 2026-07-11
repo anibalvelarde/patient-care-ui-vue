@@ -13,7 +13,7 @@ import manifest from '../generated/access-control-matrix.json';
 import { Permissions } from '../generated/permissions';
 import type { ClaimDto } from '../interfaces/Auth';
 
-type Role = 'MGR' | 'AM' | 'FD';
+type Role = 'MGR' | 'AM' | 'FD' | 'OWN' | 'ACCT';
 
 function claimsForRole(role: Role): ClaimDto[] {
   return (manifest.claims as Array<{ claim: string; grants: string[] }>)
@@ -89,6 +89,47 @@ describe('accessGuard', () => {
     authAs({ isSystemAdmin: true });
     const result = await accessGuard(
       to({ name: 'admin', fullPath: '/admin', meta: { requiresSystemAdmin: true } }),
+    );
+    expect(result).toBe(true);
+  });
+
+  // Questionnaire A (2026-07-11): ACCT is the first operator role WITHOUT Dashboard.View.
+  // The old guard hard-coded dashboard as both the app-access test and every redirect target,
+  // which would sign ACCT out at login ("no-access") and loop any denied navigation.
+
+  it('does NOT sign out an Accountant (no Dashboard.View but real claims)', async () => {
+    const store = authAs({ role: 'ACCT' });
+    const result = await accessGuard(
+      to({ name: 'patients', fullPath: '/patients', meta: { permission: Permissions.PatientsView } }),
+    );
+    expect(result).toBe(true);
+    expect(store.isAuthenticated).toBe(true);
+  });
+
+  it('redirects an Accountant hitting the dashboard to their first allowed page, not a loop', async () => {
+    authAs({ role: 'ACCT' });
+    const result = await accessGuard(
+      to({ name: 'dashboard', fullPath: '/', meta: { permission: Permissions.DashboardView } }),
+    );
+    expect(result).toMatchObject({ name: 'patients' });
+  });
+
+  it('redirects an Accountant away from a denied page (Appointments) to their landing page', async () => {
+    authAs({ role: 'ACCT' });
+    const result = await accessGuard(
+      to({
+        name: 'appointments',
+        fullPath: '/appointments',
+        meta: { permission: Permissions.AppointmentsView },
+      }),
+    );
+    expect(result).toMatchObject({ name: 'patients' });
+  });
+
+  it('lets an Owner reach the dashboard (has Dashboard.View)', async () => {
+    authAs({ role: 'OWN' });
+    const result = await accessGuard(
+      to({ name: 'dashboard', fullPath: '/', meta: { permission: Permissions.DashboardView } }),
     );
     expect(result).toBe(true);
   });
