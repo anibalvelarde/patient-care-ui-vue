@@ -44,10 +44,11 @@
           {{ tab.label }}
         </button>
       </div>
-      <span v-if="activeFilter !== 'delinquent'" class="text-sm text-slate-500">
+      <!-- Session History paints its own (server-side) count in its paging footer. -->
+      <span v-if="activeFilter !== 'delinquent' && activeFilter !== 'sessions'" class="text-sm text-slate-500">
         {{ filteredPatients.length }} patient{{ filteredPatients.length !== 1 ? 's' : '' }}
       </span>
-      <span v-else class="text-sm text-amber-600">
+      <span v-else-if="activeFilter === 'delinquent'" class="text-sm text-amber-600">
         {{ pastDuePatients.length }} patient{{ pastDuePatients.length !== 1 ? 's' : '' }} past due
       </span>
     </div>
@@ -77,6 +78,12 @@
       @pay="(dp) => $emit('pay-delinquent', dp)"
     />
 
+    <!-- Session History tab (WP-21, F1) — self-loading, server-paged -->
+    <SessionHistoryPanel
+      v-else-if="activeFilter === 'sessions'"
+      :search="search"
+    />
+
     <!-- Standard patient table -->
     <PatientTable
       v-else
@@ -96,14 +103,17 @@ import type { DelinquentPatient } from '../../interfaces/Delinquency';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import PatientTable from './PatientTable.vue';
 import DelinquentTable from './DelinquentTable.vue';
+import SessionHistoryPanel from './SessionHistoryPanel.vue';
+
+type PatientTabValue = 'all' | 'active' | 'inactive' | 'delinquent' | 'sessions';
 
 export default defineComponent({
   name: 'PatientList',
-  components: { PatientTable, DelinquentTable },
+  components: { PatientTable, DelinquentTable, SessionHistoryPanel },
   props: {
     patients: { type: Array as PropType<Patient[]>, required: true },
     pastDuePatients: { type: Array as PropType<DelinquentPatient[]>, default: () => [] },
-    initialTab: { type: String as PropType<'all' | 'active' | 'inactive' | 'delinquent'>, default: 'all' },
+    initialTab: { type: String as PropType<PatientTabValue>, default: 'all' },
     loading: { type: Boolean, default: false },
     error: { type: String, default: '' },
   },
@@ -111,7 +121,7 @@ export default defineComponent({
   setup(props, { emit }) {
     const { hasClaim } = useClaims();
     const search = ref('');
-    const activeFilter = ref<'all' | 'active' | 'inactive' | 'delinquent'>(props.initialTab);
+    const activeFilter = ref<PatientTabValue>(props.initialTab);
 
     onMounted(() => {
       if (props.initialTab !== 'all') {
@@ -124,6 +134,9 @@ export default defineComponent({
       { label: 'Active', value: 'active' as const },
       { label: 'Inactive', value: 'inactive' as const },
       { label: 'Delinquent', value: 'delinquent' as const, claim: Permissions.PatientsDelinquentView },
+      // WP-21 (F1): rides the page claim — visible to everyone who can open /patients
+      // (ACCT/AM/FD/MGR/OWN + SYSADMIN); explicit for symmetry with Delinquent.
+      { label: 'Session History', value: 'sessions' as const, claim: Permissions.PatientsView },
     ];
 
     // The Delinquent tab is gated on Patients.Delinquent.View (FD excluded). Filtering it from the
@@ -132,7 +145,7 @@ export default defineComponent({
       tabs.filter((t) => !('claim' in t) || hasClaim('Permission', t.claim as string)),
     );
 
-    const onTabClick = (value: 'all' | 'active' | 'inactive' | 'delinquent') => {
+    const onTabClick = (value: PatientTabValue) => {
       activeFilter.value = value;
       emit('tab-change', value);
     };

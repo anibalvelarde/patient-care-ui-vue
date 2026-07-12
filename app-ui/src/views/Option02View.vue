@@ -133,7 +133,11 @@ export default defineComponent({
         '/treatment-plans': 'Treatment Plans',
       };
       const basePath = from.split('?')[0];
-      const label = pathLabels[basePath] || basePath.replace(/^\//, '');
+      let label = pathLabels[basePath] || basePath.replace(/^\//, '');
+      // WP-21: two Patients tabs link here — pick the label from the tab the user came from.
+      if (basePath === '/patients' && from.includes('tab=sessions')) {
+        label = 'Patient Session History';
+      }
       return { label: `Back to ${label}`, to: from };
     });
 

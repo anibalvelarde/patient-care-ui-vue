@@ -18,7 +18,7 @@ import type { ClaimDto } from '../interfaces/Auth';
 import PatientList from '../components/patients/PatientList.vue';
 import O2Sidebar from '../components/option02/O2Sidebar.vue';
 
-type Role = 'MGR' | 'AM' | 'FD';
+type Role = 'MGR' | 'AM' | 'FD' | 'ACCT' | 'OWN';
 
 function claimsForRole(role: Role): ClaimDto[] {
   return (manifest.claims as Array<{ claim: string; grants: string[] }>)
@@ -120,6 +120,26 @@ describe('PatientList — Delinquent tab gating', () => {
 
   it('shows the Delinquent tab for AssistantManager', () => {
     expect(tabLabels(mountAs('AM'))).toContain('Delinquent');
+  });
+
+  // WP-21 (F1): Session History rides Patients.View — visible to the whole page audience,
+  // including the two roles that diverge on Delinquent (FD lacks it, ACCT lacks it).
+  it('shows the Session History tab for FrontDesk (Patients.View) even though Delinquent is hidden', () => {
+    const labels = tabLabels(mountAs('FD'));
+    expect(labels).toContain('Session History');
+    expect(labels).not.toContain('Delinquent');
+  });
+
+  it('shows the Session History tab for ACCT, whose Delinquent tab is hidden', () => {
+    const labels = tabLabels(mountAs('ACCT'));
+    expect(labels).toContain('Session History');
+    expect(labels).not.toContain('Delinquent');
+  });
+
+  it('shows both Session History and Delinquent for OWN', () => {
+    const labels = tabLabels(mountAs('OWN'));
+    expect(labels).toContain('Session History');
+    expect(labels).toContain('Delinquent');
   });
 });
 
