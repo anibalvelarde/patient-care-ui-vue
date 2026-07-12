@@ -74,6 +74,26 @@
             />
           </div>
 
+          <!-- WP-23 (F7): SENADIS flag — free at create; on edit this is the app's first
+               in-modal claim gate (Patients.SenadisDiscount.Edit, MGR/AM only) -->
+          <div class="space-y-1">
+            <label class="flex items-center space-x-2 cursor-pointer" :class="{ 'cursor-not-allowed opacity-60': !canEditSenadis }">
+              <input
+                v-model="form.hasSenadisDiscount"
+                type="checkbox"
+                :disabled="!canEditSenadis"
+                class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed"
+              />
+              <span class="text-sm font-medium text-slate-700">SENADIS discount (statutory 20%)</span>
+            </label>
+            <p v-if="form.hasSenadisDiscount && canEditSenadis" class="text-xs text-slate-400">
+              A 20% discount floor auto-applies to this patient's bookings.
+            </p>
+            <p v-if="!canEditSenadis" class="text-xs text-slate-400">
+              Only Managers / Assistant Managers can change the SENADIS flag.
+            </p>
+          </div>
+
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Email *</label>
             <input
@@ -204,6 +224,7 @@ import { useModalForm } from '../../composables/useModalForm';
 import FormErrorBanner from '../shared/FormErrorBanner.vue';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import { formatAge } from '../../utils/age';
+import { useClaims, Permissions } from '../../composables/useClaims';
 
 function parseName(patientName: string) {
   const [last, rest] = patientName.split(', ');
@@ -244,6 +265,7 @@ export default defineComponent({
   emits: ['close', 'saved', 'created-temp-mrn'],
   setup(props, { emit }) {
     const { error, hasError, saving, setError, clearError, submit } = useModalForm();
+    const { hasClaim } = useClaims();
 
     const form = reactive({
       firstName: '',
@@ -255,10 +277,18 @@ export default defineComponent({
       gender: '',
       medicalRecordNumber: '',
       cedula: '',
+      hasSenadisDiscount: false,
       activeStatus: true,
     });
 
     const isEdit = ref(false);
+
+    // WP-23 (F7): anyone who can create patients may SET the flag at create; changing it on an
+    // existing patient needs the claim (Questionnaire E). The payload omits the field when
+    // disabled — the API's field-level gate would 403 a change from an unauthorized role anyway.
+    const canEditSenadis = computed(
+      () => !isEdit.value || hasClaim('Permission', Permissions.PatientsSenadisDiscountEdit)
+    );
 
     // Blank on edit means "keep the current MRN", so temp-ness is judged on the effective value.
     const effectiveMrn = computed(
@@ -287,6 +317,7 @@ export default defineComponent({
           form.gender = props.patient.gender ?? '';
           form.medicalRecordNumber = props.patient.medicalRecordNumber ?? '';
           form.cedula = props.patient.cedula ?? '';
+          form.hasSenadisDiscount = props.patient.hasSenadisDiscount === true;
           form.activeStatus = props.patient.isActive;
         } else {
           isEdit.value = false;
@@ -299,6 +330,7 @@ export default defineComponent({
           form.gender = '';
           form.medicalRecordNumber = '';
           form.cedula = '';
+          form.hasSenadisDiscount = false;
           form.activeStatus = true;
         }
       }
@@ -334,6 +366,8 @@ export default defineComponent({
             // Always send the field on update: '' expresses an explicit clear-to-NULL (the API
             // treats omitted = leave as-is, blank = erase — intake 2026-06-29-001 item 3).
             cedula: form.cedula.trim(),
+            // WP-23 (F7): only send when this user may edit it — omitted = unchanged server-side.
+            hasSenadisDiscount: canEditSenadis.value ? form.hasSenadisDiscount : undefined,
           };
 
           if (assigningPermanentMrn && form.activeStatus) {
@@ -365,6 +399,7 @@ export default defineComponent({
             gender: form.gender,
             medicalRecordNumber: form.medicalRecordNumber || undefined,
             cedula: form.cedula || undefined,
+            hasSenadisDiscount: form.hasSenadisDiscount,
           });
           if (isTemporaryMrn(created.medicalRecordNumber ?? '')) {
             emit('created-temp-mrn', created);
@@ -375,7 +410,7 @@ export default defineComponent({
       });
     };
 
-    return { form, isEdit, saving, error, hasError, hasTemporaryMrn, cannotActivate, age, handleSubmit };
+    return { form, isEdit, saving, error, hasError, hasTemporaryMrn, cannotActivate, canEditSenadis, age, handleSubmit };
   },
 });
 </script>

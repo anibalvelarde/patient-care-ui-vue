@@ -8,7 +8,7 @@
 //   app-ui/src/generated/access-control-matrix.json, then re-run
 //   tools/generate-ui-permissions.sh.
 //
-//   Access-control manifest semantic hash: 6c42b5362fbc
+//   Access-control manifest semantic hash: 10ad6ddcd5dd
 // </auto-generated>
 
 /**
@@ -47,6 +47,7 @@ export const Permissions = {
   PatientsEdit: 'Patients.Edit',
   PatientsLinkCaretaker: 'Patients.LinkCaretaker',
   PatientsMerge: 'Patients.Merge',
+  PatientsSenadisDiscountEdit: 'Patients.SenadisDiscount.Edit',
   PatientsStartDiscovery: 'Patients.StartDiscovery',
   PatientsView: 'Patients.View',
   PaymentsAdjust: 'Payments.Adjust',
@@ -77,4 +78,4 @@ export const Permissions = {
 export type Permission = (typeof Permissions)[keyof typeof Permissions];
 
 /** Access-control manifest semantic hash this module was generated from (WP-17 anchor). */
-export const ACCESS_CONTROL_MANIFEST_HASH = '6c42b5362fbc';
+export const ACCESS_CONTROL_MANIFEST_HASH = '10ad6ddcd5dd';
