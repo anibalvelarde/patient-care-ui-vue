@@ -3,6 +3,7 @@ import { HttpClientBase } from './HttpClientBase';
 import type { Patient, PatientCreateRequest, PatientUpdateRequest, PatientCaretakerSummary } from '../interfaces/Patient';
 import type { DelinquentPatient } from '../interfaces/Delinquency';
 import type { PagedResult, PatientSessionHistorySummary, PatientHistorySession } from '../interfaces/SessionHistory';
+import type { PatientMergeRequest, PatientMergePreview, PatientMergeResult } from '../interfaces/PatientMerge';
 
 export class PatientsHttpClient extends HttpClientBase {
   async getPatients(): Promise<Patient[]> {
@@ -40,5 +41,14 @@ export class PatientsHttpClient extends HttpClientBase {
   async getPatientSessions(patientId: number, page: number, pageSize = 25): Promise<PagedResult<PatientHistorySession>> {
     const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
     return this.get<PagedResult<PatientHistorySession>>(`/api/patients/${patientId}/sessions?${params.toString()}`);
+  }
+
+  // WP-22 (F2): duplicate-patient merge — SYSADMIN-only (Patients.Merge, wildcard-only claim).
+  async previewMerge(request: PatientMergeRequest): Promise<PatientMergePreview> {
+    return this.post<PatientMergePreview>('/api/patients/merge/preview', request);
+  }
+
+  async executeMerge(request: PatientMergeRequest): Promise<PatientMergeResult> {
+    return this.post<PatientMergeResult>('/api/patients/merge', request);
   }
 }
