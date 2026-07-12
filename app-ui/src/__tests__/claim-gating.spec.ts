@@ -54,6 +54,9 @@ describe('store hasClaim matrix (the predicate every gate calls)', () => {
     expect(has(Permissions.PaymentsRecord)).toBe(true);
     expect(has(Permissions.TreatmentPlansBook)).toBe(true);
     expect(has(Permissions.AppointmentsBook)).toBe(true);
+    // WP-24: FD gained StartDiscovery (hash 7ae3aa5e3274) — front desk books new
+    // patients' first (discovery) sessions; the API now enforces the claim (audit F1).
+    expect(has(Permissions.PatientsStartDiscovery)).toBe(true);
     // denied
     expect(has(Permissions.PatientsDelinquentView)).toBe(false);
     expect(has(Permissions.TherapistsDelinquentView)).toBe(false);
@@ -64,7 +67,7 @@ describe('store hasClaim matrix (the predicate every gate calls)', () => {
     expect(has(Permissions.AppointmentsReassign)).toBe(false);
     expect(has(Permissions.PaymentsAdjust)).toBe(false);
     expect(has(Permissions.TreatmentPlansEdit)).toBe(false);
-    expect(has(Permissions.PatientsStartDiscovery)).toBe(false);
+    expect(has(Permissions.PatientsRequiresDiscoveryEdit)).toBe(false); // WP-24: edit gate is MGR/AM
     expect(has(Permissions.AdminView)).toBe(false);
   });
 
