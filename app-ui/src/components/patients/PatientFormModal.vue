@@ -94,6 +94,27 @@
             </p>
           </div>
 
+          <!-- WP-24 (F3/F4): discovery-first waiver — free at create (default CHECKED); on edit
+               claim-gated like SENADIS (Patients.RequiresDiscovery.Edit, MGR/AM only) -->
+          <div class="space-y-1">
+            <label class="flex items-center space-x-2 cursor-pointer" :class="{ 'cursor-not-allowed opacity-60': !canEditRequiresDiscovery }">
+              <input
+                v-model="form.requiresDiscovery"
+                type="checkbox"
+                :disabled="!canEditRequiresDiscovery"
+                class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed"
+                data-testid="requires-discovery-checkbox"
+              />
+              <span class="text-sm font-medium text-slate-700">Requires discovery session</span>
+            </label>
+            <p v-if="!form.requiresDiscovery && canEditRequiresDiscovery" class="text-xs text-slate-400">
+              This patient is exempt from the discovery-first rule — treatment sessions can be booked without a completed discovery session.
+            </p>
+            <p v-if="!canEditRequiresDiscovery" class="text-xs text-slate-400">
+              Only Managers / Assistant Managers can change this after creation.
+            </p>
+          </div>
+
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Email *</label>
             <input
@@ -278,6 +299,9 @@ export default defineComponent({
       medicalRecordNumber: '',
       cedula: '',
       hasSenadisDiscount: false,
+      // WP-24 (F3): discovery required by default — a new patient must complete a discovery
+      // session before treatment bookings unless explicitly waived at create.
+      requiresDiscovery: true,
       activeStatus: true,
     });
 
@@ -288,6 +312,12 @@ export default defineComponent({
     // disabled — the API's field-level gate would 403 a change from an unauthorized role anyway.
     const canEditSenadis = computed(
       () => !isEdit.value || hasClaim('Permission', Permissions.PatientsSenadisDiscountEdit)
+    );
+
+    // WP-24 (F3/F4): same shape — any patient-creating role sets the waiver at create;
+    // changing it on an existing patient needs Patients.RequiresDiscovery.Edit (MGR/AM).
+    const canEditRequiresDiscovery = computed(
+      () => !isEdit.value || hasClaim('Permission', Permissions.PatientsRequiresDiscoveryEdit)
     );
 
     // Blank on edit means "keep the current MRN", so temp-ness is judged on the effective value.
@@ -318,6 +348,8 @@ export default defineComponent({
           form.medicalRecordNumber = props.patient.medicalRecordNumber ?? '';
           form.cedula = props.patient.cedula ?? '';
           form.hasSenadisDiscount = props.patient.hasSenadisDiscount === true;
+          // WP-24: absent/undefined (older API) reads as true — only an explicit false waives.
+          form.requiresDiscovery = props.patient.requiresDiscovery !== false;
           form.activeStatus = props.patient.isActive;
         } else {
           isEdit.value = false;
@@ -331,6 +363,7 @@ export default defineComponent({
           form.medicalRecordNumber = '';
           form.cedula = '';
           form.hasSenadisDiscount = false;
+          form.requiresDiscovery = true; // WP-24: default CHECKED at create
           form.activeStatus = true;
         }
       }
@@ -368,6 +401,8 @@ export default defineComponent({
             cedula: form.cedula.trim(),
             // WP-23 (F7): only send when this user may edit it — omitted = unchanged server-side.
             hasSenadisDiscount: canEditSenadis.value ? form.hasSenadisDiscount : undefined,
+            // WP-24 (F3/F4): same omit-when-gated rule.
+            requiresDiscovery: canEditRequiresDiscovery.value ? form.requiresDiscovery : undefined,
           };
 
           if (assigningPermanentMrn && form.activeStatus) {
@@ -400,6 +435,7 @@ export default defineComponent({
             medicalRecordNumber: form.medicalRecordNumber || undefined,
             cedula: form.cedula || undefined,
             hasSenadisDiscount: form.hasSenadisDiscount,
+            requiresDiscovery: form.requiresDiscovery,
           });
           if (isTemporaryMrn(created.medicalRecordNumber ?? '')) {
             emit('created-temp-mrn', created);
@@ -410,7 +446,7 @@ export default defineComponent({
       });
     };
 
-    return { form, isEdit, saving, error, hasError, hasTemporaryMrn, cannotActivate, canEditSenadis, age, handleSubmit };
+    return { form, isEdit, saving, error, hasError, hasTemporaryMrn, cannotActivate, canEditSenadis, canEditRequiresDiscovery, age, handleSubmit };
   },
 });
 </script>

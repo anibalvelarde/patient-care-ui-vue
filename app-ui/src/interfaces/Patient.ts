@@ -16,6 +16,11 @@ export interface Patient {
   // floor; edit gated by Patients.SenadisDiscount.Edit (MGR/AM). Optional so the UI
   // tolerates an older deployed API (absent ⇒ treated as false).
   hasSenadisDiscount?: boolean;
+  // WP-24 (F3/F4): discovery-first waiver — false = exempt from the completed-discovery-
+  // before-treatment rule (legacy imports are backfilled false). Default true; edit gated by
+  // Patients.RequiresDiscovery.Edit (MGR/AM). Optional so the UI tolerates an older deployed
+  // API (absent ⇒ treated as true).
+  requiresDiscovery?: boolean;
   hasCompletedDiscovery: boolean | null;
   createdTimestamp: string;
   caretakers?: PatientCaretakerSummary[];
@@ -40,6 +45,8 @@ export interface PatientCreateRequest {
   medicalRecordNumber?: string;
   cedula?: string;
   hasSenadisDiscount?: boolean;
+  // WP-24 (F3): omitted = true server-side (discovery required by default).
+  requiresDiscovery?: boolean;
 }
 
 // Maps to API's PatientProfileUpdateRequest (PUT)
@@ -56,6 +63,8 @@ export interface PatientUpdateRequest {
   cedula?: string;
   // Omit when the caller may not edit it (claim-gated) — omitted/null = unchanged server-side.
   hasSenadisDiscount?: boolean;
+  // Omit when the caller may not edit it (claim-gated) — omitted/null = unchanged server-side.
+  requiresDiscovery?: boolean;
 }
 
 // Temporary MRN helper

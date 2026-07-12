@@ -200,7 +200,9 @@ export default defineComponent({
     // Bidirectional filtering: specialty ↔ therapist (with discovery-first)
     const filteredSpecialties = computed(() => {
       let specs = specialtyTypes.value;
-      // WP-17C F1: cosmetic only. Discovery sessions are still creatable by FD via the normal POST /api/sessions booking flow; the real fix (a dedicated discovery-start endpoint, or relaxing the matrix to allow FD) is deferred to the discovery-first workflow. Hiding the option here is presentation, not enforcement.
+      // WP-24 (audit F1 closed): FD now HOLDS Patients.StartDiscovery (matrix hash 7ae3aa5e3274)
+      // and the API enforces the claim imperatively on POST /api/sessions (403 without it) — this
+      // filter is now backed by real enforcement, no longer cosmetic-only.
       if (!hasClaim('Permission', Permissions.PatientsStartDiscovery)) {
         specs = specs.filter(s => !isDiscoverySpecialty(s.abbreviation));
       }
@@ -303,7 +305,9 @@ export default defineComponent({
       if (patientId <= 0) { needsDiscovery.value = false; senadisPatient.value = false; return; }
       try {
         const patient = await patientsClient.getPatient(patientId);
-        needsDiscovery.value = patient.hasCompletedDiscovery === false;
+        // WP-24 (F3/F4): requiresDiscovery=false waives the discovery-first rule (legacy
+        // imports); !== false tolerates an older API that omits the field (⇒ still required).
+        needsDiscovery.value = patient.requiresDiscovery !== false && patient.hasCompletedDiscovery === false;
         // WP-23 (F7): same fetched profile carries the SENADIS flag — one toast per
         // patient selection, then clamp the discount up to the floor.
         senadisPatient.value = patient.hasSenadisDiscount === true;
