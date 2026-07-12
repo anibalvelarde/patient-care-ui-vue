@@ -41,7 +41,7 @@
                     :title="section.title"
                     :subtitle="section.subtitle"
                     :add-button-label="section.addButtonLabel"
-                    :columns="lookupColumns"
+                    :columns="columnsFor(section.key)"
                     id-key="id"
                     :items="(crudMap[section.key].items.value as unknown as Record<string, unknown>[])"
                     :loading="crudMap[section.key].loading.value"
@@ -164,6 +164,18 @@ export default defineComponent({
       { key: 'sortOrder', label: 'Sort Order', type: 'number' },
     ];
 
+    // WP-23 (F6): first PER-TYPE lookup config — specialty-types alone gains the default
+    // session price column/field (pre-filled into the booking form; blank = no default).
+    const columnsFor = (tableKey: string): ColumnDef[] =>
+      tableKey === 'specialty-types'
+        ? [...lookupColumns, { key: 'defaultAmount', label: 'Default $' }]
+        : lookupColumns;
+
+    const fieldsFor = (tableKey: string): FieldDef[] =>
+      tableKey === 'specialty-types'
+        ? [...lookupFields, { key: 'defaultAmount', label: 'Default $ (session price)', type: 'number' }]
+        : lookupFields;
+
     // ── Lookup section metadata ─────────────────────────────────
     const lookupSections = [
       { key: 'appointment-statuses', title: 'Appointment Statuses', subtitle: 'Status workflow for therapy sessions', addButtonLabel: 'Add Status', addTitle: 'Add Status', editTitle: 'Edit Status' },
@@ -179,6 +191,9 @@ export default defineComponent({
       if (data.name?.trim()) payload.name = data.name.trim();
       if (data.description?.trim()) payload.description = data.description.trim();
       if (data.sortOrder !== undefined && data.sortOrder !== '') payload.sortOrder = Number(data.sortOrder);
+      // WP-23 (F6): specialty-types only (the field is absent from other tables' forms);
+      // omitted when blank = unchanged server-side.
+      if (data.defaultAmount !== undefined && data.defaultAmount !== '') payload.defaultAmount = Number(data.defaultAmount);
       return payload;
     };
 
@@ -214,7 +229,7 @@ export default defineComponent({
       crud.openAdd = () => {
         originalOpenAdd();
         lookupModalTitle.value = section.addTitle;
-        lookupModalFields.value = lookupFields;
+        lookupModalFields.value = fieldsFor(section.key);
         lookupModalInitialValues.value = null;
         lookupModalEditId.value = undefined;
         lookupModalReadonlyFields.value = [];
@@ -226,9 +241,9 @@ export default defineComponent({
         originalOpenEdit(item);
         const record = item as Record<string, unknown>;
         lookupModalTitle.value = section.editTitle;
-        lookupModalFields.value = lookupFields;
+        lookupModalFields.value = fieldsFor(section.key);
         lookupModalInitialValues.value = {};
-        for (const field of lookupFields) {
+        for (const field of fieldsFor(section.key)) {
           lookupModalInitialValues.value[field.key] = String(record[field.key] ?? '');
         }
         lookupModalEditId.value = record.id as number;
@@ -258,7 +273,7 @@ export default defineComponent({
       sites, siteLoading, siteError, siteModalVisible, editingSite,
       loadSites, openSiteAdd, openSiteEdit, onSiteSaved,
       // Lookup tables
-      lookupSections, lookupColumns, crudMap,
+      lookupSections, lookupColumns, columnsFor, crudMap,
       // Modal
       lookupModalVisible, lookupModalTitle, lookupModalFields,
       lookupModalInitialValues, lookupModalReadonlyFields, handleLookupSubmit,

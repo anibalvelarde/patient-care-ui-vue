@@ -32,6 +32,13 @@
               </p>
             </div>
 
+            <!-- WP-23 (F10): proactive hard block — the API rejects caretaker-less bookings with 400 -->
+            <div v-if="caretakerBlocked" class="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p class="text-sm font-medium text-red-700">
+                Scheduling blocked — this patient has no caretaker on file. Link a caretaker first.
+              </p>
+            </div>
+
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">Start Date</label>
               <input
@@ -111,10 +118,11 @@
                   <div class="flex items-center space-x-2">
                     <div class="relative flex-1">
                       <span class="absolute left-2 top-1.5 text-xs text-slate-400">$</span>
+                      <!-- WP-23 (F7): min rides the per-line SENADIS floor; submit clamps, API floors -->
                       <input
                         type="number"
                         step="0.01"
-                        min="0"
+                        :min="senadisPatient ? lineFloor(line) : 0"
                         v-model.number="line.discountAmount"
                         @input="updateDiscountPct(line)"
                         class="w-full pl-5 pr-2 py-1.5 border border-slate-200 rounded-lg text-sm"
@@ -125,7 +133,7 @@
                       <input
                         type="number"
                         step="0.1"
-                        min="0"
+                        :min="senadisPatient ? 20 : 0"
                         max="100"
                         v-model.number="line.discountPct"
                         @input="updateDiscountAmt(line)"
@@ -139,6 +147,9 @@
                     <template v-if="line.discountAmount > 0">
                       &rarr; Net: ${{ (lineAmount(line) - line.discountAmount).toFixed(2) }}
                     </template>
+                  </p>
+                  <p v-if="senadisPatient" class="text-xs text-violet-600 mt-0.5">
+                    SENADIS: min ${{ lineFloor(line).toFixed(2) }} (20%)
                   </p>
                 </div>
               </div>
@@ -298,6 +309,7 @@ import { DAY_OF_WEEK_LABELS } from '../../interfaces/TreatmentPlan';
 import { TreatmentPlansHttpClient } from '../../services/TreatmentPlansHttpClient';
 import { SitesHttpClient } from '../../services/SitesHttpClient';
 import { TherapistsHttpClient } from '../../services/TherapistsHttpClient';
+import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import type { Site } from '../../interfaces/Site';
 import type { Therapist } from '../../interfaces/Therapist';
 import { useClaims, Permissions } from '../../composables/useClaims';
@@ -327,6 +339,7 @@ export default defineComponent({
     const plansClient = new TreatmentPlansHttpClient();
     const sitesClient = new SitesHttpClient();
     const therapistsClient = new TherapistsHttpClient();
+    const patientsClient = new PatientsHttpClient();
 
     const step = ref(1);
     const startDate = ref('');
@@ -338,6 +351,9 @@ export default defineComponent({
     const errorMsg = ref('');
     const result = ref<BulkScheduleResult | null>(null);
     const dayLabels = DAY_OF_WEEK_LABELS;
+    // WP-23: F10 hard block + F7 per-line SENADIS floor.
+    const caretakerBlocked = ref(false);
+    const senadisPatient = ref(false);
 
     // Alternative selection for conflict resolution
     // Key: "conflictIdx-altIdx", Value: { lineId, alternative }
@@ -384,10 +400,39 @@ export default defineComponent({
       step.value--;
     };
 
-    const canProceedStep1 = computed(() => startDate.value !== '' && siteId.value > 0);
+    const canProceedStep1 = computed(() => startDate.value !== '' && siteId.value > 0 && !caretakerBlocked.value);
 
     const lineAmount = (line: LineEdit) => {
       return Math.round(HOURLY_RATE * line.duration / 60 * 100) / 100;
+    };
+
+    // WP-23 (F7): per-line statutory floor — 20% of the line amount, 2dp.
+    const lineFloor = (line: LineEdit) => Math.round(0.20 * lineAmount(line) * 100) / 100;
+
+    // WP-23: one profile + caretaker fetch per wizard open; on failure fail open — the API
+    // enforces both rules server-side (caretaker 400, discount floored).
+    const checkPatientFlags = async () => {
+      caretakerBlocked.value = false;
+      senadisPatient.value = false;
+      if (!props.plan) return;
+      try {
+        const [patient, caretakers] = await Promise.all([
+          patientsClient.getPatient(props.plan.patientId),
+          patientsClient.getPatientCaretakers(props.plan.patientId),
+        ]);
+        caretakerBlocked.value = caretakers.length === 0;
+        senadisPatient.value = patient.hasSenadisDiscount === true;
+        if (senadisPatient.value) {
+          for (const line of lineEdits.value) {
+            if (line.discountAmount < lineFloor(line)) {
+              line.discountAmount = lineFloor(line);
+              updateDiscountPct(line);
+            }
+          }
+        }
+      } catch {
+        // fail open (see above)
+      }
     };
 
     const updateDiscountPct = (line: LineEdit) => {
@@ -471,6 +516,7 @@ export default defineComponent({
 
     const submitSchedule = async () => {
       if (!props.plan) return;
+      if (caretakerBlocked.value) return; // WP-23 (F10); the API would 400 anyway
       submitting.value = true;
       errorMsg.value = '';
 
@@ -479,7 +525,10 @@ export default defineComponent({
         therapistId: le.therapistId > 0 ? le.therapistId : null,
         dayOfWeek: le.dayOfWeek > 0 ? le.dayOfWeek : null,
         time: le.time || null,
-        discountAmount: le.discountAmount > 0 ? le.discountAmount : null,
+        // WP-23 (F7): last-line clamp to the SENADIS floor; the API floors server-side too.
+        discountAmount: senadisPatient.value
+          ? Math.max(le.discountAmount, lineFloor(le))
+          : (le.discountAmount > 0 ? le.discountAmount : null),
       }));
 
       try {
@@ -507,6 +556,7 @@ export default defineComponent({
       if (val) {
         initForm();
         loadDropdowns();
+        checkPatientFlags(); // WP-23: caretaker block + SENADIS floor
       }
     });
 
@@ -523,6 +573,9 @@ export default defineComponent({
       dayLabels,
       canProceedStep1,
       lineAmount,
+      lineFloor,
+      caretakerBlocked,
+      senadisPatient,
       updateDiscountPct,
       updateDiscountAmt,
       sessionsByWeek,

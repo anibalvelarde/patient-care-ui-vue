@@ -12,6 +12,10 @@ export interface Patient {
   phoneNumber: string | null;
   gender: string | null;
   isActive: boolean;
+  // WP-23 (F7): statutory SENADIS 20% discount — booking applies a 20%-of-amount discount
+  // floor; edit gated by Patients.SenadisDiscount.Edit (MGR/AM). Optional so the UI
+  // tolerates an older deployed API (absent ⇒ treated as false).
+  hasSenadisDiscount?: boolean;
   hasCompletedDiscovery: boolean | null;
   createdTimestamp: string;
   caretakers?: PatientCaretakerSummary[];
@@ -35,6 +39,7 @@ export interface PatientCreateRequest {
   gender: string;
   medicalRecordNumber?: string;
   cedula?: string;
+  hasSenadisDiscount?: boolean;
 }
 
 // Maps to API's PatientProfileUpdateRequest (PUT)
@@ -49,6 +54,8 @@ export interface PatientUpdateRequest {
   activeStatus: boolean;
   medicalRecordNumber?: string;
   cedula?: string;
+  // Omit when the caller may not edit it (claim-gated) — omitted/null = unchanged server-side.
+  hasSenadisDiscount?: boolean;
 }
 
 // Temporary MRN helper

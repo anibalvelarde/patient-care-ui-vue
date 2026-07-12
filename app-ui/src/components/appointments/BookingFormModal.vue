@@ -26,8 +26,9 @@
                 {{ p.patientName }}
               </option>
             </select>
-            <p v-if="caretakerWarning" class="mt-1 text-xs text-amber-600">
-              This patient has no caretaker assigned. Please assign one first.
+            <!-- WP-23 (F10): hard block — was a soft amber warning pre-WP-23 -->
+            <p v-if="caretakerWarning" class="mt-1 text-xs font-medium text-red-600">
+              Booking blocked — this patient has no caretaker on file. Link a caretaker first.
             </p>
           </div>
 
@@ -92,7 +93,9 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">Discount</label>
-              <input v-model.number="form.discount" type="number" min="0" step="0.01" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500" />
+              <!-- WP-23 (F7): min rides the SENADIS floor; the clamp re-applies on amount/patient change and at submit -->
+              <input v-model.number="form.discount" type="number" :min="senadisFloor" step="0.01" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500" />
+              <p v-if="senadisPatient" class="mt-1 text-xs text-violet-600">SENADIS: min {{ senadisFloor.toFixed(2) }} (20%)</p>
             </div>
             <!-- WP-17C: cosmetic only — the API still returns ProviderAmount to anyone with Appointments.View; true field-level enforcement needs API response-shaping (deferred). -->
             <div v-if="hasClaim('Permission', Permissions.AppointmentsProviderAmount)">
@@ -151,6 +154,7 @@ import type { LookupItem } from '../../interfaces/Lookups';
 import { isDiscoverySpecialty } from '../../interfaces/TreatmentPlan';
 import { TIME_MIN, TIME_MAX, TIME_STEP } from '../../utils/timeSlots';
 import { useClaims, Permissions } from '../../composables/useClaims';
+import { useNotificationsStore } from '../../stores/notifications';
 
 export default defineComponent({
   name: 'BookingFormModal',
@@ -174,6 +178,8 @@ export default defineComponent({
     const saveError = ref('');
     const caretakerWarning = ref(false);
     const needsDiscovery = ref(false);
+    const senadisPatient = ref(false);
+    const notifications = useNotificationsStore();
 
     const today = new Date().toISOString().split('T')[0];
     const nowTime = new Date().toTimeString().slice(0, 5);
@@ -236,14 +242,36 @@ export default defineComponent({
       }
     });
 
-    watch(() => form.value.specialtyTypeId, () => {
+    watch(() => form.value.specialtyTypeId, (id) => {
       if (form.value.therapistId > 0 && !filteredTherapists.value.some(t => t.therapistId === form.value.therapistId)) {
         form.value.therapistId = 0;
       }
+      // WP-23 (F6): pre-fill Amount from the specialty's default price — refills on every
+      // specialty change (user-editable after; NULL default = leave the amount alone).
+      if (id > 0) {
+        const specialty = specialtyTypes.value.find(s => s.id === id);
+        if (specialty?.defaultAmount != null) {
+          form.value.amount = specialty.defaultAmount;
+        }
+      }
     });
 
+    // WP-23 (F7): statutory SENADIS floor — 20% of Amount, 2dp; 0 for unflagged patients.
+    const senadisFloor = computed(() =>
+      senadisPatient.value ? Math.round(0.20 * form.value.amount * 100) / 100 : 0
+    );
+
+    const applySenadisFloor = () => {
+      if (senadisPatient.value && form.value.discount < senadisFloor.value) {
+        form.value.discount = senadisFloor.value;
+      }
+    };
+
+    // WP-23 (F10): the caretaker check is now a hard block (was a soft warning) — the API
+    // enforces the same rule with a 400, this keeps the modal honest before submit.
     const isValid = computed(() => {
-      return form.value.patientId > 0 && form.value.therapistId > 0 && form.value.specialtyTypeId > 0;
+      return form.value.patientId > 0 && form.value.therapistId > 0 && form.value.specialtyTypeId > 0
+        && !caretakerWarning.value;
     });
 
     const loadDropdowns = async () => {
@@ -272,16 +300,26 @@ export default defineComponent({
     };
 
     const checkDiscovery = async (patientId: number) => {
-      if (patientId <= 0) { needsDiscovery.value = false; return; }
+      if (patientId <= 0) { needsDiscovery.value = false; senadisPatient.value = false; return; }
       try {
         const patient = await patientsClient.getPatient(patientId);
         needsDiscovery.value = patient.hasCompletedDiscovery === false;
+        // WP-23 (F7): same fetched profile carries the SENADIS flag — one toast per
+        // patient selection, then clamp the discount up to the floor.
+        senadisPatient.value = patient.hasSenadisDiscount === true;
+        if (senadisPatient.value) {
+          notifications.info('SENADIS: statutory 20% discount applied — it cannot be reduced.');
+          applySenadisFloor();
+        }
       } catch {
         needsDiscovery.value = false; // Fail open — don't block booking
+        senadisPatient.value = false; // (the API floors server-side regardless)
       }
     };
 
     watch(() => form.value.patientId, (id) => { checkCaretaker(id); checkDiscovery(id); });
+    // WP-23 (F7): re-clamp when the amount moves the floor.
+    watch(() => form.value.amount, applySenadisFloor);
     watch(form, () => { saveError.value = ''; }, { deep: true });
 
     watch(() => props.visible, (val) => {
@@ -289,6 +327,7 @@ export default defineComponent({
         loadDropdowns();
         saveError.value = '';
         needsDiscovery.value = false;
+        senadisPatient.value = false;
         form.value = {
           patientId: props.preSelectPatientId || 0,
           therapistId: 0,
@@ -307,6 +346,7 @@ export default defineComponent({
     const handleSubmit = async () => {
       saving.value = true;
       saveError.value = '';
+      applySenadisFloor(); // WP-23 (F7): last-line clamp; the API floors server-side too
       try {
         const request: SessionEventRequest = {
           sessionDate: form.value.sessionDate,
@@ -333,7 +373,7 @@ export default defineComponent({
       }
     };
 
-    return { form, patients, filteredTherapists, filteredSpecialties, saving, saveError, caretakerWarning, needsDiscovery, isValid, handleSubmit, timeMin: TIME_MIN, timeMax: TIME_MAX, timeStep: TIME_STEP, hasClaim, Permissions };
+    return { form, patients, filteredTherapists, filteredSpecialties, saving, saveError, caretakerWarning, needsDiscovery, senadisPatient, senadisFloor, isValid, handleSubmit, timeMin: TIME_MIN, timeMax: TIME_MAX, timeStep: TIME_STEP, hasClaim, Permissions };
   },
 });
 </script>
