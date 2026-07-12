@@ -43,12 +43,14 @@ function sessionsPage(overrides: Partial<PagedResult<PatientHistorySession>> = {
       {
         sessionId: 42, sessionDate: '2026-07-01', sessionTime: '09:00:00', therapist: 'Smith, Jane',
         therapyTypes: 'PSICOT', specialtyName: 'Psicoterapia', specialtyAbbreviation: 'PSICOT',
-        amount: 45, discount: 0, amountPaid: 45, amountDue: 0, isPaidOff: true, statusName: 'Completed',
+        amount: 45, discount: 0, amountPaid: 45, amountDue: 0, isPaidOff: true,
+        appointmentStatusId: 4, statusName: 'Completed',
       },
       {
         sessionId: 41, sessionDate: '2026-06-15', sessionTime: '14:00:00', therapist: 'Smith, Jane',
         therapyTypes: 'EEG', specialtyName: 'EEG', specialtyAbbreviation: 'EEG',
-        amount: 75, discount: 10, amountPaid: 0, amountDue: 65, isPaidOff: false, statusName: 'Completed',
+        amount: 75, discount: 10, amountPaid: 0, amountDue: 65, isPaidOff: false,
+        appointmentStatusId: 3, statusName: 'Cancelled',
       },
     ],
     page: 1,
@@ -179,13 +181,23 @@ describe('PatientSessionsTable — read-only rows', () => {
     });
   });
 
-  it('marks paid-off sessions with the paid badge and unpaid ones amber', async () => {
+  it('shows each session\'s status badge', async () => {
+    const w = await mountTable();
+
+    const badges = w.findAllComponents({ name: 'StatusBadge' });
+    // one per row per viewport variant (desktop grid + mobile card)
+    const labels = badges.map((b) => b.text());
+    expect(labels).toContain('Completed');
+    expect(labels).toContain('Cancelled');
+  });
+
+  it('marks paid-off sessions "Paid" and unpaid ones with the outstanding balance', async () => {
     const w = await mountTable();
 
     const paid = w.find('[title="Paid $45.00"]');
     expect(paid.exists()).toBe(true);
-    const due = w.find('[title="$65.00 due"]');
-    expect(due.exists()).toBe(true);
+    expect(paid.text()).toContain('Paid');
+    expect(w.text()).toContain('Owes $65.00');
   });
 
   it('shows the empty state for a patient with no sessions', async () => {

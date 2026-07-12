@@ -21,13 +21,14 @@
 
     <template v-else-if="result">
       <!-- Column headers (desktop) -->
-      <div class="hidden md:grid grid-cols-[6rem_1fr_1fr_5rem_5rem_5.5rem_1rem] gap-2 px-4 py-2 bg-slate-100/70 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+      <div class="hidden md:grid grid-cols-[6rem_7rem_1fr_1fr_4.5rem_4.5rem_6.5rem_1rem] gap-2 px-4 py-2 bg-slate-100/70 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
         <span>Date</span>
+        <span>Status</span>
         <span>Specialty</span>
         <span>Therapist</span>
         <span class="text-right">Amount</span>
         <span class="text-right">Discount</span>
-        <span class="text-right">Paid</span>
+        <span class="text-right">Paid / Owed</span>
         <span></span>
       </div>
 
@@ -40,27 +41,35 @@
           class="block px-4 py-2 hover:bg-blue-50/60 transition-colors group"
         >
           <!-- Desktop grid row -->
-          <div class="hidden md:grid grid-cols-[6rem_1fr_1fr_5rem_5rem_5.5rem_1rem] gap-2 items-center text-xs">
+          <div class="hidden md:grid grid-cols-[6rem_7rem_1fr_1fr_4.5rem_4.5rem_6.5rem_1rem] gap-2 items-center text-xs">
             <span class="text-slate-500">{{ formatDate(session.sessionDate) }}</span>
+            <span>
+              <StatusBadge :status-id="session.appointmentStatusId" :status-name="session.statusName" />
+            </span>
             <span class="text-slate-700">{{ session.specialtyName || session.therapyTypes || '—' }}</span>
             <span class="text-slate-600">{{ session.therapist }}</span>
             <span class="text-right text-slate-600">{{ formatCurrency(session.amount) }}</span>
             <span class="text-right" :class="session.discount > 0 ? 'text-green-600' : 'text-slate-400'">
               {{ session.discount > 0 ? '-' + formatCurrency(session.discount) : '—' }}
             </span>
+            <!-- Paid off → green check; otherwise the outstanding balance in red -->
             <span class="text-right">
               <span
                 v-if="session.isPaidOff"
-                class="inline-flex items-center space-x-1 text-green-700"
+                class="inline-flex items-center space-x-1 text-green-700 font-medium"
                 :title="'Paid ' + formatCurrency(session.amountPaid)"
               >
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
                 </svg>
-                <span>{{ formatCurrency(session.amountPaid) }}</span>
+                <span>Paid</span>
               </span>
-              <span v-else class="text-amber-700" :title="formatCurrency(session.amountDue) + ' due'">
-                {{ formatCurrency(session.amountPaid) }}
+              <span
+                v-else
+                class="text-red-600 font-medium"
+                :title="formatCurrency(session.amountPaid) + ' paid so far'"
+              >
+                Owes {{ formatCurrency(session.amountDue) }}
               </span>
             </span>
             <svg class="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -72,16 +81,19 @@
           <div class="md:hidden text-xs space-y-1">
             <div class="flex items-center justify-between">
               <span class="font-medium text-slate-700">{{ formatDate(session.sessionDate) }}</span>
-              <span
-                :class="session.isPaidOff ? 'text-green-700' : 'text-amber-700'"
-                class="font-medium"
-              >
-                {{ session.isPaidOff ? '✓ ' : '' }}{{ formatCurrency(session.amountPaid) }}
+              <span v-if="session.isPaidOff" class="font-medium text-green-700" :title="'Paid ' + formatCurrency(session.amountPaid)">
+                ✓ Paid
+              </span>
+              <span v-else class="font-medium text-red-600">
+                Owes {{ formatCurrency(session.amountDue) }}
               </span>
             </div>
             <div class="flex items-center justify-between text-slate-500">
               <span>{{ session.specialtyName || session.therapyTypes || '—' }} · {{ session.therapist }}</span>
-              <span>{{ formatCurrency(session.amount) }}<template v-if="session.discount > 0"> · -{{ formatCurrency(session.discount) }}</template></span>
+              <StatusBadge :status-id="session.appointmentStatusId" :status-name="session.statusName" />
+            </div>
+            <div class="text-slate-400">
+              {{ formatCurrency(session.amount) }}<template v-if="session.discount > 0"> · -{{ formatCurrency(session.discount) }} discount</template>
             </div>
           </div>
         </router-link>
@@ -114,11 +126,13 @@ import { defineComponent, ref, computed, onMounted } from 'vue';
 import type { PagedResult, PatientHistorySession } from '../../interfaces/SessionHistory';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import { formatCurrency } from '../../utils/formatCurrency';
+import StatusBadge from '../appointments/StatusBadge.vue';
 
 export const SESSIONS_PAGE_SIZE = 25;
 
 export default defineComponent({
   name: 'PatientSessionsTable',
+  components: { StatusBadge },
   props: {
     patientId: { type: Number, required: true },
   },

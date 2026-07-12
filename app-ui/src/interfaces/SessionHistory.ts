@@ -35,5 +35,6 @@ export interface PatientHistorySession {
   amountPaid: number;
   amountDue: number;
   isPaidOff: boolean;
+  appointmentStatusId: number;
   statusName: string;
 }

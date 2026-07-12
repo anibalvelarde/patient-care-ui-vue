@@ -36,13 +36,16 @@ the tab shows the standard error state with a retry.
 
 ## Scenario 4 — Expand a patient → paged sessions
 1. Click a patient row with many sessions (a legacy patient — some have 100+).
-   VERIFY: the row expands inline; sessions show Date | Specialty | Therapist | Amount |
-   Discount | Paid, **newest first**, max 25 rows, with its own "Page 1 of N · X sessions" footer.
+   VERIFY: the row expands inline; sessions show Date | **Status** | Specialty | Therapist |
+   Amount | Discount | **Paid / Owed**, **newest first**, max 25 rows, with its own
+   "Page 1 of N · X sessions" footer.
 2. Click **Next ▶** inside the expansion.
    VERIFY: the next 25 sessions load; the outer patient list does not move.
-3. Paid column: a fully-paid session shows a green ✓ with the paid amount; an unpaid one shows
-   the amount paid in amber (hover shows the amount still due).
-4. As FD or MGR: Amount / Discount / Paid values are visible (owner ruling — FD may see money
+3. Status column: each session shows its status badge with the same colors as the Dashboard
+   appointments panel (Completed gray, Confirmed green, Cancelled slate, No Show red, …).
+4. Paid / Owed column: a fully-paid session shows a green **✓ Paid** (hover shows the amount
+   paid); an unpaid one shows **Owes $X** in red (hover shows what's been paid so far).
+5. As FD or MGR: Amount / Discount / Paid values are visible (owner ruling — FD may see money
    columns). ProviderAmount is never shown anywhere on this tab.
 
 ## Scenario 5 — Row → Dashboard → go back
