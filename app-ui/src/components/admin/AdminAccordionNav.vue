@@ -70,6 +70,42 @@
       </div>
     </div>
 
+    <!-- Data Maintenance group (WP-22) -->
+    <div v-if="hasClaim('Permission', Permissions.PatientsMerge)">
+      <button
+        class="w-full px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between hover:bg-slate-100 transition-colors"
+        data-testid="nav-group-data-maintenance"
+        @click="dataMaintOpen = !dataMaintOpen"
+      >
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Data Maintenance</span>
+        <svg
+          class="w-4 h-4 text-slate-400 transition-transform duration-200"
+          :class="{ 'rotate-180': dataMaintOpen }"
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      <div
+        class="overflow-hidden transition-all duration-200"
+        :class="dataMaintOpen ? 'max-h-20' : 'max-h-0'"
+      >
+        <button
+          class="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors border-b border-slate-50"
+          :class="activeSection === 'merge-patients'
+            ? 'bg-violet-50 text-violet-700 font-medium border-l-2 border-l-violet-600'
+            : 'text-slate-600 hover:bg-slate-50'"
+          data-testid="nav-merge-patients"
+          @click="$emit('select', 'merge-patients')"
+        >
+          <svg class="w-4 h-4" :class="activeSection === 'merge-patients' ? 'text-violet-500' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+          </svg>
+          Merge Patients
+        </button>
+      </div>
+    </div>
+
     <!-- Security group (placeholder) -->
     <div>
       <button
@@ -136,6 +172,7 @@
 
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
+import { useClaims, Permissions } from '../../composables/useClaims';
 
 export default defineComponent({
   name: 'AdminAccordionNav',
@@ -144,8 +181,13 @@ export default defineComponent({
   },
   emits: ['select'],
   setup() {
+    // /admin is already SYSADMIN-only at the route; gating the Data Maintenance group on
+    // Patients.Merge (wildcard-only claim) is belt-and-suspenders and keeps the nav honest
+    // if the route gate ever loosens (the tracked "MGR read-only Admin" follow-up).
+    const { hasClaim } = useClaims();
     const configOpen = ref(true);
     const refdataOpen = ref(true);
+    const dataMaintOpen = ref(true);
     const securityOpen = ref(false);
     const aboutOpen = ref(false);
 
@@ -172,7 +214,7 @@ export default defineComponent({
       },
     ];
 
-    return { configOpen, refdataOpen, securityOpen, aboutOpen, refDataItems };
+    return { configOpen, refdataOpen, dataMaintOpen, securityOpen, aboutOpen, refDataItems, hasClaim, Permissions };
   },
 });
 </script>

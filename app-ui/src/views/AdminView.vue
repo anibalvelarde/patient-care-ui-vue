@@ -53,6 +53,11 @@
                 </div>
               </template>
 
+              <!-- Merge Patients (WP-22, SYSADMIN-only) -->
+              <div v-if="activeSection === 'merge-patients'">
+                <PatientMergePanel />
+              </div>
+
               <!-- About -->
               <div v-if="activeSection === 'about'">
                 <AboutPanel />
@@ -97,6 +102,7 @@ import AdminAccordionNav from '../components/admin/AdminAccordionNav.vue';
 import LookupTableManager from '../components/admin/LookupTableManager.vue';
 import LookupFormModal from '../components/admin/LookupFormModal.vue';
 import AboutPanel from '../components/admin/AboutPanel.vue';
+import PatientMergePanel from '../components/admin/PatientMergePanel.vue';
 import type { FieldDef } from '../components/admin/LookupFormModal.vue';
 import type { ColumnDef } from '../components/admin/LookupTableManager.vue';
 import { SitesHttpClient } from '../services/SitesHttpClient';
@@ -111,7 +117,7 @@ export default defineComponent({
     O2MobileNav, O2Sidebar, O2Header, O2Footer,
     SiteList, SiteFormModal,
     AdminAccordionNav, LookupTableManager, LookupFormModal,
-    AboutPanel,
+    AboutPanel, PatientMergePanel,
   },
   setup() {
     const activeSection = ref('sites');
