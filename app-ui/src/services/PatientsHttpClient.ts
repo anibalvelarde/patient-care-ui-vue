@@ -2,6 +2,7 @@
 import { HttpClientBase } from './HttpClientBase';
 import type { Patient, PatientCreateRequest, PatientUpdateRequest, PatientCaretakerSummary } from '../interfaces/Patient';
 import type { DelinquentPatient } from '../interfaces/Delinquency';
+import type { PagedResult, PatientSessionHistorySummary, PatientHistorySession } from '../interfaces/SessionHistory';
 
 export class PatientsHttpClient extends HttpClientBase {
   async getPatients(): Promise<Patient[]> {
@@ -26,5 +27,18 @@ export class PatientsHttpClient extends HttpClientBase {
 
   async getPatientCaretakers(patientId: number): Promise<PatientCaretakerSummary[]> {
     return this.get<PatientCaretakerSummary[]>(`/api/patients/${patientId}/caretakers`);
+  }
+
+  // WP-21 (F1): paged patient summaries ordered by most-recent-session first.
+  async getSessionHistory(search: string, page: number, pageSize = 30): Promise<PagedResult<PatientSessionHistorySummary>> {
+    const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    if (search.trim()) params.set('search', search.trim());
+    return this.get<PagedResult<PatientSessionHistorySummary>>(`/api/patients/session-history?${params.toString()}`);
+  }
+
+  // WP-21 (F1): one patient's paged sessions, newest first.
+  async getPatientSessions(patientId: number, page: number, pageSize = 25): Promise<PagedResult<PatientHistorySession>> {
+    const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    return this.get<PagedResult<PatientHistorySession>>(`/api/patients/${patientId}/sessions?${params.toString()}`);
   }
 }

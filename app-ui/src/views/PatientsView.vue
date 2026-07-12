@@ -111,7 +111,7 @@ export default defineComponent({
     const router = useRouter();
     const client = new PatientsHttpClient();
 
-    const validTabs = ['all', 'active', 'inactive', 'delinquent'] as const;
+    const validTabs = ['all', 'active', 'inactive', 'delinquent', 'sessions'] as const;
     type TabValue = typeof validTabs[number];
     const initialTab = computed<TabValue>(() => {
       const tab = route.query.tab as string | undefined;
