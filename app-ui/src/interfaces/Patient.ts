@@ -43,7 +43,8 @@ export interface PatientCreateRequest {
   phoneNumber: string;
   gender: string;
   medicalRecordNumber?: string;
-  cedula?: string;
+  // WP-25 (F5): "Cedula | Passport" — required at create (free text, unique; duplicate → 409).
+  cedula: string;
   hasSenadisDiscount?: boolean;
   // WP-24 (F3): omitted = true server-side (discovery required by default).
   requiresDiscovery?: boolean;
@@ -60,6 +61,9 @@ export interface PatientUpdateRequest {
   gender: string;
   activeStatus: boolean;
   medicalRecordNumber?: string;
+  // WP-25 (F5): omitted = unchanged server-side (keeps legacy NULL-cedula patients editable).
+  // A blank string must never be sent — the API 400s it ("Cedula | Passport cannot be
+  // cleared"); the WP-18-followup erase-to-NULL semantics were removed.
   cedula?: string;
   // Omit when the caller may not edit it (claim-gated) — omitted/null = unchanged server-side.
   hasSenadisDiscount?: boolean;

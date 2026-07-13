@@ -122,7 +122,7 @@
               <p class="mt-1 text-sm font-semibold text-slate-800">{{ side.who.patientName }}</p>
               <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-600">
                 <dt>MRN</dt><dd class="text-right">{{ side.who.medicalRecordNumber ?? '—' }}</dd>
-                <dt>Cedula</dt><dd class="text-right">{{ side.who.cedula ?? '—' }}</dd>
+                <dt>Cedula | Passport</dt><dd class="text-right">{{ side.who.cedula ?? '—' }}</dd>
                 <dt>Date of birth</dt><dd class="text-right">{{ formatDate(side.who.dateOfBirth) }}</dd>
                 <dt>Gender</dt><dd class="text-right">{{ side.who.gender ?? '—' }}</dd>
                 <dt>Status</dt><dd class="text-right">{{ side.who.isActive ? 'Active' : 'Inactive' }}</dd>

@@ -13,7 +13,7 @@
       <div class="min-w-0">
         <p class="text-sm font-medium text-slate-800 truncate">{{ modelValue.patientName }}</p>
         <p class="text-xs text-slate-500 truncate">
-          MRN {{ modelValue.medicalRecordNumber ?? '—' }} · Cedula {{ modelValue.cedula ?? '—' }}
+          MRN {{ modelValue.medicalRecordNumber ?? '—' }} · Cedula|Passport {{ modelValue.cedula ?? '—' }}
         </p>
       </div>
       <button
@@ -50,7 +50,7 @@
           >
             <p class="text-sm text-slate-800">{{ p.patientName }}</p>
             <p class="text-xs text-slate-500">
-              MRN {{ p.medicalRecordNumber ?? '—' }} · Cedula {{ p.cedula ?? '—' }}
+              MRN {{ p.medicalRecordNumber ?? '—' }} · Cedula|Passport {{ p.cedula ?? '—' }}
               <span v-if="!p.isActive" class="ml-1 text-amber-600">(inactive)</span>
             </p>
           </button>
@@ -80,7 +80,7 @@ export default defineComponent({
   name: 'PatientSearchSelect',
   props: {
     label: { type: String, required: true },
-    placeholder: { type: String, default: 'Search by name, MRN, or cedula…' },
+    placeholder: { type: String, default: 'Search by name, MRN, or cedula/passport…' },
     patients: { type: Array as PropType<Patient[]>, required: true },
     modelValue: { type: Object as PropType<Patient | null>, default: null },
     /** Patient ID to exclude from results (the other side of the merge). */
