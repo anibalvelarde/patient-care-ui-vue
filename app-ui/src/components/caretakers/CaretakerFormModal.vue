@@ -23,6 +23,15 @@
 
         <!-- Form -->
         <form class="flex-1 overflow-y-auto px-6 py-4 space-y-4" @submit.prevent="handleSubmit">
+          <!-- WP-27 (F8): create-new step of a cross-add chain — the saved caretaker auto-links -->
+          <div
+            v-if="linkTo && !isEdit"
+            class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800"
+            data-testid="chain-context-banner"
+          >
+            Will be linked to patient <strong>{{ linkTo.name }}</strong>
+          </div>
+
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">First Name *</label>
@@ -80,6 +89,36 @@
               rows="3"
               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             ></textarea>
+          </div>
+
+          <!-- WP-27 (F8): link fields captured with the create and passed back on the `created`
+               emit — the chain performs the actual link call after the caretaker exists. -->
+          <div v-if="linkTo && !isEdit" class="space-y-3">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Relationship to {{ linkTo.name }}
+              </label>
+              <select
+                v-model="linkRelationship"
+                data-testid="chain-relationship-select"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option :value="null">None</option>
+                <option value="Father">Father</option>
+                <option value="Mother">Mother</option>
+                <option value="Relative">Relative</option>
+                <option value="HiredHelp">Hired Help</option>
+              </select>
+            </div>
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input
+                v-model="linkIsPrimary"
+                type="checkbox"
+                data-testid="chain-primary-checkbox"
+                class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span class="text-sm font-medium text-slate-700">Primary caretaker</span>
+            </label>
           </div>
 
           <div v-if="isEdit" class="space-y-1">
@@ -150,8 +189,11 @@ export default defineComponent({
   props: {
     visible: { type: Boolean, required: true },
     caretaker: { type: Object as PropType<Caretaker | null>, default: null },
+    // WP-27 (F8): set when this modal is the create-new step of a cross-add chain — shows the
+    // context banner + relationship/primary fields and enriches the `created` emit.
+    linkTo: { type: Object as PropType<{ name: string } | null>, default: null },
   },
-  emits: ['close', 'saved'],
+  emits: ['close', 'saved', 'created'],
   setup(props, { emit }) {
     const { error, hasError, saving, setError, clearError, submit } = useModalForm();
 
@@ -166,6 +208,10 @@ export default defineComponent({
     });
 
     const isEdit = ref(false);
+
+    // WP-27 (F8): link fields shown only when opened as a chain's create-new step (linkTo set).
+    const linkRelationship = ref<string | null>(null);
+    const linkIsPrimary = ref(true);
 
     watch(form, () => clearError(), { deep: true });
 
@@ -193,6 +239,8 @@ export default defineComponent({
           form.phoneNumber = '';
           form.notes = '';
           form.isActive = true;
+          linkRelationship.value = null;
+          linkIsPrimary.value = true;
         }
       }
     );
@@ -215,7 +263,7 @@ export default defineComponent({
             isActive: form.isActive,
           });
         } else {
-          await client.createCaretaker({
+          const created = await client.createCaretaker({
             firstName: form.firstName,
             middleName: form.middleName || undefined,
             lastName: form.lastName,
@@ -224,13 +272,19 @@ export default defineComponent({
             notes: form.notes || undefined,
             isActive: true,
           });
+          // WP-27: hand the created record (plus chain link fields when applicable) to the
+          // parent — CaretakersView starts the F9 chain; CrossAddChainModal performs the F8 link.
+          emit('created', {
+            record: created,
+            link: props.linkTo ? { relationship: linkRelationship.value, isPrimary: linkIsPrimary.value } : null,
+          });
         }
         emit('saved');
         emit('close');
       });
     };
 
-    return { form, isEdit, saving, error, hasError, handleSubmit };
+    return { form, isEdit, saving, error, hasError, linkRelationship, linkIsPrimary, handleSubmit };
   },
 });
 </script>

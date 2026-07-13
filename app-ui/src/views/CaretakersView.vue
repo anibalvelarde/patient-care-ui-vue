@@ -40,6 +40,15 @@
       :caretaker="editingCaretaker"
       @close="modalVisible = false"
       @saved="onSaved"
+      @created="onCaretakerCreated"
+    />
+
+    <!-- WP-27 (F9): a just-created caretaker has no patients — offer to link/create one now -->
+    <CrossAddChainModal
+      :visible="chainVisible"
+      mode="add-patient"
+      :target="chainTarget"
+      @close="onChainClose"
     />
   </div>
 </template>
@@ -54,15 +63,19 @@ import O2Footer from '../components/option02/O2Footer.vue';
 import CaretakerList from '../components/caretakers/CaretakerList.vue';
 import CaretakerFormModal from '../components/caretakers/CaretakerFormModal.vue';
 import CaretakerPatientsList from '../components/caretakers/CaretakerPatientsList.vue';
+import CrossAddChainModal, { type ChainTarget } from '../components/shared/CrossAddChainModal.vue';
 import { CaretakersHttpClient } from '../services/CaretakersHttpClient';
 import type { Caretaker } from '../interfaces/Caretaker';
+import type { CreatedForChain } from '../interfaces/CrossAdd';
+import { useClaims, Permissions } from '../composables/useClaims';
 
 export default defineComponent({
   name: 'CaretakersView',
-  components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, CaretakerList, CaretakerFormModal, CaretakerPatientsList },
+  components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, CaretakerList, CaretakerFormModal, CaretakerPatientsList, CrossAddChainModal },
   setup() {
     const route = useRoute();
     const client = new CaretakersHttpClient();
+    const { hasClaim } = useClaims();
 
     const validTabs = ['all', 'active', 'inactive'] as const;
     type TabValue = typeof validTabs[number];
@@ -134,6 +147,22 @@ export default defineComponent({
       loadCaretakers();
     };
 
+    const chainVisible = ref(false);
+    const chainTarget = ref<ChainTarget | null>(null);
+
+    // WP-27 (F9): every create lands patient-less — open the chain when this user holds the
+    // claim the link endpoint enforces (Caretakers.LinkPatient).
+    const onCaretakerCreated = (payload: CreatedForChain<Caretaker>) => {
+      if (!hasClaim('Permission', Permissions.CaretakersLinkPatient)) return;
+      chainTarget.value = { id: payload.record.caretakerId, name: payload.record.caretakerName };
+      chainVisible.value = true;
+    };
+
+    const onChainClose = () => {
+      chainVisible.value = false;
+      loadCaretakers(); // a patient may have been created/linked — refresh
+    };
+
     onMounted(loadCaretakers);
 
     return {
@@ -151,6 +180,10 @@ export default defineComponent({
       viewPatients,
       onPatientsUpdated,
       onSaved,
+      chainVisible,
+      chainTarget,
+      onCaretakerCreated,
+      onChainClose,
       onTabChange,
     };
   },

@@ -23,6 +23,15 @@
 
         <!-- Form -->
         <form class="flex-1 overflow-y-auto px-6 py-4 space-y-4" @submit.prevent="handleSubmit">
+          <!-- WP-27 (F9): create-new step of a cross-add chain — the saved patient auto-links -->
+          <div
+            v-if="linkTo && !isEdit"
+            class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800"
+            data-testid="chain-context-banner"
+          >
+            Will be linked to caretaker <strong>{{ linkTo.name }}</strong>
+          </div>
+
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">First Name *</label>
@@ -196,6 +205,36 @@
             </p>
           </div>
 
+          <!-- WP-27 (F9): link fields captured with the create and passed back on the `created`
+               emit — the chain performs the actual link call after the patient exists. -->
+          <div v-if="linkTo && !isEdit" class="space-y-3">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Relationship of {{ linkTo.name }} to this patient
+              </label>
+              <select
+                v-model="linkRelationship"
+                data-testid="chain-relationship-select"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option :value="null">None</option>
+                <option value="Father">Father</option>
+                <option value="Mother">Mother</option>
+                <option value="Relative">Relative</option>
+                <option value="HiredHelp">Hired Help</option>
+              </select>
+            </div>
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input
+                v-model="linkIsPrimary"
+                type="checkbox"
+                data-testid="chain-primary-checkbox"
+                class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span class="text-sm font-medium text-slate-700">Primary caretaker</span>
+            </label>
+          </div>
+
           <div v-if="isEdit" class="space-y-1">
             <div class="flex items-center space-x-3">
               <label class="text-sm font-medium text-slate-700">Active Status</label>
@@ -295,8 +334,11 @@ export default defineComponent({
   props: {
     visible: { type: Boolean, required: true },
     patient: { type: Object as PropType<Patient | null>, default: null },
+    // WP-27 (F9): set when this modal is the create-new step of a cross-add chain — shows the
+    // context banner + relationship/primary fields and enriches the `created` emit.
+    linkTo: { type: Object as PropType<{ name: string } | null>, default: null },
   },
-  emits: ['close', 'saved', 'created-temp-mrn'],
+  emits: ['close', 'saved', 'created', 'created-temp-mrn'],
   setup(props, { emit }) {
     const { error, hasError, saving, setError, clearError, submit } = useModalForm();
     const { hasClaim } = useClaims();
@@ -319,6 +361,10 @@ export default defineComponent({
     });
 
     const isEdit = ref(false);
+
+    // WP-27 (F9): link fields shown only when opened as a chain's create-new step (linkTo set).
+    const linkRelationship = ref<string | null>(null);
+    const linkIsPrimary = ref(true);
 
     // WP-25 (F5): whether the patient being edited already had a cedula/passport stored when the
     // modal opened — an on-file value can never be cleared; a legacy NULL stays tolerated.
@@ -390,6 +436,8 @@ export default defineComponent({
           form.hasSenadisDiscount = false;
           form.requiresDiscovery = true; // WP-24: default CHECKED at create
           form.activeStatus = true;
+          linkRelationship.value = null;
+          linkIsPrimary.value = true;
         }
       }
     );
@@ -470,6 +518,12 @@ export default defineComponent({
             hasSenadisDiscount: form.hasSenadisDiscount,
             requiresDiscovery: form.requiresDiscovery,
           });
+          // WP-27: hand the created record (plus chain link fields when applicable) to the
+          // parent — PatientsView starts the F8 chain; CrossAddChainModal performs the F9 link.
+          emit('created', {
+            record: created,
+            link: props.linkTo ? { relationship: linkRelationship.value, isPrimary: linkIsPrimary.value } : null,
+          });
           if (isTemporaryMrn(created.medicalRecordNumber ?? '')) {
             emit('created-temp-mrn', created);
           }
@@ -479,7 +533,7 @@ export default defineComponent({
       });
     };
 
-    return { form, isEdit, saving, error, hasError, hasTemporaryMrn, cannotActivate, canEditSenadis, canEditRequiresDiscovery, age, hadCedulaOnFile, showLegacyCedulaNag, handleSubmit };
+    return { form, isEdit, saving, error, hasError, hasTemporaryMrn, cannotActivate, canEditSenadis, canEditRequiresDiscovery, age, hadCedulaOnFile, showLegacyCedulaNag, linkRelationship, linkIsPrimary, handleSubmit };
   },
 });
 </script>
