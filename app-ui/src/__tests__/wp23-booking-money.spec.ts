@@ -369,6 +369,7 @@ describe('PatientFormModal — F7 SENADIS checkbox claim gating', () => {
     const textInputs = wrapper.findAll('input[type="text"]');
     await textInputs[0].setValue('First');
     await textInputs[2].setValue('Last');
+    await textInputs[3].setValue('001-0000001-1'); // cedula — required at create as of WP-25
 
     await wrapper.find('form').trigger('submit');
     await vi.waitFor(() => expect(createPatientMock).toHaveBeenCalled());

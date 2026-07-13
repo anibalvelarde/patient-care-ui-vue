@@ -174,7 +174,7 @@
           <span v-if="formatAge(patient.dateOfBirth)" class="text-slate-400">({{ formatAge(patient.dateOfBirth) }})</span>
         </div>
         <div><span class="font-medium">Gender:</span> {{ patient.gender }}</div>
-        <div><span class="font-medium">Cedula:</span> {{ patient.cedula ? 'On file' : '—' }}</div>
+        <div><span class="font-medium">Cedula | Passport:</span> {{ patient.cedula ? 'On file' : '—' }}</div>
         <div><span class="font-medium">Email:</span> {{ patient.email }}</div>
         <div><span class="font-medium">Phone:</span> {{ patient.phoneNumber }}</div>
         <div class="col-span-2">
@@ -246,7 +246,7 @@ export default defineComponent({
     const columns = [
       { key: 'patientName', label: 'Name' },
       { key: 'medicalRecordNumber', label: 'MRN' },
-      { key: 'cedula', label: 'Cedula' },
+      { key: 'cedula', label: 'Cedula | Passport' }, // WP-25 (F5)
       { key: 'dateOfBirth', label: 'DOB' },
       { key: 'gender', label: 'Gender' },
       { key: 'email', label: 'Email' },

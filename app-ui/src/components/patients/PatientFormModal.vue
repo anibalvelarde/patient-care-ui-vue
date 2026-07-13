@@ -64,14 +64,27 @@
             <p v-if="age" class="mt-1 text-xs text-slate-400">Age: {{ age }}</p>
           </div>
 
+          <!-- WP-25 (F5): "Cedula | Passport" is required at create and can never be cleared once
+               on file. Legacy imports with no stored value stay editable (tolerant ruling
+               2026-07-12) — nagged amber, never blocked. `required` is relaxed on that legacy
+               path only, so an Enter-key submit isn't blocked by native validation. -->
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Cedula</label>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Cedula | Passport *</label>
             <input
               v-model="form.cedula"
               type="text"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Government ID (optional)"
+              :required="!isEdit || hadCedulaOnFile"
+              :class="[
+                'w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent',
+                showLegacyCedulaNag
+                  ? 'border-amber-300 bg-amber-50 focus:ring-amber-500'
+                  : 'border-slate-300 focus:ring-blue-500',
+              ]"
+              placeholder="Cedula or passport number"
             />
+            <p v-if="showLegacyCedulaNag" class="mt-1 text-xs text-amber-600">
+              No Cedula | Passport on file — capture it when available.
+            </p>
           </div>
 
           <!-- WP-23 (F7): SENADIS flag — free at create; on edit this is the app's first
@@ -307,6 +320,10 @@ export default defineComponent({
 
     const isEdit = ref(false);
 
+    // WP-25 (F5): whether the patient being edited already had a cedula/passport stored when the
+    // modal opened — an on-file value can never be cleared; a legacy NULL stays tolerated.
+    const hadCedulaOnFile = ref(false);
+
     // WP-23 (F7): anyone who can create patients may SET the flag at create; changing it on an
     // existing patient needs the claim (Questionnaire E). The payload omits the field when
     // disabled — the API's field-level gate would 403 a change from an unauthorized role anyway.
@@ -328,6 +345,12 @@ export default defineComponent({
     const cannotActivate = computed(() => hasTemporaryMrn.value && !form.activeStatus);
     const age = computed(() => formatAge(form.dateOfBirth));
 
+    // WP-25 (F5): amber nag while a legacy (no stored cedula) patient's field is still blank —
+    // clears as soon as a value is typed (MRN-hint pattern).
+    const showLegacyCedulaNag = computed(
+      () => isEdit.value && !hadCedulaOnFile.value && !form.cedula.trim()
+    );
+
     watch(form, () => clearError(), { deep: true });
 
     watch(
@@ -347,6 +370,7 @@ export default defineComponent({
           form.gender = props.patient.gender ?? '';
           form.medicalRecordNumber = props.patient.medicalRecordNumber ?? '';
           form.cedula = props.patient.cedula ?? '';
+          hadCedulaOnFile.value = !!props.patient.cedula; // WP-25: on-file value may never be cleared
           form.hasSenadisDiscount = props.patient.hasSenadisDiscount === true;
           // WP-24: absent/undefined (older API) reads as true — only an explicit false waives.
           form.requiresDiscovery = props.patient.requiresDiscovery !== false;
@@ -362,6 +386,7 @@ export default defineComponent({
           form.gender = '';
           form.medicalRecordNumber = '';
           form.cedula = '';
+          hadCedulaOnFile.value = false;
           form.hasSenadisDiscount = false;
           form.requiresDiscovery = true; // WP-24: default CHECKED at create
           form.activeStatus = true;
@@ -370,8 +395,15 @@ export default defineComponent({
     );
 
     const handleSubmit = () => {
-      if (!form.firstName || !form.lastName || !form.dateOfBirth || !form.email || !form.phoneNumber || !form.gender) {
+      // WP-25 (F5): cedula/passport joins the required list at create (trimmed non-empty).
+      if (!form.firstName || !form.lastName || !form.dateOfBirth || !form.email || !form.phoneNumber || !form.gender
+        || (!isEdit.value && !form.cedula.trim())) {
         setError('Please fill in all required fields.');
+        return;
+      }
+      // WP-25 (F5): an on-file cedula/passport can never be cleared (the API 400s a blank).
+      if (isEdit.value && hadCedulaOnFile.value && !form.cedula.trim()) {
+        setError('Cedula | Passport cannot be cleared.');
         return;
       }
       // Cannot activate a patient while a temporary MRN is still in place.
@@ -396,9 +428,10 @@ export default defineComponent({
             email: form.email,
             phoneNumber: form.phoneNumber,
             gender: form.gender,
-            // Always send the field on update: '' expresses an explicit clear-to-NULL (the API
-            // treats omitted = leave as-is, blank = erase — intake 2026-06-29-001 item 3).
-            cedula: form.cedula.trim(),
+            // WP-25 (F5): blank must never be sent — the API 400s it ("cannot be cleared";
+            // the WP-18-followup erase semantics are removed). Omitted = unchanged, which keeps
+            // legacy NULL-cedula patients editable (tolerant ruling 2026-07-12).
+            cedula: form.cedula.trim() || undefined,
             // WP-23 (F7): only send when this user may edit it — omitted = unchanged server-side.
             hasSenadisDiscount: canEditSenadis.value ? form.hasSenadisDiscount : undefined,
             // WP-24 (F3/F4): same omit-when-gated rule.
@@ -433,7 +466,7 @@ export default defineComponent({
             phoneNumber: form.phoneNumber,
             gender: form.gender,
             medicalRecordNumber: form.medicalRecordNumber || undefined,
-            cedula: form.cedula || undefined,
+            cedula: form.cedula.trim(), // WP-25 (F5): required at create — guard above ensures non-blank
             hasSenadisDiscount: form.hasSenadisDiscount,
             requiresDiscovery: form.requiresDiscovery,
           });
@@ -446,7 +479,7 @@ export default defineComponent({
       });
     };
 
-    return { form, isEdit, saving, error, hasError, hasTemporaryMrn, cannotActivate, canEditSenadis, canEditRequiresDiscovery, age, handleSubmit };
+    return { form, isEdit, saving, error, hasError, hasTemporaryMrn, cannotActivate, canEditSenadis, canEditRequiresDiscovery, age, hadCedulaOnFile, showLegacyCedulaNag, handleSubmit };
   },
 });
 </script>
