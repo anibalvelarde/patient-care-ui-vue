@@ -45,7 +45,16 @@
       :patient="editingPatient"
       @close="modalVisible = false"
       @saved="onSaved"
+      @created="onPatientCreated"
       @created-temp-mrn="onCreatedTempMrn"
+    />
+
+    <!-- WP-27 (F8): a just-created patient has no caretaker — offer to link/create one now -->
+    <CrossAddChainModal
+      :visible="chainVisible"
+      mode="add-caretaker"
+      :target="chainTarget"
+      @close="onChainClose"
     />
 
     <PaymentFormModal
@@ -97,19 +106,23 @@ import PatientList from '../components/patients/PatientList.vue';
 import PatientFormModal from '../components/patients/PatientFormModal.vue';
 import PatientCaretakerPanel from '../components/patients/PatientCaretakerPanel.vue';
 import PaymentFormModal from '../components/payments/PaymentFormModal.vue';
+import CrossAddChainModal, { type ChainTarget } from '../components/shared/CrossAddChainModal.vue';
 import { PatientsHttpClient } from '../services/PatientsHttpClient';
 import type { Patient } from '../interfaces/Patient';
 import { isTemporaryMrn } from '../interfaces/Patient';
+import type { CreatedForChain } from '../interfaces/CrossAdd';
 import type { DelinquentPatient } from '../interfaces/Delinquency';
 import { useFormError } from '../composables/useFormError';
+import { useClaims, Permissions } from '../composables/useClaims';
 
 export default defineComponent({
   name: 'PatientsView',
-  components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, PatientList, PatientFormModal, PatientCaretakerPanel, PaymentFormModal },
+  components: { O2MobileNav, O2Sidebar, O2Header, O2Footer, PatientList, PatientFormModal, PatientCaretakerPanel, PaymentFormModal, CrossAddChainModal },
   setup() {
     const route = useRoute();
     const router = useRouter();
     const client = new PatientsHttpClient();
+    const { hasClaim } = useClaims();
 
     const validTabs = ['all', 'active', 'inactive', 'delinquent', 'sessions'] as const;
     type TabValue = typeof validTabs[number];
@@ -227,6 +240,22 @@ export default defineComponent({
       loadPastDuePatients();
     };
 
+    const chainVisible = ref(false);
+    const chainTarget = ref<ChainTarget | null>(null);
+
+    // WP-27 (F8): every create lands caretaker-less — open the chain when this user holds the
+    // claim the link endpoint enforces (Caretakers.LinkPatient; linking is caretaker-side only).
+    const onPatientCreated = (payload: CreatedForChain<Patient>) => {
+      if (!hasClaim('Permission', Permissions.CaretakersLinkPatient)) return;
+      chainTarget.value = { id: payload.record.patientId, name: payload.record.patientName };
+      chainVisible.value = true;
+    };
+
+    const onChainClose = () => {
+      chainVisible.value = false;
+      loadPatients(); // a caretaker may have been created/linked — refresh booking-readiness
+    };
+
     const onCreatedTempMrn = (patient: Patient) => {
       tempMrnBanner.value = patient.medicalRecordNumber ?? '';
       setTimeout(() => { tempMrnBanner.value = ''; }, 8000);
@@ -256,6 +285,10 @@ export default defineComponent({
       onCaretakersUpdated,
       onSaved,
       onCreatedTempMrn,
+      chainVisible,
+      chainTarget,
+      onPatientCreated,
+      onChainClose,
       onTabChange,
       payFormVisible,
       preSelectedCaretakerId,

@@ -43,8 +43,10 @@
             Primary
           </span>
         </div>
+        <!-- WP-27 claim hygiene: gate on the claim the API enforces — link/unlink is
+             caretaker-side (Caretakers.LinkPatient), not Patients.LinkCaretaker -->
         <button
-          v-if="hasClaim('Permission', Permissions.PatientsLinkCaretaker)"
+          v-if="hasClaim('Permission', Permissions.CaretakersLinkPatient)"
           class="px-3 py-1 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
           @click="confirmRemove(lc)"
         >
@@ -82,7 +84,7 @@
     <!-- Add caretaker section -->
     <div class="border-t border-slate-200 pt-4">
       <button
-        v-if="!showAddForm && hasClaim('Permission', Permissions.PatientsLinkCaretaker)"
+        v-if="!showAddForm && hasClaim('Permission', Permissions.CaretakersLinkPatient)"
         class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors"
         @click="showAddForm = true"
       >
@@ -92,61 +94,16 @@
         <span>Add Caretaker</span>
       </button>
 
-      <div v-if="showAddForm" class="space-y-3">
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">Caretaker</label>
-          <select
-            v-model="addCaretakerId"
-            class="w-full rounded-lg border border-slate-300 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option :value="0" disabled>Select a caretaker...</option>
-            <option
-              v-for="c in availableCaretakers"
-              :key="c.caretakerId"
-              :value="c.caretakerId"
-            >
-              {{ c.caretakerName }}
-            </option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">Relationship</label>
-          <select
-            v-model="addRelationship"
-            class="w-full rounded-lg border border-slate-300 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option :value="null">None</option>
-            <option value="Father">Father</option>
-            <option value="Mother">Mother</option>
-            <option value="Relative">Relative</option>
-            <option value="HiredHelp">Hired Help</option>
-          </select>
-        </div>
-        <div class="flex items-center space-x-2">
-          <input
-            id="add-primary"
-            v-model="addIsPrimary"
-            type="checkbox"
-            class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-          />
-          <label for="add-primary" class="text-sm text-slate-700">Primary caretaker</label>
-        </div>
-        <div class="flex items-center space-x-2">
-          <button
-            class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
-            :disabled="addCaretakerId === 0 || saving"
-            @click="doAdd"
-          >
-            Add
-          </button>
-          <button
-            class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
-            @click="resetAddForm"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
+      <!-- WP-27: shared link form (also used by CaretakerPatientsList + the cross-add chain) -->
+      <CaretakerLinkForm
+        v-if="showAddForm"
+        entity-label="Caretaker"
+        :options="caretakerOptions"
+        :saving="saving"
+        submit-label="Add"
+        @submit="doAdd"
+        @cancel="showAddForm = false"
+      />
     </div>
 
     <!-- Error message -->
@@ -174,9 +131,11 @@ import type { Caretaker } from '../../interfaces/Caretaker';
 import { CaretakersHttpClient } from '../../services/CaretakersHttpClient';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import { useClaims, Permissions } from '../../composables/useClaims';
+import CaretakerLinkForm from '../shared/CaretakerLinkForm.vue';
 
 export default defineComponent({
   name: 'PatientCaretakerPanel',
+  components: { CaretakerLinkForm },
   props: {
     patient: { type: Object as PropType<Patient>, required: true },
   },
@@ -192,13 +151,12 @@ export default defineComponent({
     const errorMsg = ref('');
     const removeTarget = ref<PatientCaretakerSummary | null>(null);
     const showAddForm = ref(false);
-    const addCaretakerId = ref(0);
-    const addRelationship = ref<string | null>(null);
-    const addIsPrimary = ref(true);
 
-    const availableCaretakers = computed(() => {
+    const caretakerOptions = computed(() => {
       const linkedIds = new Set(linkedCaretakers.value.map((lc) => lc.caretakerId));
-      return allCaretakers.value.filter((c) => !linkedIds.has(c.caretakerId));
+      return allCaretakers.value
+        .filter((c) => !linkedIds.has(c.caretakerId))
+        .map((c) => ({ id: c.caretakerId, name: c.caretakerName }));
     });
 
     const loadData = async () => {
@@ -230,17 +188,17 @@ export default defineComponent({
       }
     };
 
-    const doAdd = async () => {
+    const doAdd = async (payload: { id: number; relationship: string | null; isPrimary: boolean }) => {
       saving.value = true;
       errorMsg.value = '';
       try {
         await caretakerClient.linkPatient(
-          addCaretakerId.value,
+          payload.id,
           props.patient.patientId,
-          addIsPrimary.value,
-          addRelationship.value,
+          payload.isPrimary,
+          payload.relationship,
         );
-        resetAddForm();
+        showAddForm.value = false;
         await loadData();
         emit('updated');
       } catch (e: unknown) {
@@ -250,29 +208,18 @@ export default defineComponent({
       }
     };
 
-    const resetAddForm = () => {
-      showAddForm.value = false;
-      addCaretakerId.value = 0;
-      addRelationship.value = null;
-      addIsPrimary.value = true;
-    };
-
     onMounted(loadData);
 
     return {
       linkedCaretakers,
-      availableCaretakers,
+      caretakerOptions,
       saving,
       errorMsg,
       removeTarget,
       showAddForm,
-      addCaretakerId,
-      addRelationship,
-      addIsPrimary,
       confirmRemove,
       doRemove,
       doAdd,
-      resetAddForm,
       hasClaim,
       Permissions,
     };

@@ -100,61 +100,15 @@
         <span>Link Patient</span>
       </button>
 
-      <div v-if="showLinkForm" class="space-y-3">
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">Patient</label>
-          <select
-            v-model="linkPatientId"
-            class="w-full rounded-lg border border-slate-300 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option :value="0" disabled>Select a patient...</option>
-            <option
-              v-for="p in availablePatients"
-              :key="p.patientId"
-              :value="p.patientId"
-            >
-              {{ p.patientName }}
-            </option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">Relationship</label>
-          <select
-            v-model="linkRelationship"
-            class="w-full rounded-lg border border-slate-300 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option :value="null">None</option>
-            <option value="Father">Father</option>
-            <option value="Mother">Mother</option>
-            <option value="Relative">Relative</option>
-            <option value="HiredHelp">Hired Help</option>
-          </select>
-        </div>
-        <div class="flex items-center space-x-2">
-          <input
-            id="link-primary"
-            v-model="linkIsPrimary"
-            type="checkbox"
-            class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-          />
-          <label for="link-primary" class="text-sm text-slate-700">Primary caretaker</label>
-        </div>
-        <div class="flex items-center space-x-2">
-          <button
-            class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
-            :disabled="linkPatientId === 0 || saving"
-            @click="doLink"
-          >
-            Link
-          </button>
-          <button
-            class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
-            @click="resetLinkForm"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
+      <!-- WP-27: shared link form (also used by PatientCaretakerPanel + the cross-add chain) -->
+      <CaretakerLinkForm
+        v-if="showLinkForm"
+        entity-label="Patient"
+        :options="patientOptions"
+        :saving="saving"
+        @submit="doLink"
+        @cancel="showLinkForm = false"
+      />
     </div>
 
     <!-- Error message -->
@@ -183,9 +137,11 @@ import type { Patient } from '../../interfaces/Patient';
 import { CaretakersHttpClient } from '../../services/CaretakersHttpClient';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import { useClaims, Permissions } from '../../composables/useClaims';
+import CaretakerLinkForm from '../shared/CaretakerLinkForm.vue';
 
 export default defineComponent({
   name: 'CaretakerPatientsList',
+  components: { CaretakerLinkForm },
   props: {
     caretaker: { type: Object as PropType<Caretaker>, required: true },
   },
@@ -202,13 +158,12 @@ export default defineComponent({
     const errorMsg = ref('');
     const unlinkTarget = ref<CaretakerPatientSummary | null>(null);
     const showLinkForm = ref(false);
-    const linkPatientId = ref(0);
-    const linkRelationship = ref<string | null>(null);
-    const linkIsPrimary = ref(true);
 
-    const availablePatients = computed(() => {
+    const patientOptions = computed(() => {
       const linkedIds = new Set(linkedPatients.value.map((lp) => lp.patientId));
-      return allPatients.value.filter((p) => !linkedIds.has(p.patientId));
+      return allPatients.value
+        .filter((p) => !linkedIds.has(p.patientId))
+        .map((p) => ({ id: p.patientId, name: p.patientName }));
     });
 
     const loadData = async () => {
@@ -240,17 +195,17 @@ export default defineComponent({
       }
     };
 
-    const doLink = async () => {
+    const doLink = async (payload: { id: number; relationship: string | null; isPrimary: boolean }) => {
       saving.value = true;
       errorMsg.value = '';
       try {
         await caretakerClient.linkPatient(
           props.caretaker.caretakerId,
-          linkPatientId.value,
-          linkIsPrimary.value,
-          linkRelationship.value,
+          payload.id,
+          payload.isPrimary,
+          payload.relationship,
         );
-        resetLinkForm();
+        showLinkForm.value = false;
         await loadData();
         emit('updated');
       } catch (e: unknown) {
@@ -258,13 +213,6 @@ export default defineComponent({
       } finally {
         saving.value = false;
       }
-    };
-
-    const resetLinkForm = () => {
-      showLinkForm.value = false;
-      linkPatientId.value = 0;
-      linkRelationship.value = null;
-      linkIsPrimary.value = true;
     };
 
     const viewPlans = (patientId: number) => {
@@ -275,18 +223,14 @@ export default defineComponent({
 
     return {
       linkedPatients,
-      availablePatients,
+      patientOptions,
       saving,
       errorMsg,
       unlinkTarget,
       showLinkForm,
-      linkPatientId,
-      linkRelationship,
-      linkIsPrimary,
       confirmUnlink,
       doUnlink,
       doLink,
-      resetLinkForm,
       viewPlans,
       hasClaim,
       Permissions,
