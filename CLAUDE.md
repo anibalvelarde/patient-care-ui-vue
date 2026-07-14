@@ -66,6 +66,17 @@ npm run lint             # ESLint
 npm run build            # Production build → dist/
 ```
 
+## Testing
+
+**Before writing or modifying any spec, read [`app-ui/docs/testing-guide.md`](app-ui/docs/testing-guide.md)** —
+it captures the house test style (manifest-driven `authAs`, `vi.hoisted` mock-per-HttpClient,
+teleport-stub gotchas, `data-testid` naming, async rhythm, factories). Do NOT re-derive patterns
+by browsing old specs; the guide is authoritative.
+
+- Run: `cd app-ui && npm test` (vitest); full gate: `npx vue-tsc --noEmit && npm run lint && npx vitest run`
+- Unit specs: `app-ui/src/__tests__/*.spec.ts` · user-facing walkthroughs: `test-scenarios/*.md`
+- **DoD:** invent a new test pattern or hit a new harness gotcha → add it to the guide in the same PR.
+
 ## API Dependency
 
 Fetches data from `patient-care-api` (.NET 8 REST API):
