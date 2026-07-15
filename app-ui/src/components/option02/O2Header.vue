@@ -3,9 +3,11 @@
     <!-- Left: Greeting -->
     <div>
       <h1 class="text-lg font-semibold text-gray-800">
-        {{ greeting }}, <span class="text-violet-600">Front Desk</span>
+        {{ greeting }}, <span class="text-violet-600" data-testid="salutation-name">{{ firstName }}</span>
       </h1>
-      <p class="text-xs text-gray-400">{{ todayFormatted }}</p>
+      <p class="text-xs text-gray-400 truncate">
+        <template v-if="roleLabel"><span data-testid="salutation-role">{{ roleLabel }}</span> · </template>{{ todayFormatted }}
+      </p>
     </div>
 
     <!-- Right: Actions + Avatar -->
@@ -116,6 +118,31 @@ export default defineComponent({
       return (letters[0] ?? '') + (letters[1] ?? '') || '?';
     });
 
+    // WP-33: auth.fullName is "LastName, FirstName Middle" (API GetFullName()) — the first
+    // name is the token after the comma; comma-less values fall back to their first token.
+    const firstName = computed(() => {
+      const name = auth.fullName.trim();
+      const afterComma = name.includes(',') ? name.split(',')[1] : name;
+      return afterComma.trim().split(/\s+/)[0] || name || 'there';
+    });
+
+    // WP-33 (owner rulings 2026-07-11/15): highest role only, fixed precedence, hard-coded
+    // standard labels — labels are a UI concern (DB RoleName sourcing explicitly declined).
+    const ROLE_PRECEDENCE = ['OWN', 'MGR', 'AM', 'ACCT', 'FD'];
+    const ROLE_LABELS: Record<string, string> = {
+      OWN: 'Owner',
+      MGR: 'Manager',
+      AM: 'Assistant Manager',
+      ACCT: 'Accountant',
+      FD: 'Front Desk',
+    };
+    const roleLabel = computed(() => {
+      if (auth.isSystemAdmin) return 'System Administrator';
+      const roles = auth.roles;
+      const top = ROLE_PRECEDENCE.find((r) => roles.includes(r)) ?? roles[0];
+      return top ? (ROLE_LABELS[top] ?? top) : '';
+    });
+
     const onLogout = () => {
       auth.logout();
       router.push({ name: 'login' });
@@ -134,7 +161,7 @@ export default defineComponent({
       }
     };
 
-    return { greeting, todayFormatted, quickActions, handleAction, fullName, initials, onLogout };
+    return { greeting, todayFormatted, quickActions, handleAction, fullName, initials, firstName, roleLabel, onLogout };
   },
 });
 </script>
