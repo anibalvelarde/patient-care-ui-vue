@@ -12,6 +12,9 @@
         </div>
         <CaretakerList
           :caretakers="caretakers"
+          :total-count="totalCount"
+          :page="page"
+          :page-size="pageSize"
           :initial-tab="initialTab"
           :loading="loading"
           :error="error"
@@ -20,6 +23,7 @@
           @toggle-active="toggleActive"
           @retry="loadCaretakers"
           @tab-change="onTabChange"
+          @query-change="onQueryChange"
           @view-patients="viewPatients"
         />
 
@@ -60,7 +64,7 @@ import O2MobileNav from '../components/option02/O2MobileNav.vue';
 import O2Sidebar from '../components/option02/O2Sidebar.vue';
 import O2Header from '../components/option02/O2Header.vue';
 import O2Footer from '../components/option02/O2Footer.vue';
-import CaretakerList from '../components/caretakers/CaretakerList.vue';
+import CaretakerList, { type CaretakerListQuery } from '../components/caretakers/CaretakerList.vue';
 import CaretakerFormModal from '../components/caretakers/CaretakerFormModal.vue';
 import CaretakerPatientsList from '../components/caretakers/CaretakerPatientsList.vue';
 import CrossAddChainModal, { type ChainTarget } from '../components/shared/CrossAddChainModal.vue';
@@ -84,6 +88,16 @@ export default defineComponent({
       return tab && (validTabs as readonly string[]).includes(tab) ? tab as TabValue : 'all';
     });
     const caretakers = ref<Caretaker[]>([]);
+    const totalCount = ref(0);
+    const page = ref(1);
+    const pageSize = ref(30);
+    // WP-30 (U2): the list is server-paged — CaretakerList's tabs/search/pager re-query
+    // through this (initial isActive derives from the ?tab= deep link).
+    const query = ref<CaretakerListQuery>({
+      search: '',
+      isActive: initialTab.value === 'active' ? true : initialTab.value === 'inactive' ? false : undefined,
+      page: 1,
+    });
     const loading = ref(false);
     const error = ref('');
     const modalVisible = ref(false);
@@ -94,12 +108,21 @@ export default defineComponent({
       loading.value = true;
       error.value = '';
       try {
-        caretakers.value = await client.getCaretakers();
+        const result = await client.getCaretakers(query.value);
+        caretakers.value = result.items;
+        totalCount.value = result.totalCount;
+        page.value = result.page;
+        pageSize.value = result.pageSize;
       } catch (e: unknown) {
         error.value = e instanceof Error ? e.message : 'Failed to load caretakers.';
       } finally {
         loading.value = false;
       }
+    };
+
+    const onQueryChange = (q: CaretakerListQuery) => {
+      query.value = q;
+      loadCaretakers();
     };
 
     const openAdd = () => {
@@ -167,6 +190,10 @@ export default defineComponent({
 
     return {
       caretakers,
+      totalCount,
+      page,
+      pageSize,
+      onQueryChange,
       loading,
       error,
       modalVisible,

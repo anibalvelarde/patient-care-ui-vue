@@ -7,7 +7,7 @@
 // Patients.Edit for create-new). Create-then-link is two calls — a failed link keeps the chain
 // open with a retry.
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { setActivePinia, createPinia, type Pinia } from 'pinia';
 import { mount, flushPromises } from '@vue/test-utils';
 import manifest from '../generated/access-control-matrix.json';
@@ -55,24 +55,24 @@ function caretaker(overrides: Partial<Caretaker> = {}): Caretaker {
 }
 
 const {
-  getCaretakersMock,
+  lookupCaretakersMock,
   createCaretakerMock,
   linkPatientMock,
-  getPatientsMock,
+  lookupPatientsMock,
   createPatientMock,
   updatePatientMock,
 } = vi.hoisted(() => ({
-  getCaretakersMock: vi.fn(),
+  lookupCaretakersMock: vi.fn(),
   createCaretakerMock: vi.fn(),
   linkPatientMock: vi.fn(),
-  getPatientsMock: vi.fn(),
+  lookupPatientsMock: vi.fn(),
   createPatientMock: vi.fn(),
   updatePatientMock: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../services/CaretakersHttpClient', () => ({
   CaretakersHttpClient: vi.fn().mockImplementation(() => ({
-    getCaretakers: getCaretakersMock,
+    lookupCaretakers: lookupCaretakersMock,
     createCaretaker: createCaretakerMock,
     linkPatient: linkPatientMock,
   })),
@@ -80,7 +80,7 @@ vi.mock('../services/CaretakersHttpClient', () => ({
 
 vi.mock('../services/PatientsHttpClient', () => ({
   PatientsHttpClient: vi.fn().mockImplementation(() => ({
-    getPatients: getPatientsMock,
+    lookupPatients: lookupPatientsMock,
     createPatient: createPatientMock,
     updatePatient: updatePatientMock,
   })),
@@ -110,11 +110,16 @@ function authAs(role: string): Pinia {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  getCaretakersMock.mockResolvedValue([caretaker()]);
-  getPatientsMock.mockResolvedValue([patient({ patientId: 55, patientName: 'Herrera, Lucas' })]);
+  // WP-30: the link form's picker searches the lookup endpoints (slim DTOs, capped at 20).
+  lookupCaretakersMock.mockResolvedValue([{ caretakerId: 7, caretakerName: 'Delgado, María' }]);
+  lookupPatientsMock.mockResolvedValue([{ patientId: 55, patientName: 'Herrera, Lucas', medicalRecordNumber: 'L26-0001' }]);
   createCaretakerMock.mockResolvedValue(caretaker({ caretakerId: 77 }));
   createPatientMock.mockResolvedValue(patient({ patientId: 99, patientName: 'Martínez, Diego', medicalRecordNumber: 'MRN-099' }));
   linkPatientMock.mockResolvedValue(undefined);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 // ── form modals: `created` emit (the chain trigger) ──────────────────────────
@@ -261,15 +266,28 @@ describe('CrossAddChainModal — chooser', () => {
   });
 });
 
+// WP-30: the link form's picker is a debounced (300ms) lookup typeahead — type, advance the
+// debounce window, then mousedown-pick the result (LookupSelect picks on mousedown).
+async function pickLinkEntity(wrapper: Awaited<ReturnType<typeof openChain>>, query: string) {
+  const input = wrapper.find('[data-testid="link-entity-input"]');
+  await input.trigger('focus'); // the dropdown only opens on focus
+  await input.setValue(query);
+  vi.advanceTimersByTime(300);
+  await flushPromises();
+  await wrapper.find('[data-testid="link-entity-option"]').trigger('mousedown');
+}
+
 describe('CrossAddChainModal — link existing', () => {
   it('F8: links the selected caretaker TO the new patient — linkPatient(caretakerId, patientId, isPrimary, relationship)', async () => {
+    vi.useFakeTimers();
     const wrapper = await openChain(authAs('MGR'), 'add-caretaker');
     await wrapper.find('[data-testid="chain-link-existing"]').trigger('click');
     await flushPromises();
 
     expect(wrapper.find('[data-testid="chain-link-banner"]').text()).toContain('Gómez, Valentina');
 
-    await wrapper.find('[data-testid="link-entity-select"]').setValue(7);
+    await pickLinkEntity(wrapper, 'del');
+    expect(lookupCaretakersMock).toHaveBeenCalledWith('del');
     await wrapper.find('[data-testid="link-relationship-select"]').setValue('Mother');
     await wrapper.find('[data-testid="link-submit"]').trigger('click');
     await flushPromises();
@@ -280,11 +298,13 @@ describe('CrossAddChainModal — link existing', () => {
   });
 
   it('F9: mirrored orientation — the new caretaker is the link owner', async () => {
+    vi.useFakeTimers();
     const wrapper = await openChain(authAs('MGR'), 'add-patient');
     await wrapper.find('[data-testid="chain-link-existing"]').trigger('click');
     await flushPromises();
 
-    await wrapper.find('[data-testid="link-entity-select"]').setValue(55);
+    await pickLinkEntity(wrapper, 'herr');
+    expect(lookupPatientsMock).toHaveBeenCalledWith('herr');
     await wrapper.find('[data-testid="link-relationship-select"]').setValue('Relative');
     await wrapper.find('[data-testid="link-submit"]').trigger('click');
     await flushPromises();
@@ -293,12 +313,13 @@ describe('CrossAddChainModal — link existing', () => {
   });
 
   it('link failure keeps the form open with the error (retry affordance)', async () => {
+    vi.useFakeTimers();
     linkPatientMock.mockRejectedValueOnce(new Error('Network error'));
     const wrapper = await openChain(authAs('MGR'), 'add-caretaker');
     await wrapper.find('[data-testid="chain-link-existing"]').trigger('click');
     await flushPromises();
 
-    await wrapper.find('[data-testid="link-entity-select"]').setValue(7);
+    await pickLinkEntity(wrapper, 'del');
     await wrapper.find('[data-testid="link-submit"]').trigger('click');
     await flushPromises();
 
@@ -308,7 +329,7 @@ describe('CrossAddChainModal — link existing', () => {
     // Note: the teleport STUB recreates the link form on re-render, dropping the selection —
     // verified against a real (unstubbed) teleport that the selection survives a failed link and
     // a plain second click retries. Re-select here to keep the stub-based test honest.
-    await wrapper.find('[data-testid="link-entity-select"]').setValue(7);
+    await pickLinkEntity(wrapper, 'del');
     await wrapper.find('[data-testid="link-submit"]').trigger('click');
     await flushPromises();
     expect(linkPatientMock).toHaveBeenCalledTimes(2);

@@ -98,7 +98,8 @@
       <CaretakerLinkForm
         v-if="showAddForm"
         entity-label="Caretaker"
-        :options="caretakerOptions"
+        :fetch-options="fetchCaretakerOptions"
+        :exclude-ids="linkedCaretakerIds"
         :saving="saving"
         submit-label="Add"
         @submit="doAdd"
@@ -127,11 +128,10 @@
 <script lang="ts">
 import { defineComponent, ref, computed, onMounted, type PropType } from 'vue';
 import type { Patient, PatientCaretakerSummary } from '../../interfaces/Patient';
-import type { Caretaker } from '../../interfaces/Caretaker';
 import { CaretakersHttpClient } from '../../services/CaretakersHttpClient';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import { useClaims, Permissions } from '../../composables/useClaims';
-import CaretakerLinkForm from '../shared/CaretakerLinkForm.vue';
+import CaretakerLinkForm, { type LookupOption } from '../shared/CaretakerLinkForm.vue';
 
 export default defineComponent({
   name: 'PatientCaretakerPanel',
@@ -146,23 +146,20 @@ export default defineComponent({
     const patientClient = new PatientsHttpClient();
 
     const linkedCaretakers = ref<PatientCaretakerSummary[]>([]);
-    const allCaretakers = ref<Caretaker[]>([]);
     const saving = ref(false);
     const errorMsg = ref('');
     const removeTarget = ref<PatientCaretakerSummary | null>(null);
     const showAddForm = ref(false);
 
-    const caretakerOptions = computed(() => {
-      const linkedIds = new Set(linkedCaretakers.value.map((lc) => lc.caretakerId));
-      return allCaretakers.value
-        .filter((c) => !linkedIds.has(c.caretakerId))
-        .map((c) => ({ id: c.caretakerId, name: c.caretakerName }));
-    });
+    // WP-30: the add form searches the lookup endpoint; already-linked caretakers are excluded.
+    const linkedCaretakerIds = computed(() => linkedCaretakers.value.map((lc) => lc.caretakerId));
+
+    const fetchCaretakerOptions = async (q: string): Promise<LookupOption[]> =>
+      (await caretakerClient.lookupCaretakers(q)).map((c) => ({ id: c.caretakerId, name: c.caretakerName }));
 
     const loadData = async () => {
       try {
         linkedCaretakers.value = await patientClient.getPatientCaretakers(props.patient.patientId);
-        allCaretakers.value = await caretakerClient.getCaretakers();
       } catch (e: unknown) {
         errorMsg.value = e instanceof Error ? e.message : 'Failed to load data.';
       }
@@ -212,7 +209,8 @@ export default defineComponent({
 
     return {
       linkedCaretakers,
-      caretakerOptions,
+      linkedCaretakerIds,
+      fetchCaretakerOptions,
       saving,
       errorMsg,
       removeTarget,

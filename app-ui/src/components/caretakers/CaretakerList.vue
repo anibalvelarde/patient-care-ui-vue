@@ -43,7 +43,7 @@
         </button>
       </div>
       <span class="text-sm text-slate-500">
-        {{ filteredCaretakers.length }} caretaker{{ filteredCaretakers.length !== 1 ? 's' : '' }}
+        {{ totalCount }} caretaker{{ totalCount !== 1 ? 's' : '' }}
       </span>
     </div>
 
@@ -64,37 +64,75 @@
       </button>
     </div>
 
-    <!-- Standard caretaker table -->
-    <CaretakerTable
-      v-else
-      :caretakers="filteredCaretakers"
-      @edit="(c) => $emit('edit', c)"
-      @toggle-active="(c) => $emit('toggle-active', c)"
-      @view-patients="(c) => $emit('view-patients', c)"
-    />
+    <!-- Standard caretaker table (WP-30: server-paged — rows are the current page only) -->
+    <template v-else>
+      <CaretakerTable
+        :caretakers="caretakers"
+        @edit="(c) => $emit('edit', c)"
+        @toggle-active="(c) => $emit('toggle-active', c)"
+        @view-patients="(c) => $emit('view-patients', c)"
+      />
+
+      <!-- Paging footer (WP-30, SessionHistoryPanel pattern) -->
+      <div class="flex items-center justify-between text-sm text-slate-500">
+        <button
+          class="px-3 py-1.5 rounded-lg font-medium disabled:opacity-40 disabled:cursor-not-allowed text-blue-600 hover:bg-blue-50"
+          :disabled="page <= 1 || loading"
+          @click="goToPage(page - 1)"
+        >
+          ◀ Prev
+        </button>
+        <span>
+          Page {{ page }} of {{ totalPages }}
+        </span>
+        <button
+          class="px-3 py-1.5 rounded-lg font-medium disabled:opacity-40 disabled:cursor-not-allowed text-blue-600 hover:bg-blue-50"
+          :disabled="page >= totalPages || loading"
+          @click="goToPage(page + 1)"
+        >
+          Next ▶
+        </button>
+      </div>
+    </template>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed, onMounted, type PropType } from 'vue';
+import { defineComponent, ref, computed, onMounted, watch, type PropType } from 'vue';
 import type { Caretaker } from '../../interfaces/Caretaker';
 import CaretakerTable from './CaretakerTable.vue';
 import { useClaims, Permissions } from '../../composables/useClaims';
+
+export const SEARCH_DEBOUNCE_MS = 300;
+
+type CaretakerTabValue = 'all' | 'active' | 'inactive';
+
+// WP-30 (U2): what the parent view feeds into client.getCaretakers — the tabs/search/pager
+// here no longer filter client-side; they re-query the server through this payload.
+export interface CaretakerListQuery {
+  search: string;
+  isActive?: boolean;
+  page: number;
+}
 
 export default defineComponent({
   name: 'CaretakerList',
   components: { CaretakerTable },
   props: {
+    // WP-30: the current server page, not the census.
     caretakers: { type: Array as PropType<Caretaker[]>, required: true },
-    initialTab: { type: String as PropType<'all' | 'active' | 'inactive'>, default: 'all' },
+    totalCount: { type: Number, default: 0 },
+    page: { type: Number, default: 1 },
+    pageSize: { type: Number, default: 30 },
+    initialTab: { type: String as PropType<CaretakerTabValue>, default: 'all' },
     loading: { type: Boolean, default: false },
     error: { type: String, default: '' },
   },
-  emits: ['add', 'edit', 'toggle-active', 'retry', 'tab-change', 'view-patients'],
+  emits: ['add', 'edit', 'toggle-active', 'retry', 'tab-change', 'query-change', 'view-patients'],
   setup(props, { emit }) {
     const { hasClaim } = useClaims();
     const search = ref('');
-    const activeFilter = ref<'all' | 'active' | 'inactive'>(props.initialTab);
+    const activeFilter = ref<CaretakerTabValue>(props.initialTab);
 
     onMounted(() => {
       if (props.initialTab !== 'all') {
@@ -108,34 +146,37 @@ export default defineComponent({
       { label: 'Inactive', value: 'inactive' as const },
     ];
 
-    const onTabClick = (value: 'all' | 'active' | 'inactive') => {
-      activeFilter.value = value;
-      emit('tab-change', value);
+    const totalPages = computed(() =>
+      Math.max(1, Math.ceil(props.totalCount / props.pageSize)),
+    );
+
+    // WP-30: the Active/Inactive tabs are the server's isActive param, not a client filter.
+    const isActiveParam = (): boolean | undefined => {
+      if (activeFilter.value === 'active') return true;
+      if (activeFilter.value === 'inactive') return false;
+      return undefined;
     };
 
-    const filteredCaretakers = computed(() => {
-      let list = props.caretakers;
+    const emitQuery = (page: number) => {
+      emit('query-change', { search: search.value.trim(), isActive: isActiveParam(), page } as CaretakerListQuery);
+    };
 
-      if (activeFilter.value === 'active') {
-        list = list.filter((c) => c.isActive);
-      } else if (activeFilter.value === 'inactive') {
-        list = list.filter((c) => !c.isActive);
-      }
+    const onTabClick = (value: CaretakerTabValue) => {
+      activeFilter.value = value;
+      emit('tab-change', value);
+      emitQuery(1);
+    };
 
-      const q = search.value.trim().toLowerCase();
-      if (q) {
-        list = list.filter((c) =>
-          c.caretakerName.toLowerCase().includes(q) ||
-          (c.email ?? '').toLowerCase().includes(q) ||
-          (c.phoneNumber ?? '').includes(q) ||
-          c.notes.toLowerCase().includes(q)
-        );
-      }
+    const goToPage = (page: number) => emitQuery(page);
 
-      return list;
+    // Debounced server-side search; a new term restarts from page 1.
+    let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+    watch(search, () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => emitQuery(1), SEARCH_DEBOUNCE_MS);
     });
 
-    return { search, activeFilter, tabs, filteredCaretakers, onTabClick, hasClaim, Permissions };
+    return { search, activeFilter, tabs, totalPages, onTabClick, goToPage, hasClaim, Permissions };
   },
 });
 </script>

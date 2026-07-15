@@ -21,6 +21,13 @@ export interface CaretakerPatientSummary {
   relationshipToPatient: string | null
 }
 
+// WP-30 (U2): slim typeahead row from GET /api/caretakers/lookup?q= — capped at 20,
+// ordered by name. Never the full census; pickers render these fields only (gate G3).
+export interface CaretakerLookupItem {
+  caretakerId: number
+  caretakerName: string
+}
+
 // Maps to API's CaretakerProfileRequest (POST)
 export interface CaretakerCreateRequest {
   firstName: string

@@ -71,6 +71,14 @@ export interface PatientUpdateRequest {
   requiresDiscovery?: boolean;
 }
 
+// WP-30 (U2): slim typeahead row from GET /api/patients/lookup?q= — capped at 20,
+// ordered by name. Never the full census; pickers render these fields only (gate G3).
+export interface PatientLookupItem {
+  patientId: number;
+  patientName: string;
+  medicalRecordNumber: string | null;
+}
+
 // Temporary MRN helper
 export function isTemporaryMrn(mrn: string | null | undefined): boolean {
   return !mrn || mrn.toUpperCase().startsWith('TEMP-');

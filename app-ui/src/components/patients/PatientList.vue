@@ -46,7 +46,7 @@
       </div>
       <!-- Session History paints its own (server-side) count in its paging footer. -->
       <span v-if="activeFilter !== 'delinquent' && activeFilter !== 'sessions'" class="text-sm text-slate-500">
-        {{ filteredPatients.length }} patient{{ filteredPatients.length !== 1 ? 's' : '' }}
+        {{ totalCount }} patient{{ totalCount !== 1 ? 's' : '' }}
       </span>
       <span v-else-if="activeFilter === 'delinquent'" class="text-sm text-amber-600">
         {{ pastDuePatients.length }} patient{{ pastDuePatients.length !== 1 ? 's' : '' }} past due
@@ -84,20 +84,42 @@
       :search="search"
     />
 
-    <!-- Standard patient table -->
-    <PatientTable
-      v-else
-      :patients="filteredPatients"
-      @edit="(p) => $emit('edit', p)"
-      @toggle-active="(p) => $emit('toggle-active', p)"
-      @view-caretakers="(p) => $emit('view-caretakers', p)"
-      @view-plans="(p) => $emit('view-plans', p)"
-    />
+    <!-- Standard patient table (WP-30: server-paged — rows are the current page only) -->
+    <template v-else>
+      <PatientTable
+        :patients="patients"
+        @edit="(p) => $emit('edit', p)"
+        @toggle-active="(p) => $emit('toggle-active', p)"
+        @view-caretakers="(p) => $emit('view-caretakers', p)"
+        @view-plans="(p) => $emit('view-plans', p)"
+      />
+
+      <!-- Paging footer (WP-30, SessionHistoryPanel pattern) -->
+      <div class="flex items-center justify-between text-sm text-slate-500">
+        <button
+          class="px-3 py-1.5 rounded-lg font-medium disabled:opacity-40 disabled:cursor-not-allowed text-blue-600 hover:bg-blue-50"
+          :disabled="page <= 1 || loading"
+          @click="goToPage(page - 1)"
+        >
+          ◀ Prev
+        </button>
+        <span>
+          Page {{ page }} of {{ totalPages }}
+        </span>
+        <button
+          class="px-3 py-1.5 rounded-lg font-medium disabled:opacity-40 disabled:cursor-not-allowed text-blue-600 hover:bg-blue-50"
+          :disabled="page >= totalPages || loading"
+          @click="goToPage(page + 1)"
+        >
+          Next ▶
+        </button>
+      </div>
+    </template>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed, onMounted, type PropType } from 'vue';
+import { defineComponent, ref, computed, onMounted, watch, type PropType } from 'vue';
 import type { Patient } from '../../interfaces/Patient';
 import type { DelinquentPatient } from '../../interfaces/Delinquency';
 import { useClaims, Permissions } from '../../composables/useClaims';
@@ -105,19 +127,33 @@ import PatientTable from './PatientTable.vue';
 import DelinquentTable from './DelinquentTable.vue';
 import SessionHistoryPanel from './SessionHistoryPanel.vue';
 
+export const SEARCH_DEBOUNCE_MS = 300;
+
 type PatientTabValue = 'all' | 'active' | 'inactive' | 'delinquent' | 'sessions';
+
+// WP-30 (U2): what the parent view feeds into client.getPatients — the tabs/search/pager
+// here no longer filter client-side; they re-query the server through this payload.
+export interface PatientListQuery {
+  search: string;
+  isActive?: boolean;
+  page: number;
+}
 
 export default defineComponent({
   name: 'PatientList',
   components: { PatientTable, DelinquentTable, SessionHistoryPanel },
   props: {
+    // WP-30: the current server page, not the census.
     patients: { type: Array as PropType<Patient[]>, required: true },
+    totalCount: { type: Number, default: 0 },
+    page: { type: Number, default: 1 },
+    pageSize: { type: Number, default: 30 },
     pastDuePatients: { type: Array as PropType<DelinquentPatient[]>, default: () => [] },
     initialTab: { type: String as PropType<PatientTabValue>, default: 'all' },
     loading: { type: Boolean, default: false },
     error: { type: String, default: '' },
   },
-  emits: ['add', 'edit', 'toggle-active', 'retry', 'tab-change', 'view-caretakers', 'view-plans', 'pay-delinquent'],
+  emits: ['add', 'edit', 'toggle-active', 'retry', 'tab-change', 'query-change', 'view-caretakers', 'view-plans', 'pay-delinquent'],
   setup(props, { emit }) {
     const { hasClaim } = useClaims();
     const search = ref('');
@@ -145,35 +181,44 @@ export default defineComponent({
       tabs.filter((t) => !('claim' in t) || hasClaim('Permission', t.claim as string)),
     );
 
+    const totalPages = computed(() =>
+      Math.max(1, Math.ceil(props.totalCount / props.pageSize)),
+    );
+
+    // WP-30: the Active/Inactive tabs are the server's isActive param, not a client filter.
+    const isActiveParam = (): boolean | undefined => {
+      if (activeFilter.value === 'active') return true;
+      if (activeFilter.value === 'inactive') return false;
+      return undefined;
+    };
+
+    const emitQuery = (page: number) => {
+      emit('query-change', { search: search.value.trim(), isActive: isActiveParam(), page } as PatientListQuery);
+    };
+
     const onTabClick = (value: PatientTabValue) => {
       activeFilter.value = value;
       emit('tab-change', value);
+      // Server tabs re-query (also picks up a search term typed while on another tab).
+      if (value === 'all' || value === 'active' || value === 'inactive') {
+        emitQuery(1);
+      }
     };
 
-    const filteredPatients = computed(() => {
-      let list = props.patients;
+    const goToPage = (page: number) => emitQuery(page);
 
-      if (activeFilter.value === 'active') {
-        list = list.filter((p) => p.isActive);
-      } else if (activeFilter.value === 'inactive') {
-        list = list.filter((p) => !p.isActive);
-      }
-
-      const q = search.value.trim().toLowerCase();
-      if (q) {
-        list = list.filter((p) =>
-          p.patientName.toLowerCase().includes(q) ||
-          (p.medicalRecordNumber ?? '').toLowerCase().includes(q) ||
-          (p.cedula ?? '').toLowerCase().includes(q) ||
-          (p.email ?? '').toLowerCase().includes(q) ||
-          (p.phoneNumber ?? '').includes(q)
-        );
-      }
-
-      return list;
+    // Debounced server-side search; a new term restarts from page 1. The Delinquent and
+    // Session History tabs consume `search` themselves (props), so no re-query there.
+    let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+    watch(search, () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        if (activeFilter.value === 'delinquent' || activeFilter.value === 'sessions') return;
+        emitQuery(1);
+      }, SEARCH_DEBOUNCE_MS);
     });
 
-    return { search, activeFilter, visibleTabs, filteredPatients, onTabClick, hasClaim, Permissions };
+    return { search, activeFilter, visibleTabs, totalPages, onTabClick, goToPage, hasClaim, Permissions };
   },
 });
 </script>

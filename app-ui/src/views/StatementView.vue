@@ -44,7 +44,7 @@
             <!-- Selection controls (hidden when statement is displayed) -->
             <div v-if="!caretakerStatement && !caretakerLoading" class="mb-6">
               <CaretakerStatementControls
-                :caretakers="caretakers"
+                :fetch-options="fetchCaretakerOptions"
                 :loading="caretakerLoading"
                 @generate="onCaretakerGenerate"
               />
@@ -175,11 +175,7 @@ import { StatementsHttpClient } from '../services/StatementsHttpClient';
 import { useClaims, Permissions } from '../composables/useClaims';
 import type { AccountStatement } from '../interfaces/Statement';
 import type { TherapistStatement } from '../interfaces/TherapistStatement';
-
-interface CaretakerOption {
-  caretakerId: number
-  caretakerName: string
-}
+import type { LookupOption } from '../components/shared/LookupSelect.vue';
 
 interface TherapistOption {
   therapistId: number
@@ -213,7 +209,6 @@ export default defineComponent({
     };
 
     // Caretaker tab state (preserves the original flow verbatim)
-    const caretakers = ref<CaretakerOption[]>([]);
     const caretakerStatement = ref<AccountStatement | null>(null);
     const caretakerLoading = ref(false);
     const caretakerError = ref('');
@@ -224,19 +219,10 @@ export default defineComponent({
     const therapistLoading = ref(false);
     const therapistError = ref('');
 
-    const loadCaretakers = async () => {
-      try {
-        const list = await caretakersClient.getCaretakers();
-        caretakers.value = list
-          .map((c) => ({
-            caretakerId: c.caretakerId,
-            caretakerName: c.caretakerName,
-          }))
-          .sort((a, b) => a.caretakerName.localeCompare(b.caretakerName));
-      } catch (e: unknown) {
-        caretakerError.value = e instanceof Error ? e.message : 'Failed to load caretakers.';
-      }
-    };
+    // WP-30: the caretaker picker is a lookup typeahead — no census load on mount.
+    // (The therapist picker keeps its full list: a small, bounded roster.)
+    const fetchCaretakerOptions = async (q: string): Promise<LookupOption[]> =>
+      (await caretakersClient.lookupCaretakers(q)).map((c) => ({ id: c.caretakerId, name: c.caretakerName }));
 
     const loadTherapists = async () => {
       try {
@@ -291,14 +277,13 @@ export default defineComponent({
     };
 
     onMounted(() => {
-      loadCaretakers();
       loadTherapists();
     });
 
     return {
       activeTab,
       setTab,
-      caretakers,
+      fetchCaretakerOptions,
       caretakerStatement,
       caretakerLoading,
       caretakerError,

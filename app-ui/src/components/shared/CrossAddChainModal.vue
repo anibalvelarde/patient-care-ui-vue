@@ -64,7 +64,7 @@
           <div class="flex-1 overflow-y-auto px-6 py-4">
             <CaretakerLinkForm
               :entity-label="otherLabel"
-              :options="options"
+              :fetch-options="fetchLinkOptions"
               :saving="saving"
               @submit="doLink"
               @cancel="step = 'chooser'"
@@ -144,7 +144,7 @@
 // caretaker-side ONLY (POST /api/caretakers/{id}/patients ⇒ Caretakers.LinkPatient), create-new
 // additionally needs Caretakers.Edit / Patients.Edit.
 import { defineComponent, ref, computed, watch, type PropType } from 'vue';
-import CaretakerLinkForm, { type LinkOption } from './CaretakerLinkForm.vue';
+import CaretakerLinkForm, { type LookupOption } from './CaretakerLinkForm.vue';
 import CaretakerFormModal from '../caretakers/CaretakerFormModal.vue';
 import PatientFormModal from '../patients/PatientFormModal.vue';
 import { CaretakersHttpClient } from '../../services/CaretakersHttpClient';
@@ -177,7 +177,6 @@ export default defineComponent({
     const patientClient = new PatientsHttpClient();
 
     const step = ref<ChainStep>('chooser');
-    const options = ref<LinkOption[]>([]);
     const saving = ref(false);
     const errorMsg = ref('');
     const successMsg = ref('');
@@ -202,7 +201,6 @@ export default defineComponent({
       (val) => {
         if (!val) return;
         step.value = 'chooser';
-        options.value = [];
         errorMsg.value = '';
         successMsg.value = '';
         createdName.value = '';
@@ -210,17 +208,20 @@ export default defineComponent({
       }
     );
 
-    const openLink = async () => {
+    const openLink = () => {
       step.value = 'link';
       errorMsg.value = '';
-      try {
-        options.value = addingCaretaker.value
-          ? (await caretakerClient.getCaretakers()).map((c) => ({ id: c.caretakerId, name: c.caretakerName }))
-          : (await patientClient.getPatients()).map((p) => ({ id: p.patientId, name: p.patientName }));
-      } catch (e: unknown) {
-        errorMsg.value = e instanceof Error ? e.message : 'Failed to load data.';
-      }
     };
+
+    // WP-30: the link form searches the lookup endpoint instead of loading the full census.
+    const fetchLinkOptions = async (q: string): Promise<LookupOption[]> =>
+      addingCaretaker.value
+        ? (await caretakerClient.lookupCaretakers(q)).map((c) => ({ id: c.caretakerId, name: c.caretakerName }))
+        : (await patientClient.lookupPatients(q)).map((p) => ({
+            id: p.patientId,
+            name: p.patientName,
+            detail: p.medicalRecordNumber ? `MRN ${p.medicalRecordNumber}` : null,
+          }));
 
     const link = async (otherId: number, isPrimary: boolean, relationship: string | null) => {
       if (!props.target) return;
@@ -230,13 +231,12 @@ export default defineComponent({
       await caretakerClient.linkPatient(caretakerId, patientId, isPrimary, relationship);
     };
 
-    const doLink = async (payload: { id: number; relationship: string | null; isPrimary: boolean }) => {
+    const doLink = async (payload: { id: number; name: string; relationship: string | null; isPrimary: boolean }) => {
       saving.value = true;
       errorMsg.value = '';
       try {
         await link(payload.id, payload.isPrimary, payload.relationship);
-        const name = options.value.find((o) => o.id === payload.id)?.name ?? otherLabel.value;
-        successMsg.value = `${name} linked${payload.isPrimary ? ' as primary' : ''}`;
+        successMsg.value = `${payload.name} linked${payload.isPrimary ? ' as primary' : ''}`;
         step.value = 'success';
         emit('linked');
       } catch (e: unknown) {
@@ -297,7 +297,6 @@ export default defineComponent({
 
     return {
       step,
-      options,
       saving,
       errorMsg,
       successMsg,
@@ -309,6 +308,7 @@ export default defineComponent({
       canCreate,
       linkToCtx,
       openLink,
+      fetchLinkOptions,
       doLink,
       onCreated,
       onCreateClosed,

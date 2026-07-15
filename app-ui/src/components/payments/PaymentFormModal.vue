@@ -34,17 +34,13 @@
         <div v-if="step === 1" class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Caretaker *</label>
-            <select
-              v-model="form.caretakerId"
-              required
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              @change="onCaretakerChange"
-            >
-              <option :value="0" disabled>Select a caretaker...</option>
-              <option v-for="ct in caretakers" :key="ct.caretakerId" :value="ct.caretakerId">
-                {{ ct.caretakerName }}
-              </option>
-            </select>
+            <!-- WP-30: lookup typeahead — was a full-census dropdown -->
+            <LookupSelect
+              v-model="selectedCaretaker"
+              placeholder="Search caretaker by name or email…"
+              :fetch-options="fetchCaretakerOptions"
+              test-id="payment-caretaker"
+            />
           </div>
 
           <div class="grid grid-cols-2 gap-4">
@@ -236,16 +232,16 @@
 <script lang="ts">
 import { defineComponent, ref, reactive, computed, watch, type PropType } from 'vue';
 import type { PaymentRecord, PaymentTypeInfo, UnpaidSessionSummary, SessionAllocationItem } from '../../interfaces/Payment';
-import type { Caretaker } from '../../interfaces/Caretaker';
 import { PaymentsHttpClient } from '../../services/PaymentsHttpClient';
 import { CaretakersHttpClient } from '../../services/CaretakersHttpClient';
 import { useModalForm } from '../../composables/useModalForm';
 import FormErrorBanner from '../shared/FormErrorBanner.vue';
+import LookupSelect, { type LookupOption } from '../shared/LookupSelect.vue';
 import { useClaims, Permissions } from '../../composables/useClaims';
 
 export default defineComponent({
   name: 'PaymentFormModal',
-  components: { FormErrorBanner },
+  components: { FormErrorBanner, LookupSelect },
   props: {
     visible: { type: Boolean, required: true },
     payment: { type: Object as PropType<PaymentRecord | null>, default: null },
@@ -261,7 +257,8 @@ export default defineComponent({
     const { error, hasError, saving, setError, setFromException, clearError, submit } = useModalForm();
     const loadingSessions = ref(false);
 
-    const caretakers = ref<Caretaker[]>([]);
+    // WP-30: the caretaker picker is a lookup typeahead; the selection drives form.caretakerId.
+    const selectedCaretaker = ref<LookupOption | null>(null);
     const paymentTypes = ref<PaymentTypeInfo[]>([]);
     const unpaidSessions = ref<UnpaidSessionSummary[]>([]);
     const allocations = reactive<Record<number, number>>({});
@@ -329,14 +326,24 @@ export default defineComponent({
 
     const loadReferenceData = async () => {
       try {
-        const [cts, pts] = await Promise.all([
-          caretakersClient.getCaretakers(),
-          paymentsClient.getPaymentTypes(),
-        ]);
-        caretakers.value = cts.sort((a, b) => a.caretakerName.localeCompare(b.caretakerName));
-        paymentTypes.value = pts;
+        paymentTypes.value = await paymentsClient.getPaymentTypes();
       } catch (e: unknown) {
         setFromException(e, 'Failed to load reference data.');
+      }
+    };
+
+    // WP-30: server-backed caretaker typeahead (name/email, capped at 20 server-side).
+    const fetchCaretakerOptions = async (q: string): Promise<LookupOption[]> =>
+      (await caretakersClient.lookupCaretakers(q)).map((c) => ({ id: c.caretakerId, name: c.caretakerName }));
+
+    // A pre-selected caretaker (paying from the Delinquent tab) arrives as a bare id — fetch
+    // the profile so the typeahead can show who is selected.
+    const loadPreselectedCaretaker = async (caretakerId: number) => {
+      try {
+        const c = await caretakersClient.getCaretaker(caretakerId);
+        selectedCaretaker.value = { id: c.caretakerId, name: c.caretakerName };
+      } catch {
+        // Silently fail — the user can search manually
       }
     };
 
@@ -359,6 +366,15 @@ export default defineComponent({
       }
       unpaidSessions.value = [];
     };
+
+    // Selection drives the form id; a real change (not the edit/pre-select hydration, which
+    // lands on the id the form already holds) clears any stale allocations.
+    watch(selectedCaretaker, (sel) => {
+      const newId = sel?.id ?? 0;
+      if (newId === form.caretakerId) return;
+      form.caretakerId = newId;
+      onCaretakerChange();
+    });
 
     const goToStep2 = () => {
       clearError();
@@ -428,6 +444,7 @@ export default defineComponent({
         if (props.payment) {
           isEdit.value = true;
           form.caretakerId = props.payment.caretakerId;
+          selectedCaretaker.value = { id: props.payment.caretakerId, name: props.payment.caretakerName };
           form.amount = props.payment.amount;
           form.paymentDate = props.payment.paymentDate.split('T')[0];
           form.paymentTypeId = props.payment.paymentType.paymentTypeId;
@@ -439,6 +456,10 @@ export default defineComponent({
         } else {
           isEdit.value = false;
           form.caretakerId = props.preSelectedCaretakerId || 0;
+          selectedCaretaker.value = null;
+          if (props.preSelectedCaretakerId > 0) {
+            loadPreselectedCaretaker(props.preSelectedCaretakerId);
+          }
           form.amount = 0;
           form.paymentDate = new Date().toISOString().split('T')[0];
           form.paymentTypeId = 0;
@@ -455,7 +476,8 @@ export default defineComponent({
       error,
       hasError,
       loadingSessions,
-      caretakers,
+      selectedCaretaker,
+      fetchCaretakerOptions,
       paymentTypes,
       unpaidSessions,
       allocations,
@@ -472,7 +494,6 @@ export default defineComponent({
       isFullAllocation,
       toggleFullAllocation,
       autoAllocateOldest,
-      onCaretakerChange,
       goToStep2,
       handleSubmit,
       hasClaim,
