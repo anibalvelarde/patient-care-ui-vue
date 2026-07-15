@@ -14,6 +14,9 @@
         </div>
         <PatientList
           :patients="patients"
+          :total-count="totalCount"
+          :page="page"
+          :page-size="pageSize"
           :initial-tab="initialTab"
           :loading="loading"
           :error="error"
@@ -23,6 +26,7 @@
           @toggle-active="toggleActive"
           @retry="loadPatients"
           @tab-change="onTabChange"
+          @query-change="onQueryChange"
           @view-caretakers="viewCaretakers"
           @view-plans="viewPlans"
           @pay-delinquent="onPayDelinquent"
@@ -102,7 +106,7 @@ import O2MobileNav from '../components/option02/O2MobileNav.vue';
 import O2Sidebar from '../components/option02/O2Sidebar.vue';
 import O2Header from '../components/option02/O2Header.vue';
 import O2Footer from '../components/option02/O2Footer.vue';
-import PatientList from '../components/patients/PatientList.vue';
+import PatientList, { type PatientListQuery } from '../components/patients/PatientList.vue';
 import PatientFormModal from '../components/patients/PatientFormModal.vue';
 import PatientCaretakerPanel from '../components/patients/PatientCaretakerPanel.vue';
 import PaymentFormModal from '../components/payments/PaymentFormModal.vue';
@@ -131,6 +135,16 @@ export default defineComponent({
       return tab && (validTabs as readonly string[]).includes(tab) ? tab as TabValue : 'all';
     });
     const patients = ref<Patient[]>([]);
+    const totalCount = ref(0);
+    const page = ref(1);
+    const pageSize = ref(30);
+    // WP-30 (U2): the list is server-paged — PatientList's tabs/search/pager re-query
+    // through this (initial isActive derives from the ?tab= deep link).
+    const query = ref<PatientListQuery>({
+      search: '',
+      isActive: initialTab.value === 'active' ? true : initialTab.value === 'inactive' ? false : undefined,
+      page: 1,
+    });
     const loading = ref(false);
     const { message: error, setError, setFromException, clear: clearError } = useFormError();
     const modalVisible = ref(false);
@@ -146,12 +160,21 @@ export default defineComponent({
       loading.value = true;
       clearError();
       try {
-        patients.value = await client.getPatients();
+        const result = await client.getPatients(query.value);
+        patients.value = result.items;
+        totalCount.value = result.totalCount;
+        page.value = result.page;
+        pageSize.value = result.pageSize;
       } catch (e: unknown) {
         setFromException(e, 'Failed to load patients.');
       } finally {
         loading.value = false;
       }
+    };
+
+    const onQueryChange = (q: PatientListQuery) => {
+      query.value = q;
+      loadPatients();
     };
 
     const openAdd = () => {
@@ -269,6 +292,10 @@ export default defineComponent({
 
     return {
       patients,
+      totalCount,
+      page,
+      pageSize,
+      onQueryChange,
       loading,
       error,
       modalVisible,

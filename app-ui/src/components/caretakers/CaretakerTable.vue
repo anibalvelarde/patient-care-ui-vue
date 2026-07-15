@@ -179,6 +179,8 @@ export default defineComponent({
       }
     };
 
+    // WP-30: `caretakers` is one server page — column sorting reorders the CURRENT PAGE only
+    // (deliberate; the server orders the full set by name).
     const sortedCaretakers = computed(() => {
       const list = [...props.caretakers];
       list.sort((a, b) => {

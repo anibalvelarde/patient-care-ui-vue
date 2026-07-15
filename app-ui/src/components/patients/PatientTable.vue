@@ -264,6 +264,8 @@ export default defineComponent({
       }
     };
 
+    // WP-30: `patients` is one server page — column sorting reorders the CURRENT PAGE only
+    // (deliberate; the server orders the full set by name).
     const sortedPatients = computed(() => {
       const list = [...props.patients];
       list.sort((a, b) => {

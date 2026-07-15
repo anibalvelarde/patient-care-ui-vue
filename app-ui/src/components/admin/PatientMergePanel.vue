@@ -41,14 +41,16 @@
       </div>
 
       <template v-else>
-        <!-- Step 1: pick the pair -->
+        <!-- Step 1: pick the pair (WP-30: lookup typeahead — was a client-filtered census) -->
         <div class="grid grid-cols-1 md:grid-cols-[1fr,auto,1fr] items-start gap-4">
-          <PatientSearchSelect
+          <LookupSelect
             v-model="survivor"
             label="Survivor (record to KEEP)"
+            placeholder="Search by name, MRN, or cedula/passport…"
             accent="keep"
-            :patients="patients"
-            :exclude-id="eliminated?.patientId ?? null"
+            :fetch-options="fetchPatientOptions"
+            :exclude-ids="eliminated ? [eliminated.id] : []"
+            test-id="merge-survivor"
           />
           <button
             type="button"
@@ -61,16 +63,16 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
             </svg>
           </button>
-          <PatientSearchSelect
+          <LookupSelect
             v-model="eliminated"
             label="Duplicate (record to DELETE)"
+            placeholder="Search by name, MRN, or cedula/passport…"
             accent="remove"
-            :patients="patients"
-            :exclude-id="survivor?.patientId ?? null"
+            :fetch-options="fetchPatientOptions"
+            :exclude-ids="survivor ? [survivor.id] : []"
+            test-id="merge-eliminated"
           />
         </div>
-
-        <div v-if="loadingPatients" class="text-sm text-slate-400">Loading patients…</div>
 
         <div>
           <button
@@ -186,26 +188,24 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed, onMounted } from 'vue';
-import PatientSearchSelect from '../patients/PatientSearchSelect.vue';
+import { defineComponent, ref, computed } from 'vue';
+import LookupSelect, { type LookupOption } from '../shared/LookupSelect.vue';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
-import type { Patient } from '../../interfaces/Patient';
 import type { PatientMergePreview, PatientMergeResult } from '../../interfaces/PatientMerge';
 
 /**
  * WP-22 (F2): Admin › Merge Patients — SYSADMIN-only stepper:
  * pick survivor + duplicate → preview (blockers disable execute) → type-to-confirm → result.
+ * WP-30: both pickers are lookup-endpoint typeaheads (no census load on mount).
  */
 export default defineComponent({
   name: 'PatientMergePanel',
-  components: { PatientSearchSelect },
+  components: { LookupSelect },
   setup() {
     const client = new PatientsHttpClient();
 
-    const patients = ref<Patient[]>([]);
-    const loadingPatients = ref(false);
-    const survivor = ref<Patient | null>(null);
-    const eliminated = ref<Patient | null>(null);
+    const survivor = ref<LookupOption | null>(null);
+    const eliminated = ref<LookupOption | null>(null);
     const preview = ref<PatientMergePreview | null>(null);
     const result = ref<PatientMergeResult | null>(null);
     const confirmText = ref('');
@@ -213,21 +213,18 @@ export default defineComponent({
     const merging = ref(false);
     const error = ref('');
 
-    const loadPatients = async () => {
-      loadingPatients.value = true;
-      try {
-        patients.value = await client.getPatients();
-      } catch (e: unknown) {
-        error.value = e instanceof Error ? e.message : 'Failed to load patients.';
-      } finally {
-        loadingPatients.value = false;
-      }
-    };
-    onMounted(loadPatients);
+    // WP-30: server-backed typeahead (name/MRN/cedula) — the preview supplies the rich
+    // identity cards, so the slim lookup row is all the pickers need (gate G3).
+    const fetchPatientOptions = async (q: string): Promise<LookupOption[]> =>
+      (await client.lookupPatients(q)).map((p) => ({
+        id: p.patientId,
+        name: p.patientName,
+        detail: p.medicalRecordNumber ? `MRN ${p.medicalRecordNumber}` : null,
+      }));
 
     const canPreview = computed(
       () => !!survivor.value && !!eliminated.value
-        && survivor.value.patientId !== eliminated.value.patientId,
+        && survivor.value.id !== eliminated.value.id,
     );
 
     // Confirmation target: the duplicate's MRN, falling back to its exact name when the
@@ -266,8 +263,8 @@ export default defineComponent({
       confirmText.value = '';
       try {
         preview.value = await client.previewMerge({
-          survivorPatientId: survivor.value.patientId,
-          eliminatedPatientId: eliminated.value.patientId,
+          survivorPatientId: survivor.value.id,
+          eliminatedPatientId: eliminated.value.id,
         });
       } catch (e: unknown) {
         error.value = e instanceof Error ? e.message : 'Failed to preview the merge.';
@@ -282,11 +279,9 @@ export default defineComponent({
       error.value = '';
       try {
         result.value = await client.executeMerge({
-          survivorPatientId: survivor.value.patientId,
-          eliminatedPatientId: eliminated.value.patientId,
+          survivorPatientId: survivor.value.id,
+          eliminatedPatientId: eliminated.value.id,
         });
-        // The census changed (one record gone, survivor possibly enriched) — reload.
-        await loadPatients();
       } catch (e: unknown) {
         error.value = e instanceof Error ? e.message : 'The merge failed — nothing was changed.';
       } finally {
@@ -310,7 +305,7 @@ export default defineComponent({
     };
 
     return {
-      patients, loadingPatients, survivor, eliminated, preview, result,
+      survivor, eliminated, preview, result, fetchPatientOptions,
       confirmText, confirmTarget, confirmMatches, previewing, merging, error,
       canPreview, identitySides, swap, runPreview, runMerge, reset, formatDate,
     };

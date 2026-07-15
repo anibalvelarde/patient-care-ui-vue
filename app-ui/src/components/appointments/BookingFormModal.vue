@@ -17,15 +17,15 @@
 
         <!-- Form -->
         <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          <!-- Patient -->
+          <!-- Patient (WP-30: lookup typeahead — was a full-census dropdown) -->
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Patient</label>
-            <select v-model="form.patientId" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500">
-              <option :value="0" disabled>Select patient...</option>
-              <option v-for="p in patients" :key="p.patientId" :value="p.patientId">
-                {{ p.patientName }}
-              </option>
-            </select>
+            <LookupSelect
+              v-model="selectedPatient"
+              placeholder="Search patient by name, MRN, or cedula…"
+              :fetch-options="fetchPatientOptions"
+              test-id="booking-patient"
+            />
             <!-- WP-23 (F10): hard block — was a soft amber warning pre-WP-23 -->
             <p v-if="caretakerWarning" class="mt-1 text-xs font-medium text-red-600">
               Booking blocked — this patient has no caretaker on file. Link a caretaker first.
@@ -148,16 +148,17 @@ import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import { TherapistsHttpClient } from '../../services/TherapistsHttpClient';
 import { LookupHttpClient } from '../../services/LookupHttpClient';
 import type { SessionEventRequest } from '../../interfaces/Appointment';
-import type { Patient } from '../../interfaces/Patient';
 import type { Therapist } from '../../interfaces/Therapist';
 import type { LookupItem } from '../../interfaces/Lookups';
 import { isDiscoverySpecialty } from '../../interfaces/TreatmentPlan';
 import { TIME_MIN, TIME_MAX, TIME_STEP } from '../../utils/timeSlots';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import { useNotificationsStore } from '../../stores/notifications';
+import LookupSelect, { type LookupOption } from '../shared/LookupSelect.vue';
 
 export default defineComponent({
   name: 'BookingFormModal',
+  components: { LookupSelect },
   props: {
     visible: { type: Boolean, required: true },
     isWalkIn: { type: Boolean, default: false },
@@ -171,7 +172,8 @@ export default defineComponent({
     const therapistsClient = new TherapistsHttpClient();
     const lookupClient = new LookupHttpClient();
 
-    const patients = ref<Patient[]>([]);
+    // WP-30: the patient picker is a lookup typeahead; the selection drives form.patientId.
+    const selectedPatient = ref<LookupOption | null>(null);
     const therapists = ref<Therapist[]>([]);
     const specialtyTypes = ref<LookupItem[]>([]);
     const saving = ref(false);
@@ -278,16 +280,42 @@ export default defineComponent({
 
     const loadDropdowns = async () => {
       try {
-        const [p, t, s] = await Promise.all([
-          patientsClient.getPatients(),
+        const [t, s] = await Promise.all([
           therapistsClient.getTherapists(),
           lookupClient.getAll('specialty-types'),
         ]);
-        patients.value = p.sort((a, b) => a.patientName.localeCompare(b.patientName));
         therapists.value = t.sort((a, b) => a.therapistName.localeCompare(b.therapistName));
         specialtyTypes.value = s.sort((a, b) => a.sortOrder - b.sortOrder || a.abbreviation.localeCompare(b.abbreviation));
       } catch {
         // Silently fail — dropdowns will be empty
+      }
+    };
+
+    // WP-30: server-backed patient typeahead (name/MRN/cedula, capped at 20 server-side).
+    const fetchPatientOptions = async (q: string): Promise<LookupOption[]> =>
+      (await patientsClient.lookupPatients(q)).map((p) => ({
+        id: p.patientId,
+        name: p.patientName,
+        detail: p.medicalRecordNumber ? `MRN ${p.medicalRecordNumber}` : null,
+      }));
+
+    // Selection drives the form id; clearing the picker resets it.
+    watch(selectedPatient, (sel) => {
+      form.value.patientId = sel?.id ?? 0;
+    });
+
+    // A pre-selected patient (booked from another view) arrives as a bare id — fetch the
+    // profile so the typeahead can show who is selected.
+    const loadPreselectedPatient = async (patientId: number) => {
+      try {
+        const p = await patientsClient.getPatient(patientId);
+        selectedPatient.value = {
+          id: p.patientId,
+          name: p.patientName,
+          detail: p.medicalRecordNumber ? `MRN ${p.medicalRecordNumber}` : null,
+        };
+      } catch {
+        // Silently fail — the user can search manually
       }
     };
 
@@ -332,6 +360,10 @@ export default defineComponent({
         saveError.value = '';
         needsDiscovery.value = false;
         senadisPatient.value = false;
+        selectedPatient.value = null;
+        if (props.preSelectPatientId > 0) {
+          loadPreselectedPatient(props.preSelectPatientId);
+        }
         form.value = {
           patientId: props.preSelectPatientId || 0,
           therapistId: 0,
@@ -377,7 +409,7 @@ export default defineComponent({
       }
     };
 
-    return { form, patients, filteredTherapists, filteredSpecialties, saving, saveError, caretakerWarning, needsDiscovery, senadisPatient, senadisFloor, isValid, handleSubmit, timeMin: TIME_MIN, timeMax: TIME_MAX, timeStep: TIME_STEP, hasClaim, Permissions };
+    return { form, selectedPatient, fetchPatientOptions, filteredTherapists, filteredSpecialties, saving, saveError, caretakerWarning, needsDiscovery, senadisPatient, senadisFloor, isValid, handleSubmit, timeMin: TIME_MIN, timeMax: TIME_MAX, timeStep: TIME_STEP, hasClaim, Permissions };
   },
 });
 </script>

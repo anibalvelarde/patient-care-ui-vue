@@ -2,16 +2,14 @@
   <div class="space-y-3">
     <div>
       <label class="block text-xs font-medium text-slate-600 mb-1">{{ entityLabel }}</label>
-      <select
-        v-model="selectedId"
-        data-testid="link-entity-select"
-        class="w-full rounded-lg border border-slate-300 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-      >
-        <option :value="0" disabled>Select a {{ entityLabel.toLowerCase() }}...</option>
-        <option v-for="o in options" :key="o.id" :value="o.id">
-          {{ o.name }}
-        </option>
-      </select>
+      <!-- WP-30: server-backed typeahead against the lookup endpoint — was a full-census dropdown -->
+      <LookupSelect
+        v-model="selected"
+        :placeholder="`Search for a ${entityLabel.toLowerCase()}…`"
+        :fetch-options="fetchOptions"
+        :exclude-ids="excludeIds"
+        test-id="link-entity"
+      />
     </div>
     <div>
       <label class="block text-xs font-medium text-slate-600 mb-1">Relationship</label>
@@ -41,8 +39,8 @@
       <button
         data-testid="link-submit"
         class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
-        :disabled="selectedId === 0 || saving"
-        @click="$emit('submit', { id: selectedId, relationship, isPrimary })"
+        :disabled="!selected || saving"
+        @click="onSubmit"
       >
         {{ submitLabel }}
       </button>
@@ -57,32 +55,45 @@
 </template>
 
 <script lang="ts">
-// WP-27: the caretaker↔patient link form (entity dropdown + relationship + primary), extracted
+// WP-27: the caretaker↔patient link form (entity picker + relationship + primary), extracted
 // from PatientCaretakerPanel / CaretakerPatientsList so the cross-add chain isn't a third copy.
-// The parent owns the API call; this form only collects { id, relationship, isPrimary }.
+// WP-30: the entity picker is a lookup-endpoint typeahead — parents pass `fetchOptions` (and
+// optionally `excludeIds` for already-linked records) instead of a preloaded options list.
+// The parent owns the link API call; this form only collects { id, name, relationship, isPrimary }.
 // State resets by unmount — parents render it under v-if.
 import { defineComponent, ref, computed, type PropType } from 'vue';
+import LookupSelect, { type LookupOption } from './LookupSelect.vue';
 
-export interface LinkOption {
-  id: number;
-  name: string;
-}
+export type { LookupOption };
 
 export default defineComponent({
   name: 'CaretakerLinkForm',
+  components: { LookupSelect },
   props: {
-    entityLabel: { type: String, required: true }, // 'Caretaker' | 'Patient' — what the dropdown lists
-    options: { type: Array as PropType<LinkOption[]>, required: true },
+    entityLabel: { type: String, required: true }, // 'Caretaker' | 'Patient' — what the picker searches
+    fetchOptions: { type: Function as PropType<(q: string) => Promise<LookupOption[]>>, required: true },
+    excludeIds: { type: Array as PropType<number[]>, default: () => [] },
     saving: { type: Boolean, default: false },
     submitLabel: { type: String, default: 'Link' },
   },
   emits: ['submit', 'cancel'],
-  setup(props) {
-    const selectedId = ref(0);
+  setup(props, { emit }) {
+    const selected = ref<LookupOption | null>(null);
     const relationship = ref<string | null>(null);
     const isPrimary = ref(true);
     const primaryInputId = computed(() => `link-primary-${props.entityLabel.toLowerCase()}`);
-    return { selectedId, relationship, isPrimary, primaryInputId };
+
+    const onSubmit = () => {
+      if (!selected.value) return;
+      emit('submit', {
+        id: selected.value.id,
+        name: selected.value.name,
+        relationship: relationship.value,
+        isPrimary: isPrimary.value,
+      });
+    };
+
+    return { selected, relationship, isPrimary, primaryInputId, onSubmit };
   },
 });
 </script>

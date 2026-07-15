@@ -176,9 +176,32 @@ function patient(overrides: Partial<Patient> = {}): Patient {
   `vi.mock('vue-router', …)` or a real router instance (see `router-guard.spec.ts`,
   `login-view.spec.ts`).
 
+## LookupSelect typeaheads (WP-30) — focus, fake timers, mousedown
+
+Every picker that hit a full-census `GET` now goes through `shared/LookupSelect.vue`
+(debounced 300ms server lookup). Driving one in a spec takes three steps, all mandatory:
+
+```ts
+vi.useFakeTimers();                                        // debounce is a real setTimeout
+const input = wrapper.find('[data-testid="link-entity-input"]');
+await input.trigger('focus');                              // dropdown only opens on focus
+await input.setValue('doe');
+vi.advanceTimersByTime(300);                               // ride out the debounce window
+await flushPromises();                                     // let the mocked fetch resolve
+await wrapper.find('[data-testid="link-entity-option"]').trigger('mousedown'); // pick = mousedown, not click
+```
+
+- Restore timers in `afterEach(() => vi.useRealTimers())`.
+- testids are prefixed per instance: `${testId}-input` / `-option` / `-selected` / `-clear` / `-empty`.
+- Mock the **lookup** client methods (`lookupPatients`/`lookupCaretakers` return slim DTO arrays),
+  not `getPatients`/`getCaretakers` — those now return the `PagedResult` envelope and pickers
+  no longer call them.
+
 ## Known gotchas (append as discovered)
 
 | Date | Gotcha | Spec that documents it |
 |------|--------|------------------------|
 | 2026-07-13 | Teleport STUB remounts slot children on re-render → local state resets are a stub artifact, not an app bug | `wp27-cross-add-flows.spec.ts` |
 | 2026-07-12 | `vi.clearAllMocks()` in `beforeEach` wipes `mockResolvedValue` seeds — re-seed after clearing | (pattern in `wp23`/`wp24` specs) |
+| 2026-07-14 | `LookupSelect` needs focus→type→advance(300)→flush→**mousedown** (see section above); a `.setValue` alone never opens the list | `wp30-list-paging.spec.ts` |
+| 2026-07-14 | An aborted test can leave a `mockRejectedValueOnce` unconsumed — `vi.clearAllMocks()` does NOT drop once-queues, so a later test eats the stale rejection | (bitten during WP-30 in `wp27-cross-add-flows.spec.ts`) |

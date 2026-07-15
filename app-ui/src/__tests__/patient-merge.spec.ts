@@ -8,7 +8,7 @@
 //  3. Panel behavior — preview gates execute, blockers disable it, type-to-confirm must match
 //     the duplicate's MRN, and a successful merge shows the result card.
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { setActivePinia, createPinia, type Pinia } from 'pinia';
 import manifest from '../generated/access-control-matrix.json';
@@ -17,18 +17,18 @@ import { useAuthStore } from '../stores/auth';
 import type { ClaimDto } from '../interfaces/Auth';
 import AdminAccordionNav from '../components/admin/AdminAccordionNav.vue';
 import PatientMergePanel from '../components/admin/PatientMergePanel.vue';
-import type { Patient } from '../interfaces/Patient';
+import type { LookupOption } from '../components/shared/LookupSelect.vue';
 import type { PatientMergePreview, PatientMergeResult } from '../interfaces/PatientMerge';
 
-const { getPatientsMock, previewMergeMock, executeMergeMock } = vi.hoisted(() => ({
-  getPatientsMock: vi.fn(),
+const { lookupPatientsMock, previewMergeMock, executeMergeMock } = vi.hoisted(() => ({
+  lookupPatientsMock: vi.fn(),
   previewMergeMock: vi.fn(),
   executeMergeMock: vi.fn(),
 }));
 
 vi.mock('../services/PatientsHttpClient', () => ({
   PatientsHttpClient: vi.fn().mockImplementation(() => ({
-    getPatients: getPatientsMock,
+    lookupPatients: lookupPatientsMock,
     previewMerge: previewMergeMock,
     executeMerge: executeMergeMock,
   })),
@@ -58,17 +58,9 @@ function authAs(opts: { role?: Role; isSystemAdmin?: boolean }): Pinia {
   return pinia;
 }
 
-function makePatient(overrides: Partial<Patient> = {}): Patient {
-  return {
-    patientId: 1, userId: 10, patientName: 'Perez, Juan', medicalRecordNumber: 'L24-0312',
-    cedula: null, dateOfBirth: '2018-05-04T00:00:00', email: null, phoneNumber: null,
-    gender: 'Male', isActive: true, hasCompletedDiscovery: null, createdTimestamp: '',
-    ...overrides,
-  };
-}
-
-const survivor = makePatient();
-const duplicate = makePatient({ patientId: 2, userId: 20, patientName: 'Perez, Jaun', medicalRecordNumber: 'L24-0313' });
+// WP-30: the pickers hold slim lookup rows, not full Patient profiles.
+const survivor: LookupOption = { id: 1, name: 'Perez, Juan', detail: 'MRN L24-0312' };
+const duplicate: LookupOption = { id: 2, name: 'Perez, Jaun', detail: 'MRN L24-0313' };
 
 function makePreview(overrides: Partial<PatientMergePreview> = {}): PatientMergePreview {
   return {
@@ -115,7 +107,7 @@ async function mountPanel(): Promise<ReturnType<typeof mount>> {
 async function mountPreviewedPanel(preview = makePreview()) {
   previewMergeMock.mockResolvedValue(preview);
   const wrapper = await mountPanel();
-  const vm = wrapper.vm as unknown as { survivor: Patient | null; eliminated: Patient | null };
+  const vm = wrapper.vm as unknown as { survivor: LookupOption | null; eliminated: LookupOption | null };
   vm.survivor = survivor;
   vm.eliminated = duplicate;
   await wrapper.vm.$nextTick();
@@ -125,9 +117,16 @@ async function mountPreviewedPanel(preview = makePreview()) {
 }
 
 beforeEach(() => {
-  getPatientsMock.mockReset().mockResolvedValue([survivor, duplicate]);
+  lookupPatientsMock.mockReset().mockResolvedValue([
+    { patientId: 1, patientName: 'Perez, Juan', medicalRecordNumber: 'L24-0312' },
+    { patientId: 2, patientName: 'Perez, Jaun', medicalRecordNumber: 'L24-0313' },
+  ]);
   previewMergeMock.mockReset();
   executeMergeMock.mockReset();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('store hasClaim matrix — Patients.Merge is wildcard-only', () => {
@@ -173,9 +172,34 @@ describe('AdminAccordionNav — Data Maintenance gating', () => {
 });
 
 describe('PatientMergePanel — stepper behavior', () => {
-  it('loads the patient census on mount', async () => {
-    await mountPanel();
-    expect(getPatientsMock).toHaveBeenCalledTimes(1);
+  // WP-30: no census load on mount — the pickers are lookup typeaheads (server cap 20).
+  it('picks a survivor through the lookup typeahead (debounced, excludes the other side)', async () => {
+    vi.useFakeTimers();
+    const wrapper = await mountPanel();
+    expect(lookupPatientsMock).not.toHaveBeenCalled(); // nothing loads until the user types
+
+    const input = wrapper.find('[data-testid="merge-survivor-input"]');
+    await input.trigger('focus');
+    await input.setValue('per');
+    expect(lookupPatientsMock).not.toHaveBeenCalled(); // still inside the debounce window
+    vi.advanceTimersByTime(300);
+    await flushPromises();
+    expect(lookupPatientsMock).toHaveBeenCalledWith('per');
+
+    const options = wrapper.findAll('[data-testid="merge-survivor-option"]');
+    expect(options).toHaveLength(2);
+    await options[0].trigger('mousedown');
+    expect(wrapper.find('[data-testid="merge-survivor-selected"]').text()).toContain('Perez, Juan');
+
+    // The duplicate picker hides the already-picked survivor (excludeIds).
+    const dupInput = wrapper.find('[data-testid="merge-eliminated-input"]');
+    await dupInput.trigger('focus');
+    await dupInput.setValue('per');
+    vi.advanceTimersByTime(300);
+    await flushPromises();
+    const dupOptions = wrapper.findAll('[data-testid="merge-eliminated-option"]');
+    expect(dupOptions).toHaveLength(1);
+    expect(dupOptions[0].text()).toContain('Perez, Jaun');
   });
 
   it('preview button disabled until both sides are picked', async () => {
@@ -210,7 +234,7 @@ describe('PatientMergePanel — stepper behavior', () => {
     expect(wrapper.find('[data-testid="merge-execute-button"]').exists()).toBe(false);
   });
 
-  it('successful merge shows the result card and reloads the census', async () => {
+  it('successful merge shows the result card', async () => {
     executeMergeMock.mockResolvedValue(makeResult());
     const wrapper = await mountPreviewedPanel();
 
@@ -221,7 +245,6 @@ describe('PatientMergePanel — stepper behavior', () => {
     expect(executeMergeMock).toHaveBeenCalledWith({ survivorPatientId: 1, eliminatedPatientId: 2 });
     expect(wrapper.text()).toContain('Merge completed — log #42');
     expect(wrapper.text()).toContain('2 session(s) moved');
-    expect(getPatientsMock).toHaveBeenCalledTimes(2); // mount + post-merge reload
   });
 
   it('a failed merge surfaces the error and stays on the preview', async () => {
