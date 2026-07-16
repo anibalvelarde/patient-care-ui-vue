@@ -197,6 +197,30 @@ await wrapper.find('[data-testid="link-entity-option"]').trigger('mousedown'); /
   not `getPatients`/`getCaretakers` — those now return the `PagedResult` envelope and pickers
   no longer call them.
 
+## Idle auto-logoff (WP-32) — fake timers + wall-clock idle
+
+`useIdleLogoff` (armed at the app root in `App.vue`) doesn't count ticks — it compares
+`Date.now()` against a `pc_last_activity` timestamp in localStorage. vitest fake timers mock
+**Date too**, so `vi.advanceTimersByTimeAsync(ms)` moves the interval AND the clock together and
+the timestamp math stays honest. Drive it by mounting a tiny host that returns the composable:
+
+```ts
+const Host = defineComponent({ setup: () => useIdleLogoff(), template: '<div/>' });
+// mount with a real memory router (logout does router.push('login')) + a pinia whose auth.user
+// carries idleLogoffMinutes. Use a REAL router, not a mock — matches login-view.spec.ts.
+```
+
+- `beforeEach`: `localStorage.clear()` then `vi.useFakeTimers()`; `afterEach`: `vi.useRealTimers()`.
+- Use the **`*Async`** timer helpers (`advanceTimersByTimeAsync`) so the `router.push()` inside
+  logout resolves between ticks; follow the final advance with `await flushPromises()`.
+- Warning shows at `N·60_000 − 60_000` ms of idle; expiry at `N·60_000`. The background poll is
+  30s, so advance in 30s steps to land on a poll boundary when asserting the warning appears.
+- Simulate **another tab** by writing `localStorage.setItem('pc_last_activity', String(Date.now()))`
+  — the next 1s countdown tick re-reads it and dismisses the warning. Simulate **same-tab
+  activity** with `window.dispatchEvent(new Event('keydown'))` (ignored once the warning is up —
+  by design, only the buttons/another tab reset it then).
+- `0` minutes = disabled: the composable never arms, so no warning/logout no matter how far you advance.
+
 ## Known gotchas (append as discovered)
 
 | Date | Gotcha | Spec that documents it |
@@ -205,3 +229,4 @@ await wrapper.find('[data-testid="link-entity-option"]').trigger('mousedown'); /
 | 2026-07-12 | `vi.clearAllMocks()` in `beforeEach` wipes `mockResolvedValue` seeds — re-seed after clearing | (pattern in `wp23`/`wp24` specs) |
 | 2026-07-14 | `LookupSelect` needs focus→type→advance(300)→flush→**mousedown** (see section above); a `.setValue` alone never opens the list | `wp30-list-paging.spec.ts` |
 | 2026-07-14 | An aborted test can leave a `mockRejectedValueOnce` unconsumed — `vi.clearAllMocks()` does NOT drop once-queues, so a later test eats the stale rejection | (bitten during WP-30 in `wp27-cross-add-flows.spec.ts`) |
+| 2026-07-15 | Idle logoff computes idle from a localStorage wall-clock timestamp, not tick counting — fake timers mock Date so `advanceTimersByTimeAsync` moves both; use `*Async` helpers so logout's `router.push` resolves | `wp32-idle-logoff.spec.ts` |

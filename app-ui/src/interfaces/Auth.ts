@@ -41,4 +41,10 @@ export interface CurrentUserResponse {
   roles: string[];
   claims: ClaimDto[];
   isSystemAdmin: boolean;
+  /**
+   * WP-32 (U4): idle auto-logoff in minutes; 0 = disabled. The API always sends it (sourced from
+   * the Site row, 60 fallback), but it's optional here so pre-existing test fixtures that build a
+   * user literal stay valid; consumers default to 60.
+   */
+  idleLogoffMinutes?: number;
 }

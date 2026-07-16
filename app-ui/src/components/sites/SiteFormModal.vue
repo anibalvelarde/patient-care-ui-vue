@@ -86,6 +86,23 @@
             </div>
           </div>
 
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Idle auto-logoff (minutes)</label>
+            <input
+              v-model.number="form.idleLogoffMinutes"
+              type="number"
+              min="0"
+              max="480"
+              step="1"
+              data-testid="site-idle-logoff-input"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <p class="mt-1 text-xs text-slate-500">
+              Sign users out after this many minutes of inactivity (a 60-second warning shows first).
+              <span class="font-medium">0 = disabled.</span>
+            </p>
+          </div>
+
         </form>
 
         <!-- Footer -->
@@ -150,6 +167,7 @@ export default defineComponent({
       address: '',
       latitude: null as number | null,
       longitude: null as number | null,
+      idleLogoffMinutes: 60,
     });
 
     const isEdit = ref(false);
@@ -169,6 +187,7 @@ export default defineComponent({
           form.address = props.site.address || '';
           form.latitude = props.site.latitude;
           form.longitude = props.site.longitude;
+          form.idleLogoffMinutes = props.site.idleLogoffMinutes ?? 60;
         } else {
           isEdit.value = false;
           form.siteName = '';
@@ -177,6 +196,7 @@ export default defineComponent({
           form.address = '';
           form.latitude = null;
           form.longitude = null;
+          form.idleLogoffMinutes = 60;
         }
       }
     );
@@ -184,6 +204,11 @@ export default defineComponent({
     const handleSubmit = () => {
       if (!form.siteName || !form.inceptionDate) {
         setError('Please fill in all required fields.');
+        return;
+      }
+      const idle = form.idleLogoffMinutes;
+      if (!Number.isInteger(idle) || idle < 0 || idle > 480) {
+        setError('Idle auto-logoff must be a whole number between 0 and 480 minutes.');
         return;
       }
       return submit(async () => {
@@ -194,6 +219,7 @@ export default defineComponent({
           address: form.address || undefined,
           latitude: form.latitude ?? undefined,
           longitude: form.longitude ?? undefined,
+          idleLogoffMinutes: form.idleLogoffMinutes,
         };
 
         if (isEdit.value && props.site) {
