@@ -1,5 +1,7 @@
 // interfaces/Patient.ts
 
+import type { AuditInfo } from './Audit';
+
 // Maps to API's PatientProfile response
 export interface Patient {
   patientId: number;
@@ -23,6 +25,8 @@ export interface Patient {
   requiresDiscovery?: boolean;
   hasCompletedDiscovery: boolean | null;
   createdTimestamp: string;
+  // WP-31 (U1): audit block for the row ⓘ popover. Optional — the UI tolerates an older API.
+  audit?: AuditInfo;
   caretakers?: PatientCaretakerSummary[];
 }
 

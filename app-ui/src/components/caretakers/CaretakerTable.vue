@@ -45,6 +45,7 @@
           </td>
           <td class="px-4 py-3 text-right">
             <div class="flex items-center justify-end space-x-2">
+              <AuditPopover :audit="caretaker.audit" align="right" />
               <button
                 class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
                 title="View patients"
@@ -116,6 +117,7 @@
         <div><span class="font-medium"># Patients:</span> {{ caretaker.patients.length }}</div>
       </div>
       <div class="flex items-center justify-end space-x-2 border-t border-slate-100 pt-2">
+        <AuditPopover :audit="caretaker.audit" align="left" />
         <button
           class="px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
           @click="$emit('view-patients', caretaker)"
@@ -149,9 +151,11 @@
 import { defineComponent, ref, computed, type PropType } from 'vue';
 import type { Caretaker } from '../../interfaces/Caretaker';
 import { useClaims, Permissions } from '../../composables/useClaims';
+import AuditPopover from '../shared/AuditPopover.vue';
 
 export default defineComponent({
   name: 'CaretakerTable',
+  components: { AuditPopover },
   props: {
     caretakers: { type: Array as PropType<Caretaker[]>, required: true },
   },

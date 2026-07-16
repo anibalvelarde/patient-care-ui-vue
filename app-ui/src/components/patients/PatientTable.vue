@@ -85,6 +85,7 @@
           </td>
           <td class="px-4 py-3 text-right">
             <div class="flex items-center justify-end space-x-2">
+              <AuditPopover :audit="patient.audit" align="right" />
               <button
                 class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
                 title="View caretakers"
@@ -184,6 +185,7 @@
         </div>
       </div>
       <div class="flex items-center justify-end space-x-2 border-t border-slate-100 pt-2">
+        <AuditPopover :audit="patient.audit" align="left" />
         <button
           class="px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
           @click="$emit('view-caretakers', patient)"
@@ -231,9 +233,11 @@ import type { Patient } from '../../interfaces/Patient';
 import { isTemporaryMrn } from '../../interfaces/Patient';
 import { formatAge } from '../../utils/age';
 import { useClaims, Permissions } from '../../composables/useClaims';
+import AuditPopover from '../shared/AuditPopover.vue';
 
 export default defineComponent({
   name: 'PatientTable',
+  components: { AuditPopover },
   props: {
     patients: { type: Array as PropType<Patient[]>, required: true },
   },
