@@ -29,6 +29,8 @@ export const useAuthStore = defineStore('auth', () => {
   const mustChangePassword = computed(() => user.value?.mustChangePassword ?? false);
   const fullName = computed(() => user.value?.fullName ?? '');
   const roles = computed(() => user.value?.roles ?? []);
+  // WP-32 (U4): idle auto-logoff minutes from /auth/me; 0 = disabled, 60 default when absent.
+  const idleLogoffMinutes = computed(() => user.value?.idleLogoffMinutes ?? 60);
 
   /** True if the user holds (type, value), or is a SystemAdmin (the FullAccess wildcard). */
   function hasClaim(type: string, value: string): boolean {
@@ -118,6 +120,7 @@ export const useAuthStore = defineStore('auth', () => {
     mustChangePassword,
     fullName,
     roles,
+    idleLogoffMinutes,
     hasClaim,
     hasAnyClaim,
     hasAllClaims,
