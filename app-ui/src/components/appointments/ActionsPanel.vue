@@ -22,11 +22,14 @@
                 <span v-if="appointment.isDiscovery" class="inline-flex items-center px-2.5 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700">Discovery</span>
               </div>
             </div>
-            <button class="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 flex-shrink-0" @click="$emit('close')">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div class="flex items-center gap-1 flex-shrink-0">
+              <AuditPopover :audit="appointment.audit" align="right" />
+              <button class="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100" @click="$emit('close')">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -306,6 +309,7 @@
 import { defineComponent, ref, computed, watch, type PropType } from 'vue';
 import { useRouter } from 'vue-router';
 import StatusBadge from './StatusBadge.vue';
+import AuditPopover from '../shared/AuditPopover.vue';
 import { SessionsHttpClient } from '../../services/SessionsHttpClient';
 import type { Appointment } from '../../interfaces/Appointment';
 import { useClaims, Permissions } from '../../composables/useClaims';
@@ -314,7 +318,7 @@ const TERMINAL_STATUSES = [3, 4, 5]; // Cancelled, Completed, NoShow
 
 export default defineComponent({
   name: 'ActionsPanel',
-  components: { StatusBadge },
+  components: { StatusBadge, AuditPopover },
   props: {
     visible: { type: Boolean, required: true },
     appointment: { type: Object as PropType<Appointment | null>, default: null },

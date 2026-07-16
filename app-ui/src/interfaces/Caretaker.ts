@@ -1,5 +1,7 @@
 // interfaces/Caretaker.ts
 
+import type { AuditInfo } from './Audit';
+
 // Maps to API's CaretakerProfile response
 export interface Caretaker {
   caretakerId: number
@@ -11,6 +13,8 @@ export interface Caretaker {
   createdTimestamp: string
   lastUpdated: string
   isActive: boolean
+  // WP-31 (U1): audit block for the row ⓘ popover. Optional — the UI tolerates an older API.
+  audit?: AuditInfo
   patients: CaretakerPatientSummary[]
 }
 

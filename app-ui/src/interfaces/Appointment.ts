@@ -1,4 +1,6 @@
 // interfaces/Appointment.ts
+import type { AuditInfo } from './Audit';
+
 export interface Appointment {
     sessionId: number;
     sessionDate: string;
@@ -33,6 +35,8 @@ export interface Appointment {
     // WP-17: confidential (matrix grants Appointments.ProviderAmount to MGR/AM only). The API omits
     // this field from the response for callers lacking the claim (e.g. FrontDesk), so it is optional.
     providerAmount?: number;
+    // WP-31 (U1): audit block for the Session Details ⓘ popover. Optional — tolerates an older API.
+    audit?: AuditInfo;
 }
 
 export interface SessionEventRequest {
