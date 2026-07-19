@@ -28,6 +28,7 @@
                   :sites="sites"
                   :loading="siteLoading"
                   :error="siteError"
+                  :can-manage="canManageSites"
                   @add="openSiteAdd"
                   @edit="openSiteEdit"
                   @retry="loadSites"
@@ -43,12 +44,15 @@
                     :add-button-label="section.addButtonLabel"
                     :columns="columnsFor(section.key)"
                     id-key="id"
-                    :items="(crudMap[section.key].items.value as unknown as Record<string, unknown>[])"
+                    :items="itemsFor(section.key)"
                     :loading="crudMap[section.key].loading.value"
                     :error="crudMap[section.key].error.value"
+                    :can-manage="canManageLookup(section.key)"
+                    :show-prices-action="section.key === 'specialty-types' && canEditPrices"
                     @add="crudMap[section.key].openAdd"
                     @edit="crudMap[section.key].openEdit"
                     @retry="crudMap[section.key].loadItems"
+                    @prices="openPrices"
                   />
                 </div>
               </template>
@@ -87,6 +91,14 @@
       @close="lookupModalVisible = false"
       @submit="handleLookupSubmit"
     />
+
+    <!-- WP-39 (G5): per-specialty duration price sheet -->
+    <SpecialtyPricesModal
+      :visible="pricesModalVisible"
+      :specialty="pricesSpecialty"
+      @close="pricesModalVisible = false"
+      @saved="onPricesSaved"
+    />
   </div>
 </template>
 
@@ -101,13 +113,16 @@ import SiteFormModal from '../components/sites/SiteFormModal.vue';
 import AdminAccordionNav from '../components/admin/AdminAccordionNav.vue';
 import LookupTableManager from '../components/admin/LookupTableManager.vue';
 import LookupFormModal from '../components/admin/LookupFormModal.vue';
+import SpecialtyPricesModal from '../components/admin/SpecialtyPricesModal.vue';
 import AboutPanel from '../components/admin/AboutPanel.vue';
 import PatientMergePanel from '../components/admin/PatientMergePanel.vue';
 import type { FieldDef } from '../components/admin/LookupFormModal.vue';
 import type { ColumnDef } from '../components/admin/LookupTableManager.vue';
 import { SitesHttpClient } from '../services/SitesHttpClient';
 import { LookupHttpClient } from '../services/LookupHttpClient';
-import { useLookupCrud } from '../composables/useLookupCrud';
+import { useLookupCrud, type LookupFormData } from '../composables/useLookupCrud';
+import { useClaims, Permissions } from '../composables/useClaims';
+import { LOOKUP_VIEW_CLAIMS, LOOKUP_MANAGE_CLAIMS } from '../composables/adminSections';
 import type { Site } from '../interfaces/Site';
 import type { LookupItem } from '../interfaces/Lookups';
 
@@ -116,12 +131,21 @@ export default defineComponent({
   components: {
     O2MobileNav, O2Sidebar, O2Header, O2Footer,
     SiteList, SiteFormModal,
-    AdminAccordionNav, LookupTableManager, LookupFormModal,
+    AdminAccordionNav, LookupTableManager, LookupFormModal, SpecialtyPricesModal,
     AboutPanel, PatientMergePanel,
   },
   setup() {
-    const activeSection = ref('sites');
+    // WP-39C: /admin admits every Admin.View holder (MGR/AM/OWN + SYSADMIN), so each section
+    // resolves its own claim: *.View gates visibility/fetching, *.Manage gates Add/Edit, and
+    // the specialty Prices… action rides Specialties.Prices.Edit.
+    const { hasClaim } = useClaims();
     const lookupClient = new LookupHttpClient();
+
+    const canViewSites = hasClaim('Permission', Permissions.AdminSitesView);
+    const canManageSites = hasClaim('Permission', Permissions.AdminSitesManage);
+    const canViewLookup = (tableKey: string) => hasClaim('Permission', LOOKUP_VIEW_CLAIMS[tableKey]);
+    const canManageLookup = (tableKey: string) => hasClaim('Permission', LOOKUP_MANAGE_CLAIMS[tableKey]);
+    const canEditPrices = hasClaim('Permission', Permissions.SpecialtiesPricesEdit);
 
     // ── Sites (existing logic) ──────────────────────────────────
     const siteClient = new SitesHttpClient();
@@ -132,6 +156,7 @@ export default defineComponent({
     const editingSite = ref<Site | null>(null);
 
     const loadSites = async () => {
+      if (!canViewSites) return; // avoid a guaranteed 403 for e.g. AM
       siteLoading.value = true;
       siteError.value = '';
       try {
@@ -164,17 +189,27 @@ export default defineComponent({
       { key: 'sortOrder', label: 'Sort Order', type: 'number' },
     ];
 
-    // WP-23 (F6): first PER-TYPE lookup config — specialty-types alone gains the default
-    // session price column/field (pre-filled into the booking form; blank = no default).
+    // WP-23 (F6): specialty-types alone gains the default session price column/field.
+    // WP-39 (PR-2): + a read-only On-site column for everyone who can see the table.
     const columnsFor = (tableKey: string): ColumnDef[] =>
       tableKey === 'specialty-types'
-        ? [...lookupColumns, { key: 'defaultAmount', label: 'Default $' }]
+        ? [...lookupColumns, { key: 'defaultAmount', label: 'Default $' }, { key: 'offeredOnSiteDisplay', label: 'On-site' }]
         : lookupColumns;
 
-    const fieldsFor = (tableKey: string): FieldDef[] =>
-      tableKey === 'specialty-types'
-        ? [...lookupFields, { key: 'defaultAmount', label: 'Default $ (session price)', type: 'number' }]
-        : lookupFields;
+    // WP-39 (PR-2): the "Offered on-site" checkbox is structural (describes the service, not its
+    // price) — it appears only for Admin.Lookups.SpecialtyType.Manage holders (SYSADMIN), same
+    // policy as Default $ (whose form is Manage-gated too, via the hidden Add/Edit controls).
+    const fieldsFor = (tableKey: string): FieldDef[] => {
+      if (tableKey !== 'specialty-types') return lookupFields;
+      const fields: FieldDef[] = [
+        ...lookupFields,
+        { key: 'defaultAmount', label: 'Default $ (session price)', type: 'number' },
+      ];
+      if (canManageLookup('specialty-types')) {
+        fields.push({ key: 'offeredOnSite', label: 'Offered on-site (customer home/facility)', type: 'checkbox' });
+      }
+      return fields;
+    };
 
     // ── Lookup section metadata ─────────────────────────────────
     const lookupSections = [
@@ -184,23 +219,28 @@ export default defineComponent({
       { key: 'specialty-types', title: 'Specialty Types', subtitle: 'Therapy specializations offered at the clinic', addButtonLabel: 'Add Specialty', addTitle: 'Add Specialty', editTitle: 'Edit Specialty' },
     ];
 
-    /** Convert form string data to typed request payload */
-    const toPayload = (data: Record<string, string>) => {
+    /** Convert form data (strings + checkbox booleans) to a typed request payload */
+    const toPayload = (data: LookupFormData) => {
       const payload: Record<string, unknown> = {};
-      if (data.abbreviation?.trim()) payload.abbreviation = data.abbreviation.trim();
-      if (data.name?.trim()) payload.name = data.name.trim();
-      if (data.description?.trim()) payload.description = data.description.trim();
+      const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+      if (str(data.abbreviation)) payload.abbreviation = str(data.abbreviation);
+      if (str(data.name)) payload.name = str(data.name);
+      if (str(data.description)) payload.description = str(data.description);
       if (data.sortOrder !== undefined && data.sortOrder !== '') payload.sortOrder = Number(data.sortOrder);
       // WP-23 (F6): specialty-types only (the field is absent from other tables' forms);
       // omitted when blank = unchanged server-side.
       if (data.defaultAmount !== undefined && data.defaultAmount !== '') payload.defaultAmount = Number(data.defaultAmount);
+      // WP-39 (PR-2): checkbox present only on the SYSADMIN specialty form; explicit boolean.
+      if (typeof data.offeredOnSite === 'boolean') payload.offeredOnSite = data.offeredOnSite;
       return payload;
     };
 
     // ── Create one crud instance per table ──────────────────────
+    // Sections the user can't view never fetch (their nav entries are hidden anyway; skipping
+    // the call avoids guaranteed 403s — e.g. AM holds only the SpecialtyType read claim).
     const makeCrud = (tableName: string) =>
       useLookupCrud<LookupItem>(
-        () => lookupClient.getAll(tableName),
+        () => (canViewLookup(tableName) ? lookupClient.getAll(tableName) : Promise.resolve([])),
         (data) => lookupClient.create(tableName, toPayload(data) as { abbreviation: string; name: string }),
         (id, data) => lookupClient.update(tableName, id, toPayload(data)),
       );
@@ -211,6 +251,26 @@ export default defineComponent({
       crudMap[section.key] = makeCrud(section.key);
     }
 
+    // WP-39: display projection — LookupTableManager prints raw cell values, so the boolean
+    // On-site flag becomes a friendly Yes/— column for specialty-types.
+    const itemsFor = (tableKey: string): Record<string, unknown>[] => {
+      const items = crudMap[tableKey].items.value as unknown as Record<string, unknown>[];
+      if (tableKey !== 'specialty-types') return items;
+      return items.map((item) => ({
+        ...item,
+        offeredOnSiteDisplay: item.offeredOnSite === true ? 'Yes' : '—',
+      }));
+    };
+
+    // ── Default section: first one the user's claims can see ────
+    const sectionOrder: Array<{ key: string; allowed: () => boolean }> = [
+      { key: 'sites', allowed: () => canViewSites },
+      ...lookupSections.map((s) => ({ key: s.key, allowed: () => canViewLookup(s.key) })),
+      { key: 'merge-patients', allowed: () => hasClaim('Permission', Permissions.PatientsMerge) },
+    ];
+    const firstVisibleSection = sectionOrder.find((s) => s.allowed())?.key ?? 'sites';
+    const activeSection = ref(firstVisibleSection);
+
     // ── Lookup modal orchestration ──────────────────────────────
     const lookupModalVisible = ref(false);
     const lookupModalTitle = ref('');
@@ -218,7 +278,7 @@ export default defineComponent({
     const lookupModalInitialValues = ref<Record<string, string> | null>(null);
     const lookupModalEditId = ref<number | undefined>(undefined);
     const lookupModalReadonlyFields = ref<{ label: string; value: string }[]>([]);
-    const lookupModalSaveHandler = ref<((data: Record<string, string>, id?: number) => Promise<void>) | null>(null);
+    const lookupModalSaveHandler = ref<((data: LookupFormData, id?: number) => Promise<void>) | null>(null);
 
     // Override the openAdd/openEdit on each crud instance to open the shared modal
     for (const section of lookupSections) {
@@ -256,7 +316,7 @@ export default defineComponent({
       };
     }
 
-    const handleLookupSubmit = async (formData: Record<string, string>) => {
+    const handleLookupSubmit = async (formData: LookupFormData) => {
       if (lookupModalSaveHandler.value) {
         try {
           await lookupModalSaveHandler.value(formData, lookupModalEditId.value);
@@ -267,16 +327,32 @@ export default defineComponent({
       }
     };
 
+    // ── WP-39 (G5): specialty prices modal ──────────────────────
+    const pricesModalVisible = ref(false);
+    const pricesSpecialty = ref<LookupItem | null>(null);
+
+    const openPrices = (item: unknown) => {
+      pricesSpecialty.value = item as LookupItem;
+      pricesModalVisible.value = true;
+    };
+    const onPricesSaved = () => {
+      // Refresh the table so the lookup projection's current-effective durationPrices stay honest.
+      crudMap['specialty-types'].loadItems();
+    };
+
     return {
       activeSection,
       // Sites
       sites, siteLoading, siteError, siteModalVisible, editingSite,
-      loadSites, openSiteAdd, openSiteEdit, onSiteSaved,
+      loadSites, openSiteAdd, openSiteEdit, onSiteSaved, canManageSites,
       // Lookup tables
-      lookupSections, lookupColumns, columnsFor, crudMap,
+      lookupSections, lookupColumns, columnsFor, itemsFor, crudMap,
+      canManageLookup, canEditPrices,
       // Modal
       lookupModalVisible, lookupModalTitle, lookupModalFields,
       lookupModalInitialValues, lookupModalReadonlyFields, handleLookupSubmit,
+      // Prices modal
+      pricesModalVisible, pricesSpecialty, openPrices, onPricesSaved,
     };
   },
 });

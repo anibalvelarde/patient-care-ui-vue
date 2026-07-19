@@ -7,6 +7,7 @@
         <p class="text-sm text-slate-500">{{ subtitle }}</p>
       </div>
       <button
+        v-if="canManage"
         class="px-4 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors"
         @click="$emit('add')"
       >
@@ -66,8 +67,18 @@
           >
             {{ (item as Record<string, unknown>)[col.key] }}
           </td>
-          <td class="px-6 py-3 text-right" :title="getTimestampTooltip(item)">
+          <td class="px-6 py-3 text-right whitespace-nowrap" :title="getTimestampTooltip(item)">
+            <!-- WP-39: per-row Prices… action (specialty-types), claim-gated by the parent -->
             <button
+              v-if="showPricesAction"
+              class="text-xs font-medium text-violet-600 hover:text-violet-800 mr-3"
+              data-testid="specialty-prices-action"
+              @click="$emit('prices', item)"
+            >
+              Prices…
+            </button>
+            <button
+              v-if="canManage"
               class="text-slate-400 hover:text-violet-600 transition-colors"
               @click="$emit('edit', item)"
             >
@@ -102,8 +113,13 @@ export default defineComponent({
     items: { type: Array as PropType<Record<string, unknown>[]>, required: true },
     loading: { type: Boolean, default: false },
     error: { type: String, default: '' },
+    // WP-39C: /admin is no longer SYSADMIN-only — structural Add/Edit stays behind the
+    // table's Manage claim, which the parent resolves and passes down.
+    canManage: { type: Boolean, default: true },
+    // WP-39: show the per-row "Prices…" action (specialty-types, Specialties.Prices.Edit).
+    showPricesAction: { type: Boolean, default: false },
   },
-  emits: ['add', 'edit', 'retry'],
+  emits: ['add', 'edit', 'retry', 'prices'],
   setup(props) {
     const getItemId = (item: Record<string, unknown>): unknown => {
       return item[props.idKey];

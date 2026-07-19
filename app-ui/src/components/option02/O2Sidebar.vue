@@ -30,9 +30,11 @@
     <!-- Bottom -->
     <div class="flex flex-col items-center pb-6 space-y-2">
       <div class="w-10 border-t border-violet-800 mb-1"></div>
+      <!-- WP-39C: Admin entry rides Admin.View (MGR/AM/OWN + SYSADMIN wildcard), mirroring the router -->
       <router-link
-        v-if="isSystemAdmin"
+        v-if="canOpenAdmin"
         to="/admin"
+        data-testid="nav-admin"
         :class="[
           'w-12 h-12 rounded-xl flex flex-col items-center justify-center transition-all duration-150',
           isActive('/admin')
@@ -96,12 +98,15 @@ export default defineComponent({
       navItems.filter((item) => !item.claim || hasClaim(item.claim[0], item.claim[1])),
     );
 
+    // WP-39C: Admin.View claim (SYSADMIN passes via the wildcard inside hasClaim).
+    const canOpenAdmin = computed(() => hasClaim('Permission', Permissions.AdminView));
+
     const isActive = (to: string) => {
       if (to === '#') return false;
       return route.path === to;
     };
 
-    return { visibleNavItems, isActive, isSystemAdmin };
+    return { visibleNavItems, isActive, isSystemAdmin, canOpenAdmin };
   },
 });
 </script>

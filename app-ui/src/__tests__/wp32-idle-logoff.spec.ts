@@ -246,6 +246,7 @@ function site(overrides: Partial<Site> = {}): Site {
     latitude: null,
     longitude: null,
     idleLogoffMinutes: 60,
+    onSiteTripChargeAmount: 0, // WP-39
     ...overrides,
   };
 }
