@@ -23,20 +23,20 @@ re-login** — claims mint at login. Without re-login MGR/AM won't see Admin / t
 4. Open **Specialty Types**. **Expected:**
    - The table shows **Default $** and a new **On-site** column (Yes / —).
    - **No** "+ Add Specialty" button and **no** edit pencil (structural edits stay SYSADMIN).
-   - Each row has a **"Prices…"** action.
-5. Click **Prices…** on a specialty with no prices yet (fresh install: all of them).
+   - Each row has a **price-tag icon** action (hover tooltip: *"Edit pricing tables"*).
+5. Click the **price-tag icon** on a specialty with no prices yet (fresh install: all of them).
    **Expected:** the modal shows all five durations with **—** as current price, a note that
    missing durations fall back to Default $ (or "no fallback" if none is set), and an amber
    **"No current 60-minute price"** warning (soft — nothing is blocked).
 6. Enter the customer's sheet, e.g. 30 min = `25.00`, 45 min = `35.00`, 60 min = `45.00`,
    90 min = `65.00`, 120 min = `80.00`. Leave **Effective from** at today. Click
    **Save New Prices**.
-7. Re-open **Prices…** on the same specialty. **Expected:** each duration now shows its price
-   with "since {today}", and the 60-minute warning is **gone**.
+7. Re-open the price sheet on the same specialty. **Expected:** each duration now shows its
+   price with "since {today}", and the 60-minute warning is **gone**.
 
 ## Scenario 2 — future-dated change + history
 
-1. Still as MGR, open **Prices…** on the same specialty.
+1. Still as MGR, open the **price-tag icon** on the same specialty.
 2. For 60 min, enter a new amount (e.g. `50.00`) and set **Effective from** to a date **next
    month**. Save.
 3. Re-open the modal. **Expected:** the 60-min **current** price is still the old one (the new
@@ -53,9 +53,9 @@ re-login** — claims mint at login. Without re-login MGR/AM won't see Admin / t
 3. Open Admin. **Expected:** the page lands directly on **Specialty Types**, and the section
    list shows **only** Specialty Types — no Sites, no other reference tables, no Merge
    Patients/Security/Build Info.
-4. **Expected:** in the table there is a **Prices…** action but no Add/Edit controls.
-5. Open **Prices…** and append a price row (any duration, today). **Expected:** saves fine —
-   AM holds the same price-edit permission as MGR.
+4. **Expected:** in the table there is a **price-tag icon** action but no Add/Edit controls.
+5. Open the price sheet and append a price row (any duration, today). **Expected:** saves
+   fine — AM holds the same price-edit permission as MGR.
 
 ## Scenario 4 — FD: nothing new
 
@@ -82,13 +82,17 @@ re-login** — claims mint at login. Without re-login MGR/AM won't see Admin / t
 
 1. As any user who can see a Reference Data table (MGR is fine), open e.g.
    **Admin → Payment Types** (applies to all four tables).
-2. **Expected:** rows arrive sorted by **Sort Order** ascending (ties ordered by name,
-   case-insensitive), and the **Sort Order** header shows a **▲** marker.
+2. **Expected:** rows arrive sorted by sort order ascending (ties ordered by name,
+   case-insensitive). The sort order lives in a narrow, muted **`#`** column at the far right
+   of the data columns (hover its header: tooltip "Sort order") — it carries a small **▲**
+   marker by default. It's machinery, not content: the numbers render small and grey.
 3. Click the **Name** header. **Expected:** rows re-sort alphabetically by name (▲ moves to
    Name). Click **Name** again: order reverses (▼).
-4. Click the **Sort Order** header. **Expected:** back to the default Sort Order ascending
-   view (▲ on Sort Order). Other headers (Abbreviation, Description) are not clickable.
-5. No reload happens on any click — sorting is instant/client-side.
+4. Click the **`#`** header. **Expected:** back to the default sort-order ascending view
+   (▲ on `#`). Other headers (Abbreviation, Description) are not clickable.
+5. Edit any item (SYSADMIN): the **Sort Order** field in the form is unchanged/full-size and
+   now explains itself — *"Items display in ascending order; ties sort alphabetically."*
+6. No reload happens on any click — sorting is instant/client-side.
 
 ## Cleanup
 

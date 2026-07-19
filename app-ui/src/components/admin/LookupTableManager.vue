@@ -41,18 +41,28 @@
       <thead>
         <tr class="border-b border-slate-100">
           <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-16">ID</th>
+          <!-- WP-39 follow-up: SortOrder (default, ASC) and Name are sortable — PatientTable's
+               ▲/▼ pattern. Owner ruling: sortOrder renders as a narrow muted "#" utility column
+               (machinery, not content) but stays the click target restoring the default order. -->
           <th
             v-for="col in columns"
             :key="col.key"
             class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
-            :class="isSortable(col.key) ? 'cursor-pointer select-none hover:text-slate-700' : ''"
+            :class="[
+              isSortable(col.key) ? 'cursor-pointer select-none hover:text-slate-700' : '',
+              col.key === 'sortOrder' ? 'w-12' : '',
+            ]"
+            :title="col.key === 'sortOrder' ? 'Sort order' : undefined"
             :data-testid="isSortable(col.key) ? `lookup-sort-header-${col.key === 'sortOrder' ? 'sort-order' : col.key}` : undefined"
             @click="isSortable(col.key) && setSort(col.key)"
           >
-            <!-- WP-39 follow-up: Sort Order (default, ASC) and Name are sortable — PatientTable's ▲/▼ pattern -->
             <span class="flex items-center space-x-1">
               <span>{{ col.label }}</span>
-              <span v-if="sortKey === col.key" class="text-violet-600" data-testid="lookup-sort-indicator">
+              <span
+                v-if="sortKey === col.key"
+                :class="col.key === 'sortOrder' ? 'text-violet-400 text-[10px]' : 'text-violet-600'"
+                data-testid="lookup-sort-indicator"
+              >
                 {{ sortAsc ? '&#9650;' : '&#9660;' }}
               </span>
             </span>
@@ -70,21 +80,28 @@
           <td
             v-for="col in columns"
             :key="col.key"
-            class="px-6 py-3 text-sm"
-            :class="col.primary ? 'text-slate-800 font-medium' : 'text-slate-600'"
+            class="px-6 py-3"
+            :class="col.key === 'sortOrder'
+              ? 'text-xs text-slate-400'
+              : col.primary ? 'text-sm text-slate-800 font-medium' : 'text-sm text-slate-600'"
             :title="col.primary ? getTimestampTooltip(item) : undefined"
+            :data-testid="col.key === 'sortOrder' ? 'lookup-sort-order-cell' : undefined"
           >
             {{ (item as Record<string, unknown>)[col.key] }}
           </td>
           <td class="px-6 py-3 text-right whitespace-nowrap" :title="getTimestampTooltip(item)">
-            <!-- WP-39: per-row Prices… action (specialty-types), claim-gated by the parent -->
+            <!-- WP-39: per-row prices action (specialty-types), claim-gated by the parent.
+                 Owner ruling: icon button matching the action column's icon metaphor — fa-tags
+                 (price tags), NOT a bare $ which could read as the nearby Default $ column. -->
             <button
               v-if="showPricesAction"
-              class="text-xs font-medium text-violet-600 hover:text-violet-800 mr-3"
+              class="text-slate-400 hover:text-violet-600 transition-colors mr-3"
+              title="Edit pricing tables"
+              aria-label="Edit pricing tables"
               data-testid="specialty-prices-action"
               @click="$emit('prices', item)"
             >
-              Prices…
+              <font-awesome-icon :icon="['fas', 'tags']" class="w-4 h-4 inline" />
             </button>
             <button
               v-if="canManage"
@@ -104,6 +121,11 @@
 
 <script lang="ts">
 import { computed, defineComponent, ref, type PropType } from 'vue';
+import { library } from '@fortawesome/fontawesome-svg-core';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { faTags } from '@fortawesome/free-solid-svg-icons';
+
+library.add(faTags);
 
 export interface ColumnDef {
   key: string;
@@ -113,6 +135,7 @@ export interface ColumnDef {
 
 export default defineComponent({
   name: 'LookupTableManager',
+  components: { FontAwesomeIcon },
   props: {
     title: { type: String, required: true },
     subtitle: { type: String, required: true },
@@ -125,7 +148,8 @@ export default defineComponent({
     // WP-39C: /admin is no longer SYSADMIN-only — structural Add/Edit stays behind the
     // table's Manage claim, which the parent resolves and passes down.
     canManage: { type: Boolean, default: true },
-    // WP-39: show the per-row "Prices…" action (specialty-types, Specialties.Prices.Edit).
+    // WP-39: show the per-row prices action — fa-tags icon button, "Edit pricing tables"
+    // (specialty-types, Specialties.Prices.Edit).
     showPricesAction: { type: Boolean, default: false },
   },
   emits: ['add', 'edit', 'retry', 'prices'],

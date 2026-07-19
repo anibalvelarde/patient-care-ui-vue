@@ -43,6 +43,13 @@
                 :maxlength="field.maxLength"
                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
               />
+              <p
+                v-if="field.helper"
+                class="mt-1 text-xs text-slate-500"
+                :data-testid="`lookup-form-${field.key}-helper`"
+              >
+                {{ field.helper }}
+              </p>
             </template>
           </div>
 
@@ -92,6 +99,8 @@ export interface FieldDef {
   required?: boolean;
   maxLength?: number;
   type?: string;
+  /** Small muted helper line rendered under the input (WP-39 follow-up: Sort Order semantics). */
+  helper?: string;
 }
 
 // This modal delegates the actual save to its parent via emit('submit', …), so it doesn't do its own

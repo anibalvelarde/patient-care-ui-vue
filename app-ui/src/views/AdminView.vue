@@ -175,25 +175,28 @@ export default defineComponent({
     onMounted(loadSites);
 
     // ── Unified lookup columns & fields ─────────────────────────
-    const lookupColumns: ColumnDef[] = [
+    // Owner ruling (WP-39 follow-up): Sort Order is machinery, not content — it renders as a
+    // narrow muted "#" utility column, always the LAST data column (after the specialty extras).
+    const baseLookupColumns: ColumnDef[] = [
       { key: 'abbreviation', label: 'Abbreviation', primary: true },
       { key: 'name', label: 'Name' },
       { key: 'description', label: 'Description' },
-      { key: 'sortOrder', label: 'Sort Order' },
     ];
+    const sortOrderColumn: ColumnDef = { key: 'sortOrder', label: '#' };
+    const lookupColumns: ColumnDef[] = [...baseLookupColumns, sortOrderColumn];
 
     const lookupFields: FieldDef[] = [
       { key: 'abbreviation', label: 'Abbreviation', required: true, maxLength: 50 },
       { key: 'name', label: 'Name', required: true, maxLength: 75 },
       { key: 'description', label: 'Description', maxLength: 200 },
-      { key: 'sortOrder', label: 'Sort Order', type: 'number' },
+      { key: 'sortOrder', label: 'Sort Order', type: 'number', helper: 'Items display in ascending order; ties sort alphabetically.' },
     ];
 
     // WP-23 (F6): specialty-types alone gains the default session price column/field.
     // WP-39 (PR-2): + a read-only On-site column for everyone who can see the table.
     const columnsFor = (tableKey: string): ColumnDef[] =>
       tableKey === 'specialty-types'
-        ? [...lookupColumns, { key: 'defaultAmount', label: 'Default $' }, { key: 'offeredOnSiteDisplay', label: 'On-site' }]
+        ? [...baseLookupColumns, { key: 'defaultAmount', label: 'Default $' }, { key: 'offeredOnSiteDisplay', label: 'On-site' }, sortOrderColumn]
         : lookupColumns;
 
     // WP-39 (PR-2): the "Offered on-site" checkbox is structural (describes the service, not its

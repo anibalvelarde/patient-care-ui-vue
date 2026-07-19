@@ -4,7 +4,8 @@
 //          G6 soft missing-60-min warning, friendly 409 message.
 //   PR-2 — On-site column (read-only, everyone) + "Offered on-site" checkbox (structural
 //          Admin.Lookups.SpecialtyType.Manage — SYSADMIN only); Site gains the trip charge.
-//   PR-3 — "Prices…" action rides the NEW Specialties.Prices.Edit (MGR/AM + SYSADMIN);
+//   PR-3 — prices action (fa-tags icon button, "Edit pricing tables") rides the NEW
+//          Specialties.Prices.Edit (MGR/AM + SYSADMIN);
 //          AM-reachability: /admin now opens on Admin.View, and AM sees ONLY Specialty Types.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -373,6 +374,27 @@ describe('LookupFormModal — checkbox field plumbing', () => {
     expect(submitted.offeredOnSite).toBe(false); // unchecked = explicit false, not omitted
     expect(submitted.name).toBe('TL');
   });
+
+  it('shows the Sort Order helper line explaining display-order semantics', async () => {
+    const wrapper = mount(LookupFormModal, {
+      props: {
+        visible: false,
+        title: 'Add Status',
+        fields: [
+          { key: 'name', label: 'Name', required: true },
+          { key: 'sortOrder', label: 'Sort Order', type: 'number', helper: 'Items display in ascending order; ties sort alphabetically.' },
+        ] as FieldDef[],
+        initialValues: null,
+      },
+      global: { plugins: [authAs('SYSADMIN', { isSystemAdmin: true })], stubs: { teleport: true } },
+    });
+    await wrapper.setProps({ visible: true });
+    await nextTick();
+
+    const helper = wrapper.find('[data-testid="lookup-form-sortOrder-helper"]');
+    expect(helper.exists()).toBe(true);
+    expect(helper.text()).toBe('Items display in ascending order; ties sort alphabetically.');
+  });
 });
 
 // ── AdminAccordionNav — AM sees ONLY Specialty Types ─────────────────────────
@@ -456,7 +478,7 @@ describe('LookupTableManager — SortOrder default + Name on-demand sorting', ()
     { key: 'abbreviation', label: 'Abbreviation', primary: true },
     { key: 'name', label: 'Name' },
     { key: 'description', label: 'Description' },
-    { key: 'sortOrder', label: 'Sort Order' },
+    { key: 'sortOrder', label: '#' }, // owner ruling: muted "#" utility column
   ];
   // Deliberately shuffled: equal SortOrder 1 must tiebreak by case-insensitive name
   // ("alpha" < "Beta"), mirroring the server's ORDER BY SortOrder ASC, Name ASC.
@@ -508,6 +530,48 @@ describe('LookupTableManager — SortOrder default + Name on-demand sorting', ()
     const w = mountManager();
     expect(w.find('[data-testid="lookup-sort-header-abbreviation"]').exists()).toBe(false);
     expect(w.find('[data-testid="lookup-sort-header-description"]').exists()).toBe(false);
+  });
+
+  // Owner ruling: Sort Order is machinery, not content — narrow "#" header with a tooltip,
+  // muted cells, but still the click target restoring the default order (covered above).
+  it('renders the sortOrder column as a "#" utility header with a "Sort order" tooltip', () => {
+    const w = mountManager();
+    const header = w.find('[data-testid="lookup-sort-header-sort-order"]');
+    expect(header.text()).toContain('#');
+    expect(header.text()).not.toContain('Sort Order'); // demoted — no full label
+    expect(header.attributes('title')).toBe('Sort order');
+  });
+
+  it('mutes the sortOrder cells (small + subdued text idiom)', () => {
+    const w = mountManager();
+    const cells = w.findAll('[data-testid="lookup-sort-order-cell"]');
+    expect(cells).toHaveLength(3);
+    for (const cell of cells) {
+      expect(cell.classes()).toContain('text-xs');
+      expect(cell.classes()).toContain('text-slate-400');
+    }
+  });
+
+  // Owner ruling: the prices action is an ICON button (fa-tags — price tags, not a bare $
+  // that could read as the nearby Default $ column), named for hover + screen readers.
+  it('renders the prices action as a tags icon button with tooltip and aria-label', async () => {
+    const w = mount(LookupTableManager, {
+      props: {
+        title: 'Specialty Types', subtitle: 'test', addButtonLabel: 'Add',
+        columns, idKey: 'id', items, showPricesAction: true,
+      },
+    });
+    const action = w.find('[data-testid="specialty-prices-action"]');
+    expect(action.exists()).toBe(true);
+    expect(action.attributes('title')).toBe('Edit pricing tables');
+    expect(action.attributes('aria-label')).toBe('Edit pricing tables');
+    expect(action.text()).toBe(''); // icon-only — no "Prices…" text label
+    expect(action.find('svg').exists()).toBe(true); // the registered fa-tags icon
+
+    await action.trigger('click');
+    expect(w.emitted('prices')).toHaveLength(1);
+    // first RENDERED row = 'alpha' (id 3) — rows are default-sorted, not input-ordered
+    expect((w.emitted('prices')![0][0] as { id: number }).id).toBe(3);
   });
 });
 
