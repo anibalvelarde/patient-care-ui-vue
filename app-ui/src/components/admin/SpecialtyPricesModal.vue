@@ -130,6 +130,9 @@
                             v-if="row.isCurrent"
                             class="px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 text-[10px] uppercase tracking-wider"
                           >current</span>
+                          <!-- WP-39 addendum: who entered this price — WP-31 ⓘ metaphor; renders
+                               nothing when the API didn't send an audit block (older deploy). -->
+                          <AuditPopover :audit="row.audit" align="left" />
                         </li>
                       </ul>
                     </td>
@@ -177,6 +180,7 @@ import type { LookupItem, SpecialtyPriceHistory, SpecialtyPriceHistoryRow, Speci
 import { LookupHttpClient } from '../../services/LookupHttpClient';
 import { useModalForm } from '../../composables/useModalForm';
 import FormErrorBanner from '../shared/FormErrorBanner.vue';
+import AuditPopover from '../shared/AuditPopover.vue';
 
 // WP-39 (G5): per-specialty price-sheet modal. Shows the current-effective price per duration
 // (30/45/60/90/120), lets a Specialties.Prices.Edit holder APPEND effective-dated rows (default
@@ -195,7 +199,7 @@ function todayISO(): string {
 
 export default defineComponent({
   name: 'SpecialtyPricesModal',
-  components: { FormErrorBanner },
+  components: { FormErrorBanner, AuditPopover },
   props: {
     visible: { type: Boolean, required: true },
     specialty: { type: Object as PropType<LookupItem | null>, default: null },

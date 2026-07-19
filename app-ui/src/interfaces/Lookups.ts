@@ -1,5 +1,7 @@
 // Generic lookup table interfaces (unified API shape)
 
+import type { AuditInfo } from './Audit';
+
 // WP-39: one current-effective per-duration price on the lookup projection.
 // Only durations with a price effective TODAY appear; absent = no effective price
 // (booking falls back to defaultAmount — WP-40 consumes this).
@@ -56,6 +58,9 @@ export interface SpecialtyPriceHistoryRow {
   amount: number;
   effectiveFrom: string; // "yyyy-MM-dd"
   isCurrent: boolean;
+  // WP-39 addendum (owner ruling): WP-31 additive audit block — rows are append-only, so
+  // `updatedBy` ≡ who ENTERED the price. Absent against an older API (degrade = show nothing).
+  audit?: AuditInfo;
 }
 
 export interface SpecialtyPriceHistory {

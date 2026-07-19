@@ -42,7 +42,12 @@ re-login** — claims mint at login. Without re-login MGR/AM won't see Admin / t
 3. Re-open the modal. **Expected:** the 60-min **current** price is still the old one (the new
    row isn't effective yet). Click **History** on the 60-min row: both rows are listed
    newest-first, with the effective one tagged **current**.
-4. Try saving the **same duration + same date** again with any amount.
+4. Each history row carries the familiar **ⓘ** (same as Patients/Caretakers rows). Tap it.
+   **Expected:** a small "Record history" popover with **Created**, **Last updated**, and
+   **Last updated by** — since price rows are append-only, that's **who entered the price**
+   (your own name for rows you just added; `System` for machine-loaded rows). Legacy note: if
+   the API predates this addendum, the ⓘ simply doesn't appear.
+5. Try saving the **same duration + same date** again with any amount.
    **Expected:** a friendly error — *"A price for that duration and effective date already
    exists — pick a different date (history is never overwritten)."* Nothing is saved.
 

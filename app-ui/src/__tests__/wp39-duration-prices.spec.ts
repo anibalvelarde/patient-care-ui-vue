@@ -100,9 +100,12 @@ function priceHistory(overrides: Partial<SpecialtyPriceHistory> = {}): Specialty
     defaultAmount: 40,
     offeredOnSite: true,
     prices: [
-      { durationMinutes: 30, amount: 25, effectiveFrom: '2026-07-01', isCurrent: true },
-      { durationMinutes: 30, amount: 22, effectiveFrom: '2026-01-01', isCurrent: false },
-      { durationMinutes: 60, amount: 45, effectiveFrom: '2026-06-01', isCurrent: true },
+      { durationMinutes: 30, amount: 25, effectiveFrom: '2026-07-01', isCurrent: true,
+        audit: { createdAt: '2026-07-01T10:00:00', updatedAt: '2026-07-01T10:00:00', updatedBy: 'Lopez, Maria' } },
+      { durationMinutes: 30, amount: 22, effectiveFrom: '2026-01-01', isCurrent: false,
+        audit: { createdAt: '2026-01-01T09:15:00', updatedAt: '2026-01-01T09:15:00', updatedBy: 'System' } },
+      { durationMinutes: 60, amount: 45, effectiveFrom: '2026-06-01', isCurrent: true,
+        audit: { createdAt: '2026-06-01T08:00:00', updatedAt: '2026-06-01T08:00:00', updatedBy: 'Lopez, Maria' } },
     ],
     ...overrides,
   };
@@ -167,6 +170,35 @@ describe('SpecialtyPricesModal — current prices + history', () => {
     expect(history.text()).toContain('current'); // isCurrent highlight
     // 45-min has no history at all → no toggle
     expect(wrapper.find('[data-testid="specialty-prices-history-toggle-45"]').exists()).toBe(false);
+  });
+
+  // WP-39 addendum: WHO entered each price — WP-31 ⓘ metaphor on the history rows.
+  it('history rows carry the audit ⓘ; tapping it reveals created/updated/entered-by', async () => {
+    const wrapper = await openPricesModal(authAs('MGR'));
+    await wrapper.find('[data-testid="specialty-prices-history-toggle-30"]').trigger('click');
+
+    const history = wrapper.find('[data-testid="specialty-prices-history-30"]');
+    const buttons = history.findAll('[data-testid="audit-info-button"]');
+    expect(buttons).toHaveLength(2); // one ⓘ per history row
+
+    await buttons[0].trigger('click');
+    expect(wrapper.find('[data-testid="audit-info-popover"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="audit-updated-by"]').text()).toBe('Lopez, Maria');
+    expect(wrapper.find('[data-testid="audit-created"]').text()).toContain('2026');
+  });
+
+  it('degrades gracefully when the API sends no audit blocks (older deployment): no ⓘ at all', async () => {
+    lookupClientMocks.getSpecialtyPrices.mockResolvedValue(priceHistory({
+      prices: [
+        { durationMinutes: 30, amount: 25, effectiveFrom: '2026-07-01', isCurrent: true },
+        { durationMinutes: 30, amount: 22, effectiveFrom: '2026-01-01', isCurrent: false },
+      ],
+    }));
+    const wrapper = await openPricesModal(authAs('MGR'));
+    await wrapper.find('[data-testid="specialty-prices-history-toggle-30"]').trigger('click');
+
+    expect(wrapper.find('[data-testid="specialty-prices-history-30"]').exists()).toBe(true);
+    expect(wrapper.findAll('[data-testid="audit-info-button"]')).toHaveLength(0);
   });
 
   it('G6: warns (softly) when there is no current-effective 60-min price', async () => {
