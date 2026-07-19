@@ -57,6 +57,7 @@
             class="mt-6 self-center rounded-lg border border-slate-300 p-2 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
             title="Swap survivor and duplicate"
             :disabled="!survivor && !eliminated"
+            data-testid="merge-swap-button"
             @click="swap"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -184,11 +185,68 @@
         </div>
       </template>
     </div>
+
+    <!-- WP-38 (MRG-1): confirm-first discard guard — a picker change while a preview exists -->
+    <teleport to="body">
+      <div
+        v-if="discardDialogVisible"
+        class="fixed inset-0 z-[60] flex items-center justify-center p-4"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="merge-discard-title"
+      >
+        <!-- Backdrop (no click-to-dismiss: the choice must be explicit) -->
+        <div class="absolute inset-0 bg-black/40"></div>
+
+        <div
+          data-testid="merge-discard-dialog"
+          class="relative w-full max-w-sm rounded-xl bg-white shadow-2xl p-6 text-center"
+        >
+          <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
+            <svg class="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 8v4m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z"
+              />
+            </svg>
+          </div>
+
+          <h2 id="merge-discard-title" class="text-lg font-semibold text-slate-800">
+            Discard this preview?
+          </h2>
+          <p class="mt-2 text-sm text-slate-600">
+            Changing the selection discards the current preview and its confirmation.
+            You'll need to run a new preview for the new pair. Continue?
+          </p>
+
+          <div class="mt-6 flex items-center justify-center gap-3">
+            <button
+              type="button"
+              data-testid="merge-discard-cancel"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50"
+              @click="cancelDiscard"
+            >
+              Keep preview
+            </button>
+            <button
+              type="button"
+              data-testid="merge-discard-continue"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-rose-600 hover:bg-rose-700"
+              @click="confirmDiscard"
+            >
+              Discard preview
+            </button>
+          </div>
+        </div>
+      </div>
+    </teleport>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed } from 'vue';
+import { defineComponent, ref, computed, watch } from 'vue';
 import LookupSelect, { type LookupOption } from '../shared/LookupSelect.vue';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import type { PatientMergePreview, PatientMergeResult } from '../../interfaces/PatientMerge';
@@ -251,8 +309,45 @@ export default defineComponent({
       const s = survivor.value;
       survivor.value = eliminated.value;
       eliminated.value = s;
+      // Clearing the preview here also keeps the WP-38 discard guard silent: by the time the
+      // watcher runs there is no preview left to protect (swap is intentionally pair-preserving).
       preview.value = null;
       confirmText.value = '';
+    };
+
+    // WP-38 (MRG-1): a picker change while a preview exists would leave the stale preview (and
+    // its live type-to-confirm + Execute path) describing a pair the selectors no longer match —
+    // a wrong-patient-merge hazard. Confirm first (G1); Continue keeps the new selection and
+    // clears only preview + confirm text (G2); Cancel restores the previous selection.
+    const discardDialogVisible = ref(false);
+    let priorSelection: { survivor: LookupOption | null; eliminated: LookupOption | null } | null = null;
+    let restoringSelection = false;
+
+    watch([survivor, eliminated], (_now, [oldSurvivor, oldEliminated]) => {
+      if (restoringSelection) {
+        restoringSelection = false;
+        return;
+      }
+      if (!preview.value || discardDialogVisible.value) return;
+      priorSelection = { survivor: oldSurvivor, eliminated: oldEliminated };
+      discardDialogVisible.value = true;
+    });
+
+    const confirmDiscard = () => {
+      preview.value = null;
+      confirmText.value = '';
+      priorSelection = null;
+      discardDialogVisible.value = false;
+    };
+
+    const cancelDiscard = () => {
+      if (priorSelection) {
+        restoringSelection = true;
+        survivor.value = priorSelection.survivor;
+        eliminated.value = priorSelection.eliminated;
+        priorSelection = null;
+      }
+      discardDialogVisible.value = false;
     };
 
     const runPreview = async () => {
@@ -308,6 +403,7 @@ export default defineComponent({
       survivor, eliminated, preview, result, fetchPatientOptions,
       confirmText, confirmTarget, confirmMatches, previewing, merging, error,
       canPreview, identitySides, swap, runPreview, runMerge, reset, formatDate,
+      discardDialogVisible, confirmDiscard, cancelDiscard,
     };
   },
 });
