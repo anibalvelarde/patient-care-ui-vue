@@ -78,6 +78,18 @@ re-login** — claims mint at login. Without re-login MGR/AM won't see Admin / t
 4. Note: the flag and the charge do nothing to bookings **yet** — WP-40 adds the on-site
    checkbox at booking (only for eligible specialties) and attaches the charge.
 
+## Scenario 6 — lookup table sorting (owner follow-up)
+
+1. As any user who can see a Reference Data table (MGR is fine), open e.g.
+   **Admin → Payment Types** (applies to all four tables).
+2. **Expected:** rows arrive sorted by **Sort Order** ascending (ties ordered by name,
+   case-insensitive), and the **Sort Order** header shows a **▲** marker.
+3. Click the **Name** header. **Expected:** rows re-sort alphabetically by name (▲ moves to
+   Name). Click **Name** again: order reverses (▼).
+4. Click the **Sort Order** header. **Expected:** back to the default Sort Order ascending
+   view (▲ on Sort Order). Other headers (Abbreviation, Description) are not clickable.
+5. No reload happens on any click — sorting is instant/client-side.
+
 ## Cleanup
 
 None needed — prices entered here are the real production sheet. If you entered test rows on a

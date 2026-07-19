@@ -45,15 +45,24 @@
             v-for="col in columns"
             :key="col.key"
             class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
+            :class="isSortable(col.key) ? 'cursor-pointer select-none hover:text-slate-700' : ''"
+            :data-testid="isSortable(col.key) ? `lookup-sort-header-${col.key === 'sortOrder' ? 'sort-order' : col.key}` : undefined"
+            @click="isSortable(col.key) && setSort(col.key)"
           >
-            {{ col.label }}
+            <!-- WP-39 follow-up: Sort Order (default, ASC) and Name are sortable — PatientTable's ▲/▼ pattern -->
+            <span class="flex items-center space-x-1">
+              <span>{{ col.label }}</span>
+              <span v-if="sortKey === col.key" class="text-violet-600" data-testid="lookup-sort-indicator">
+                {{ sortAsc ? '&#9650;' : '&#9660;' }}
+              </span>
+            </span>
           </th>
           <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-24">Actions</th>
         </tr>
       </thead>
       <tbody>
         <tr
-          v-for="item in items"
+          v-for="item in sortedItems"
           :key="String(getItemId(item))"
           class="border-b border-slate-50 hover:bg-slate-50 transition-colors"
         >
@@ -94,7 +103,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, type PropType } from 'vue';
+import { computed, defineComponent, ref, type PropType } from 'vue';
 
 export interface ColumnDef {
   key: string;
@@ -124,6 +133,43 @@ export default defineComponent({
     const getItemId = (item: Record<string, unknown>): unknown => {
       return item[props.idKey];
     };
+
+    // ── WP-39 follow-up: header sorting (client-side, no refetch) ───────────
+    // Default mirrors the server's ORDER BY SortOrder ASC, Name ASC; clicking Name sorts by
+    // name (case-insensitive, toggle ASC/DESC); clicking Sort Order restores the default.
+    const sortKey = ref<'sortOrder' | 'name'>('sortOrder');
+    const sortAsc = ref(true);
+
+    const isSortable = (key: string) => key === 'sortOrder' || key === 'name';
+
+    const setSort = (key: string) => {
+      if (key === 'name') {
+        if (sortKey.value === 'name') {
+          sortAsc.value = !sortAsc.value;
+        } else {
+          sortKey.value = 'name';
+          sortAsc.value = true;
+        }
+      } else if (key === 'sortOrder') {
+        sortKey.value = 'sortOrder';
+        sortAsc.value = true; // Sort Order is always the default ASC order
+      }
+    };
+
+    const nameOf = (item: Record<string, unknown>) => String(item.name ?? '');
+    const byName = (a: Record<string, unknown>, b: Record<string, unknown>) =>
+      nameOf(a).localeCompare(nameOf(b), undefined, { sensitivity: 'base' });
+
+    const sortedItems = computed(() => {
+      const list = [...props.items]; // Array.prototype.sort is stable — ties keep input order
+      if (sortKey.value === 'name') {
+        list.sort((a, b) => (sortAsc.value ? byName(a, b) : byName(b, a)));
+      } else {
+        // SortOrder ASC with case-insensitive Name ASC tiebreak (mirrors the server order)
+        list.sort((a, b) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0) || byName(a, b));
+      }
+      return list;
+    });
     const getTimestampTooltip = (item: Record<string, unknown>): string | undefined => {
       const created = item.createdTimestamp as string | undefined;
       const updated = item.lastUpdatedTimestamp as string | undefined;
@@ -133,7 +179,7 @@ export default defineComponent({
       if (updated) parts.push(`Last Updated: ${updated}`);
       return parts.join('\n');
     };
-    return { getItemId, getTimestampTooltip };
+    return { getItemId, getTimestampTooltip, sortKey, sortAsc, sortedItems, isSortable, setSort };
   },
 });
 </script>

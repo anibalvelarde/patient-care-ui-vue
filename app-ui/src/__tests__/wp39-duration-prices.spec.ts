@@ -21,6 +21,7 @@ import type { SpecialtyPriceHistory } from '../interfaces/Lookups';
 import type { Site } from '../interfaces/Site';
 import SpecialtyPricesModal from '../components/admin/SpecialtyPricesModal.vue';
 import AdminAccordionNav from '../components/admin/AdminAccordionNav.vue';
+import LookupTableManager, { type ColumnDef } from '../components/admin/LookupTableManager.vue';
 import LookupFormModal, { type FieldDef } from '../components/admin/LookupFormModal.vue';
 import SiteFormModal from '../components/sites/SiteFormModal.vue';
 import AdminView from '../views/AdminView.vue';
@@ -445,6 +446,68 @@ describe('accessGuard — /admin opens on Admin.View (WP-39C)', () => {
   it('redirects FD (no Admin.View) to its landing page', async () => {
     guardAuthAs('FD');
     expect(await accessGuard(adminRoute())).toMatchObject({ name: 'dashboard' });
+  });
+});
+
+// ── LookupTableManager — header sorting (WP-39 follow-up) ────────────────────
+
+describe('LookupTableManager — SortOrder default + Name on-demand sorting', () => {
+  const columns: ColumnDef[] = [
+    { key: 'abbreviation', label: 'Abbreviation', primary: true },
+    { key: 'name', label: 'Name' },
+    { key: 'description', label: 'Description' },
+    { key: 'sortOrder', label: 'Sort Order' },
+  ];
+  // Deliberately shuffled: equal SortOrder 1 must tiebreak by case-insensitive name
+  // ("alpha" < "Beta"), mirroring the server's ORDER BY SortOrder ASC, Name ASC.
+  const items = [
+    { id: 1, abbreviation: 'ZT', name: 'Zeta', description: null, sortOrder: 2 },
+    { id: 2, abbreviation: 'BT', name: 'Beta', description: null, sortOrder: 1 },
+    { id: 3, abbreviation: 'AL', name: 'alpha', description: null, sortOrder: 1 },
+  ];
+
+  const mountManager = () =>
+    mount(LookupTableManager, {
+      props: {
+        title: 'Payment Types', subtitle: 'test', addButtonLabel: 'Add',
+        columns, idKey: 'id', items,
+      },
+    });
+  const namesShown = (w: ReturnType<typeof mountManager>) =>
+    w.findAll('tbody tr').map((r) => r.findAll('td')[2].text());
+
+  it('defaults to SortOrder ASC with case-insensitive Name tiebreak, indicator on Sort Order', () => {
+    const w = mountManager();
+    expect(namesShown(w)).toEqual(['alpha', 'Beta', 'Zeta']);
+    const indicator = w.find('[data-testid="lookup-sort-header-sort-order"] [data-testid="lookup-sort-indicator"]');
+    expect(indicator.exists()).toBe(true);
+    expect(indicator.text()).toBe('▲');
+  });
+
+  it('Name click sorts by name ASC (case-insensitive); second click reverses', async () => {
+    const w = mountManager();
+    await w.find('[data-testid="lookup-sort-header-name"]').trigger('click');
+    expect(namesShown(w)).toEqual(['alpha', 'Beta', 'Zeta']);
+    expect(w.find('[data-testid="lookup-sort-header-name"] [data-testid="lookup-sort-indicator"]').text()).toBe('▲');
+
+    await w.find('[data-testid="lookup-sort-header-name"]').trigger('click');
+    expect(namesShown(w)).toEqual(['Zeta', 'Beta', 'alpha']);
+    expect(w.find('[data-testid="lookup-sort-header-name"] [data-testid="lookup-sort-indicator"]').text()).toBe('▼');
+  });
+
+  it('Sort Order click restores the default order from a Name sort', async () => {
+    const w = mountManager();
+    await w.find('[data-testid="lookup-sort-header-name"]').trigger('click');
+    await w.find('[data-testid="lookup-sort-header-name"]').trigger('click'); // name DESC
+    await w.find('[data-testid="lookup-sort-header-sort-order"]').trigger('click');
+    expect(namesShown(w)).toEqual(['alpha', 'Beta', 'Zeta']); // SortOrder ASC + name tiebreak
+    expect(w.find('[data-testid="lookup-sort-header-sort-order"] [data-testid="lookup-sort-indicator"]').text()).toBe('▲');
+  });
+
+  it('non-sortable headers (Abbreviation/Description) have no sort affordance', () => {
+    const w = mountManager();
+    expect(w.find('[data-testid="lookup-sort-header-abbreviation"]').exists()).toBe(false);
+    expect(w.find('[data-testid="lookup-sort-header-description"]').exists()).toBe(false);
   });
 });
 
