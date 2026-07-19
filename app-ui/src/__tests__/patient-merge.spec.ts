@@ -61,6 +61,7 @@ function authAs(opts: { role?: Role; isSystemAdmin?: boolean }): Pinia {
 // WP-30: the pickers hold slim lookup rows, not full Patient profiles.
 const survivor: LookupOption = { id: 1, name: 'Perez, Juan', detail: 'MRN L24-0312' };
 const duplicate: LookupOption = { id: 2, name: 'Perez, Jaun', detail: 'MRN L24-0313' };
+const otherDuplicate: LookupOption = { id: 3, name: 'Perez, Josue', detail: 'MRN L24-0400' };
 
 function makePreview(overrides: Partial<PatientMergePreview> = {}): PatientMergePreview {
   return {
@@ -98,7 +99,7 @@ function makeResult(): PatientMergeResult {
 
 async function mountPanel(): Promise<ReturnType<typeof mount>> {
   const pinia = authAs({ isSystemAdmin: true });
-  const wrapper = mount(PatientMergePanel, { global: { plugins: [pinia] } });
+  const wrapper = mount(PatientMergePanel, { global: { plugins: [pinia], stubs: { teleport: true } } });
   await flushPromises();
   return wrapper;
 }
@@ -257,5 +258,86 @@ describe('PatientMergePanel — stepper behavior', () => {
 
     expect(wrapper.text()).toContain('Conflict: resolve manually');
     expect(wrapper.find('[data-testid="merge-preview"]').exists()).toBe(true);
+  });
+});
+
+// WP-38 (MRG-1): a selector change after a preview exists must never leave the stale preview
+// (and its live type-to-confirm + Execute path) describing a pair that no longer matches the
+// pickers. G1: confirm-first dialog; G2: Continue keeps the new selection, clears preview+confirm.
+describe('WP-38 — selection change after preview resets the merge session', () => {
+  interface PanelVm {
+    survivor: LookupOption | null;
+    eliminated: LookupOption | null;
+  }
+
+  it('changing the duplicate raises the discard dialog; Continue clears the preview but keeps the new pick', async () => {
+    const wrapper = await mountPreviewedPanel();
+    const vm = wrapper.vm as unknown as PanelVm;
+
+    vm.eliminated = otherDuplicate;
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="merge-discard-dialog"]').exists()).toBe(true);
+    await wrapper.find('[data-testid="merge-discard-continue"]').trigger('click');
+
+    expect(wrapper.find('[data-testid="merge-discard-dialog"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="merge-preview"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="merge-confirm-input"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="merge-execute-button"]').exists()).toBe(false);
+    expect(vm.eliminated).toEqual(otherDuplicate); // G2: the operator's new pick survives
+    expect(vm.survivor).toEqual(survivor);
+  });
+
+  it('typed confirm text does not survive the discard into the next preview', async () => {
+    const wrapper = await mountPreviewedPanel();
+    await wrapper.find('[data-testid="merge-confirm-input"]').setValue('L24-0313');
+
+    (wrapper.vm as unknown as PanelVm).eliminated = otherDuplicate;
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="merge-discard-continue"]').trigger('click');
+
+    // Re-preview the new pair: type-to-confirm must start empty, Execute disabled.
+    await wrapper.find('button.bg-violet-600').trigger('click');
+    await flushPromises();
+    expect((wrapper.find('[data-testid="merge-confirm-input"]').element as HTMLInputElement).value).toBe('');
+    expect(wrapper.find('[data-testid="merge-execute-button"]').attributes('disabled')).toBeDefined();
+  });
+
+  it('Cancel restores the previous selection and keeps the preview', async () => {
+    const wrapper = await mountPreviewedPanel();
+    const vm = wrapper.vm as unknown as PanelVm;
+
+    vm.eliminated = otherDuplicate;
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="merge-discard-cancel"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="merge-discard-dialog"]').exists()).toBe(false); // restore must not re-raise it
+    expect(vm.eliminated).toEqual(duplicate);
+    expect(wrapper.find('[data-testid="merge-preview"]').exists()).toBe(true);
+  });
+
+  it('swap() stays silent — pair-preserving, resets the preview without a dialog', async () => {
+    const wrapper = await mountPreviewedPanel();
+    const vm = wrapper.vm as unknown as PanelVm;
+
+    await wrapper.find('[data-testid="merge-swap-button"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="merge-discard-dialog"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="merge-preview"]').exists()).toBe(false);
+    expect(vm.survivor).toEqual(duplicate);
+    expect(vm.eliminated).toEqual(survivor);
+  });
+
+  it('no dialog when a selector changes before any preview exists', async () => {
+    const wrapper = await mountPanel();
+    const vm = wrapper.vm as unknown as PanelVm;
+
+    vm.survivor = survivor;
+    vm.eliminated = duplicate;
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="merge-discard-dialog"]').exists()).toBe(false);
   });
 });
