@@ -103,6 +103,22 @@
             </p>
           </div>
 
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">On-site trip charge ($, applied per on-site visit)</label>
+            <input
+              v-model.number="form.onSiteTripChargeAmount"
+              type="number"
+              min="0"
+              step="0.01"
+              data-testid="site-trip-charge-input"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <p class="mt-1 text-xs text-slate-500">
+              WP-39: flat charge attached to a session booked as an on-site visit (WP-40 applies it).
+              <span class="font-medium">0 = no charge.</span>
+            </p>
+          </div>
+
         </form>
 
         <!-- Footer -->
@@ -168,6 +184,7 @@ export default defineComponent({
       latitude: null as number | null,
       longitude: null as number | null,
       idleLogoffMinutes: 60,
+      onSiteTripChargeAmount: 0,
     });
 
     const isEdit = ref(false);
@@ -188,6 +205,7 @@ export default defineComponent({
           form.latitude = props.site.latitude;
           form.longitude = props.site.longitude;
           form.idleLogoffMinutes = props.site.idleLogoffMinutes ?? 60;
+          form.onSiteTripChargeAmount = props.site.onSiteTripChargeAmount ?? 0;
         } else {
           isEdit.value = false;
           form.siteName = '';
@@ -197,6 +215,7 @@ export default defineComponent({
           form.latitude = null;
           form.longitude = null;
           form.idleLogoffMinutes = 60;
+          form.onSiteTripChargeAmount = 0;
         }
       }
     );
@@ -211,6 +230,11 @@ export default defineComponent({
         setError('Idle auto-logoff must be a whole number between 0 and 480 minutes.');
         return;
       }
+      const tripCharge = form.onSiteTripChargeAmount;
+      if (typeof tripCharge !== 'number' || Number.isNaN(tripCharge) || tripCharge < 0) {
+        setError('On-site trip charge must be a number greater than or equal to 0.');
+        return;
+      }
       return submit(async () => {
         const data = {
           siteName: form.siteName,
@@ -220,6 +244,7 @@ export default defineComponent({
           latitude: form.latitude ?? undefined,
           longitude: form.longitude ?? undefined,
           idleLogoffMinutes: form.idleLogoffMinutes,
+          onSiteTripChargeAmount: form.onSiteTripChargeAmount,
         };
 
         if (isEdit.value && props.site) {

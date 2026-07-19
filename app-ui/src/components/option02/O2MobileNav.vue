@@ -44,9 +44,10 @@
       <font-awesome-icon :icon="['fas', item.icon]" class="w-5" />
       <span>{{ item.label }}</span>
     </component>
-    <div v-if="isSystemAdmin" class="border-t border-violet-800 my-1"></div>
+    <!-- WP-39C: Admin entry rides Admin.View (MGR/AM/OWN + SYSADMIN wildcard), mirroring the router -->
+    <div v-if="canOpenAdmin" class="border-t border-violet-800 my-1"></div>
     <router-link
-      v-if="isSystemAdmin"
+      v-if="canOpenAdmin"
       to="/admin"
       :class="[
         'flex items-center space-x-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors',
@@ -105,12 +106,15 @@ export default defineComponent({
       navItems.filter((item) => !item.claim || hasClaim(item.claim[0], item.claim[1])),
     );
 
+    // WP-39C: Admin.View claim (SYSADMIN passes via the wildcard inside hasClaim).
+    const canOpenAdmin = computed(() => hasClaim('Permission', Permissions.AdminView));
+
     const isActive = (to: string) => {
       if (to === '#') return false;
       return route.path === to;
     };
 
-    return { visibleNavItems, isActive, mobileOpen, isSystemAdmin };
+    return { visibleNavItems, isActive, mobileOpen, isSystemAdmin, canOpenAdmin };
   },
 });
 </script>

@@ -16,8 +16,9 @@ declare module 'vue-router' {
 // `meta.permission` (a generated coarse `*.View` claim) gates page access: the global guard below
 // redirects to the user's landing route (first allowed page) when they lack it (WP-17C; landing
 // order added for Questionnaire A roles — ACCT has no Dashboard.View). SYSADMIN passes everything
-// via the wildcard. `/admin` stays SYSADMIN-only this WP — honoring the matrix's MGR `Admin.View`
-// (read-only) is a tracked 17C follow-up (needs AdminView's Manage controls split first).
+// via the wildcard. `/admin` rides `Admin.View` as of WP-39C (MGR/AM/OWN + SYSADMIN): AdminView's
+// sections and Manage controls are claim-gated per section (the old 17C follow-up), so e.g. AM —
+// who holds only the Specialty Types read + price-edit claims — sees only that section.
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -96,7 +97,9 @@ const router = createRouter({
       path: '/admin',
       name: 'admin',
       component: () => import('../views/AdminView.vue'),
-      meta: { requiresSystemAdmin: true },
+      // WP-39C: was requiresSystemAdmin — Admin.View holders (MGR/AM/OWN) may now enter;
+      // in-page sections are claim-gated (AM reachability ruling, matrix 57b6150a350c).
+      meta: { permission: Permissions.AdminView },
     },
   ],
 });
@@ -104,7 +107,7 @@ const router = createRouter({
 // Landing candidates in preference order. Not every operator role holds Dashboard.View
 // (Questionnaire A: ACCT doesn't), so redirects resolve to the user's FIRST allowed page
 // instead of a hard-coded dashboard — which would sign such users out / loop them.
-// `/admin` is excluded: it's SA-only in the UI for now (17C follow-up).
+// `/admin` stays excluded: every Admin.View holder also has richer operational pages.
 const LANDING_ORDER: ReadonlyArray<readonly [Permission, string]> = [
   [Permissions.DashboardView, 'dashboard'],
   [Permissions.PatientsView, 'patients'],

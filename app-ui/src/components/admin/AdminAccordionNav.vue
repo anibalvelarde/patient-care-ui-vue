@@ -1,7 +1,7 @@
 <template>
   <nav class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-    <!-- Configuration group -->
-    <div>
+    <!-- Configuration group (Sites) — Admin.Sites.View -->
+    <div v-if="canViewSites" data-testid="nav-group-configuration">
       <button
         class="w-full px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between hover:bg-slate-100 transition-colors"
         @click="configOpen = !configOpen"
@@ -24,6 +24,7 @@
           :class="activeSection === 'sites'
             ? 'bg-violet-50 text-violet-700 font-medium border-l-2 border-l-violet-600'
             : 'text-slate-600 hover:bg-slate-50'"
+          data-testid="nav-sites"
           @click="$emit('select', 'sites')"
         >
           <svg class="w-4 h-4" :class="activeSection === 'sites' ? 'text-violet-500' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -34,8 +35,8 @@
       </div>
     </div>
 
-    <!-- Reference Data group -->
-    <div>
+    <!-- Reference Data group — per-table Admin.Lookups.*.View claims (WP-39C: AM sees only Specialty Types) -->
+    <div v-if="visibleRefDataItems.length > 0" data-testid="nav-group-reference-data">
       <button
         class="w-full px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between hover:bg-slate-100 transition-colors"
         @click="refdataOpen = !refdataOpen"
@@ -54,12 +55,13 @@
         :class="refdataOpen ? 'max-h-60' : 'max-h-0'"
       >
         <button
-          v-for="item in refDataItems"
+          v-for="item in visibleRefDataItems"
           :key="item.key"
           class="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors border-b border-slate-50"
           :class="activeSection === item.key
             ? 'bg-violet-50 text-violet-700 font-medium border-l-2 border-l-violet-600'
             : 'text-slate-600 hover:bg-slate-50'"
+          :data-testid="`nav-${item.key}`"
           @click="$emit('select', item.key)"
         >
           <svg class="w-4 h-4" :class="activeSection === item.key ? 'text-violet-500' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,8 +108,8 @@
       </div>
     </div>
 
-    <!-- Security group (placeholder) -->
-    <div>
+    <!-- Security group (placeholder, SYSADMIN-only) -->
+    <div v-if="isSystemAdmin" data-testid="nav-group-security">
       <button
         class="w-full px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between hover:bg-slate-100 transition-colors"
         @click="securityOpen = !securityOpen"
@@ -134,8 +136,8 @@
       </div>
     </div>
 
-    <!-- About group -->
-    <div>
+    <!-- About group (SYSADMIN-only: diagnostics live here) -->
+    <div v-if="isSystemAdmin" data-testid="nav-group-about">
       <button
         class="w-full px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between hover:bg-slate-100 transition-colors"
         @click="aboutOpen = !aboutOpen"
@@ -171,8 +173,9 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue';
+import { computed, defineComponent, ref } from 'vue';
 import { useClaims, Permissions } from '../../composables/useClaims';
+import { LOOKUP_VIEW_CLAIMS } from '../../composables/adminSections';
 
 export default defineComponent({
   name: 'AdminAccordionNav',
@@ -181,15 +184,17 @@ export default defineComponent({
   },
   emits: ['select'],
   setup() {
-    // /admin is already SYSADMIN-only at the route; gating the Data Maintenance group on
-    // Patients.Merge (wildcard-only claim) is belt-and-suspenders and keeps the nav honest
-    // if the route gate ever loosens (the tracked "MGR read-only Admin" follow-up).
-    const { hasClaim } = useClaims();
+    // WP-39C: /admin now opens for every Admin.View holder (MGR/AM/OWN + SYSADMIN), so each
+    // group/item is gated on its own claim — an AM (Specialty Types read + price edit only)
+    // sees exactly the Specialty Types entry and nothing else. Security/About stay SYSADMIN.
+    const { hasClaim, isSystemAdmin } = useClaims();
     const configOpen = ref(true);
     const refdataOpen = ref(true);
     const dataMaintOpen = ref(true);
     const securityOpen = ref(false);
     const aboutOpen = ref(false);
+
+    const canViewSites = computed(() => hasClaim('Permission', Permissions.AdminSitesView));
 
     const refDataItems = [
       {
@@ -214,7 +219,14 @@ export default defineComponent({
       },
     ];
 
-    return { configOpen, refdataOpen, dataMaintOpen, securityOpen, aboutOpen, refDataItems, hasClaim, Permissions };
+    const visibleRefDataItems = computed(() =>
+      refDataItems.filter((item) => hasClaim('Permission', LOOKUP_VIEW_CLAIMS[item.key])),
+    );
+
+    return {
+      configOpen, refdataOpen, dataMaintOpen, securityOpen, aboutOpen,
+      visibleRefDataItems, canViewSites, hasClaim, isSystemAdmin, Permissions,
+    };
   },
 });
 </script>

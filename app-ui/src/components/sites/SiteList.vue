@@ -7,6 +7,7 @@
         <p class="text-xs text-slate-500 mt-0.5">Manage clinic locations</p>
       </div>
       <button
+        v-if="canManage"
         class="px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700 transition-colors"
         @click="$emit('add')"
       >
@@ -60,6 +61,7 @@
           <td class="px-4 py-3 text-slate-500">{{ formatDate(site.inceptionDate) }}</td>
           <td class="px-4 py-3 text-right">
             <button
+              v-if="canManage"
               class="text-violet-600 hover:text-violet-800"
               title="Edit"
               @click="$emit('edit', site)"
@@ -89,6 +91,9 @@ export default defineComponent({
     sites: { type: Array as PropType<Site[]>, required: true },
     loading: { type: Boolean, default: false },
     error: { type: String, default: '' },
+    // WP-39C: /admin is no longer SYSADMIN-only — Add/Edit stays behind Admin.Sites.Manage,
+    // which the parent resolves and passes down.
+    canManage: { type: Boolean, default: true },
   },
   emits: ['add', 'edit', 'retry'],
   setup() {

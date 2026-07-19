@@ -71,7 +71,7 @@ describe('store hasClaim matrix (the predicate every gate calls)', () => {
     expect(has(Permissions.AdminView)).toBe(false);
   });
 
-  it('AssistantManager: economics + delinquency + adjust + plan-edit, but no Admin, no specialties, no refund', () => {
+  it('AssistantManager: economics + delinquency + adjust + plan-edit + specialty prices, but no structural admin, no specialties, no refund', () => {
     authAs({ role: 'AM' });
     expect(has(Permissions.PatientsDelinquentView)).toBe(true);
     expect(has(Permissions.AppointmentsProviderAmount)).toBe(true);
@@ -79,8 +79,15 @@ describe('store hasClaim matrix (the predicate every gate calls)', () => {
     expect(has(Permissions.PaymentsAdjust)).toBe(true);
     expect(has(Permissions.TreatmentPlansEdit)).toBe(true);
     expect(has(Permissions.AppointmentsReassign)).toBe(true);
+    // WP-39 (matrix 57b6150a350c): AM edits specialty prices; the reachability grants open
+    // Admin + the Specialty Types section (read) — and nothing else in Admin.
+    expect(has(Permissions.SpecialtiesPricesEdit)).toBe(true);
+    expect(has(Permissions.AdminView)).toBe(true);
+    expect(has(Permissions.AdminLookupsSpecialtyTypeView)).toBe(true);
     // denied
-    expect(has(Permissions.AdminView)).toBe(false);
+    expect(has(Permissions.AdminSitesView)).toBe(false);
+    expect(has(Permissions.AdminLookupsPaymentTypeView)).toBe(false);
+    expect(has(Permissions.AdminLookupsSpecialtyTypeManage)).toBe(false);
     expect(has(Permissions.TherapistsManageSpecialties)).toBe(false);
     expect(has(Permissions.PaymentsRefund)).toBe(false);
   });
@@ -91,6 +98,7 @@ describe('store hasClaim matrix (the predicate every gate calls)', () => {
     expect(has(Permissions.TherapistsManageSpecialties)).toBe(true);
     expect(has(Permissions.PaymentsRefund)).toBe(true);
     expect(has(Permissions.AppointmentsProviderAmount)).toBe(true);
+    expect(has(Permissions.SpecialtiesPricesEdit)).toBe(true); // WP-39
     // MGR has Admin view but not the SYSADMIN-only Manage claims
     expect(has(Permissions.AdminSitesManage)).toBe(false);
     expect(has(Permissions.AdminLookupsRoleTypeManage)).toBe(false);

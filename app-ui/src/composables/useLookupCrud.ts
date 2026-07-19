@@ -1,9 +1,13 @@
 import { ref, onMounted } from 'vue';
 
+// Form values flowing out of LookupFormModal: text/number inputs serialize as strings,
+// checkbox fields (WP-39: offeredOnSite) as booleans.
+export type LookupFormData = Record<string, string | number | boolean>;
+
 export function useLookupCrud<T>(
   fetchAll: () => Promise<T[]>,
-  create: (data: Record<string, string>) => Promise<T>,
-  update: (id: number, data: Record<string, string>) => Promise<void>,
+  create: (data: LookupFormData) => Promise<T>,
+  update: (id: number, data: LookupFormData) => Promise<void>,
 ) {
   const items = ref<T[]>([]) as { value: T[] };
   const loading = ref(false);
@@ -33,7 +37,7 @@ export function useLookupCrud<T>(
     modalVisible.value = true;
   };
 
-  const handleSave = async (formData: Record<string, string>, id?: number) => {
+  const handleSave = async (formData: LookupFormData, id?: number) => {
     if (id !== undefined) {
       await update(id, formData);
     } else {
