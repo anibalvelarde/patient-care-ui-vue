@@ -18,6 +18,11 @@ export interface Patient {
   // floor; edit gated by Patients.SenadisDiscount.Edit (MGR/AM). Optional so the UI
   // tolerates an older deployed API (absent ⇒ treated as false).
   hasSenadisDiscount?: boolean;
+  // WP-37 (SEN-1): SENADIS credential expiry — "2027-06-30T00:00:00" | null. null = no expiry
+  // (open-ended, G1). Expired for a booking when expiry < the SESSION date (G2); an expired
+  // SENADIS keeps hasSenadisDiscount = true (G3 — badge, never auto-cleared). Optional so the
+  // UI tolerates an older deployed API (absent ⇒ treated as no expiry).
+  senadisExpirationDate?: string | null;
   // WP-24 (F3/F4): discovery-first waiver — false = exempt from the completed-discovery-
   // before-treatment rule (legacy imports are backfilled false). Default true; edit gated by
   // Patients.RequiresDiscovery.Edit (MGR/AM). Optional so the UI tolerates an older deployed
@@ -50,6 +55,9 @@ export interface PatientCreateRequest {
   // WP-25 (F5): "Cedula | Passport" — required at create (free text, unique; duplicate → 409).
   cedula: string;
   hasSenadisDiscount?: boolean;
+  // WP-37 (SEN-1): optional, default null = no expiry. Free at create for any patient-creating
+  // role (SEN-2) — the edit gate applies to later PUTs only.
+  senadisExpirationDate?: string | null;
   // WP-24 (F3): omitted = true server-side (discovery required by default).
   requiresDiscovery?: boolean;
 }
@@ -71,6 +79,10 @@ export interface PatientUpdateRequest {
   cedula?: string;
   // Omit when the caller may not edit it (claim-gated) — omitted/null = unchanged server-side.
   hasSenadisDiscount?: boolean;
+  // WP-37 (SEN-1/G4): rides the SAME Patients.SenadisDiscount.Edit gate as the flag — omit when
+  // the caller may not edit it (omitted/null = unchanged server-side). Consequence: an expiry,
+  // once set, cannot be cleared back to null via PUT — extend it with a later date instead.
+  senadisExpirationDate?: string | null;
   // Omit when the caller may not edit it (claim-gated) — omitted/null = unchanged server-side.
   requiresDiscovery?: boolean;
 }

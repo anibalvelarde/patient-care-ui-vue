@@ -114,6 +114,32 @@
             <p v-if="!canEditSenadis" class="text-xs text-slate-400">
               Only Managers / Assistant Managers can change the SENADIS flag.
             </p>
+            <!-- WP-37 (SEN-1): expiration date — shown only while the flag is checked, disabled
+                 by the same claim gate as the flag (G4: one claim governs both fields). An
+                 expired SENADIS keeps the flag checked (G3) — badge only, never auto-cleared. -->
+            <div v-if="form.hasSenadisDiscount" class="pl-6 space-y-1">
+              <label class="block text-sm font-medium text-slate-700">SENADIS expiration date</label>
+              <input
+                v-model="form.senadisExpirationDate"
+                type="date"
+                :disabled="!canEditSenadis"
+                data-testid="senadis-expiration-input"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
+              />
+              <span
+                v-if="senadisExpired"
+                data-testid="senadis-expired-badge"
+                class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+              >
+                SENADIS expired {{ formatSenadisExpiry(form.senadisExpirationDate) }}
+              </span>
+              <p v-if="senadisExpired" class="text-xs text-amber-600">
+                Bookings for dates after the expiry get no automatic discount; the flag stays on for history.
+              </p>
+              <p v-else class="text-xs text-slate-400">
+                Leave blank for no expiry. An expiry already on file can be extended, not cleared.
+              </p>
+            </div>
           </div>
 
           <!-- WP-24 (F3/F4): discovery-first waiver — free at create (default CHECKED); on edit
@@ -297,6 +323,7 @@ import { useModalForm } from '../../composables/useModalForm';
 import FormErrorBanner from '../shared/FormErrorBanner.vue';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import { formatAge } from '../../utils/age';
+import { isSenadisExpired, formatSenadisExpiry, todayDateOnly } from '../../utils/senadis';
 import { useClaims, Permissions } from '../../composables/useClaims';
 
 function parseName(patientName: string) {
@@ -354,6 +381,8 @@ export default defineComponent({
       medicalRecordNumber: '',
       cedula: '',
       hasSenadisDiscount: false,
+      // WP-37 (SEN-1): yyyy-MM-dd date-input value; '' = no expiry (G1 null).
+      senadisExpirationDate: '',
       // WP-24 (F3): discovery required by default — a new patient must complete a discovery
       // session before treatment bookings unless explicitly waived at create.
       requiresDiscovery: true,
@@ -397,6 +426,12 @@ export default defineComponent({
       () => isEdit.value && !hadCedulaOnFile.value && !form.cedula.trim()
     );
 
+    // WP-37 (SEN-1/G3): in this modal (no session-date context) "expired" means strictly before
+    // today, date-only. Badge only — an expired SENADIS still saves fine and the flag stays on.
+    const senadisExpired = computed(
+      () => form.hasSenadisDiscount && isSenadisExpired(form.senadisExpirationDate, todayDateOnly())
+    );
+
     watch(form, () => clearError(), { deep: true });
 
     watch(
@@ -418,6 +453,10 @@ export default defineComponent({
           form.cedula = props.patient.cedula ?? '';
           hadCedulaOnFile.value = !!props.patient.cedula; // WP-25: on-file value may never be cleared
           form.hasSenadisDiscount = props.patient.hasSenadisDiscount === true;
+          // WP-37: API sends "2027-06-30T00:00:00" | null — date inputs want yyyy-MM-dd.
+          form.senadisExpirationDate = props.patient.senadisExpirationDate
+            ? formatDobForInput(props.patient.senadisExpirationDate)
+            : '';
           // WP-24: absent/undefined (older API) reads as true — only an explicit false waives.
           form.requiresDiscovery = props.patient.requiresDiscovery !== false;
           form.activeStatus = props.patient.isActive;
@@ -434,6 +473,7 @@ export default defineComponent({
           form.cedula = '';
           hadCedulaOnFile.value = false;
           form.hasSenadisDiscount = false;
+          form.senadisExpirationDate = ''; // WP-37: no expiry by default
           form.requiresDiscovery = true; // WP-24: default CHECKED at create
           form.activeStatus = true;
           linkRelationship.value = null;
@@ -482,6 +522,13 @@ export default defineComponent({
             cedula: form.cedula.trim() || undefined,
             // WP-23 (F7): only send when this user may edit it — omitted = unchanged server-side.
             hasSenadisDiscount: canEditSenadis.value ? form.hasSenadisDiscount : undefined,
+            // WP-37 (SEN-1/G4): same gate as the flag (omit when not editable). Also omitted
+            // when blank or when the flag is off — omitted/null = unchanged server-side, and a
+            // stored expiry can only be extended, never cleared, via PUT.
+            senadisExpirationDate:
+              canEditSenadis.value && form.hasSenadisDiscount && form.senadisExpirationDate
+                ? formatDobForApi(form.senadisExpirationDate)
+                : undefined,
             // WP-24 (F3/F4): same omit-when-gated rule.
             requiresDiscovery: canEditRequiresDiscovery.value ? form.requiresDiscovery : undefined,
           };
@@ -516,6 +563,11 @@ export default defineComponent({
             medicalRecordNumber: form.medicalRecordNumber || undefined,
             cedula: form.cedula.trim(), // WP-25 (F5): required at create — guard above ensures non-blank
             hasSenadisDiscount: form.hasSenadisDiscount,
+            // WP-37 (SEN-2): free at create for any patient-creating role; omitted = no expiry.
+            senadisExpirationDate:
+              form.hasSenadisDiscount && form.senadisExpirationDate
+                ? formatDobForApi(form.senadisExpirationDate)
+                : undefined,
             requiresDiscovery: form.requiresDiscovery,
           });
           // WP-27: hand the created record (plus chain link fields when applicable) to the
@@ -533,7 +585,7 @@ export default defineComponent({
       });
     };
 
-    return { form, isEdit, saving, error, hasError, hasTemporaryMrn, cannotActivate, canEditSenadis, canEditRequiresDiscovery, age, hadCedulaOnFile, showLegacyCedulaNag, linkRelationship, linkIsPrimary, handleSubmit };
+    return { form, isEdit, saving, error, hasError, hasTemporaryMrn, cannotActivate, canEditSenadis, canEditRequiresDiscovery, age, hadCedulaOnFile, showLegacyCedulaNag, senadisExpired, formatSenadisExpiry, linkRelationship, linkIsPrimary, handleSubmit };
   },
 });
 </script>

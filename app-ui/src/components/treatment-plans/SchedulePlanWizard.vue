@@ -118,11 +118,12 @@
                   <div class="flex items-center space-x-2">
                     <div class="relative flex-1">
                       <span class="absolute left-2 top-1.5 text-xs text-slate-400">$</span>
-                      <!-- WP-23 (F7): min rides the per-line SENADIS floor; submit clamps, API floors -->
+                      <!-- WP-23 (F7): min rides the per-line SENADIS floor; submit clamps, API floors.
+                           WP-37 (G2): only while active as of the schedule start date. -->
                       <input
                         type="number"
                         step="0.01"
-                        :min="senadisPatient ? lineFloor(line) : 0"
+                        :min="senadisActive ? lineFloor(line) : 0"
                         v-model.number="line.discountAmount"
                         @input="updateDiscountPct(line)"
                         class="w-full pl-5 pr-2 py-1.5 border border-slate-200 rounded-lg text-sm"
@@ -133,7 +134,7 @@
                       <input
                         type="number"
                         step="0.1"
-                        :min="senadisPatient ? 20 : 0"
+                        :min="senadisActive ? 20 : 0"
                         max="100"
                         v-model.number="line.discountPct"
                         @input="updateDiscountAmt(line)"
@@ -148,8 +149,11 @@
                       &rarr; Net: ${{ (lineAmount(line) - line.discountAmount).toFixed(2) }}
                     </template>
                   </p>
-                  <p v-if="senadisPatient" class="text-xs text-violet-600 mt-0.5">
+                  <p v-if="senadisActive" class="text-xs text-violet-600 mt-0.5">
                     SENADIS: min ${{ lineFloor(line).toFixed(2) }} (20%)
+                  </p>
+                  <p v-else-if="senadisExpired" data-testid="senadis-expired-badge" class="text-xs font-medium text-amber-600 mt-0.5">
+                    SENADIS expired {{ formatSenadisExpiry(senadisExpiry) }} — no discount floor for this schedule.
                   </p>
                 </div>
               </div>
@@ -313,6 +317,7 @@ import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import type { Site } from '../../interfaces/Site';
 import type { Therapist } from '../../interfaces/Therapist';
 import { useClaims, Permissions } from '../../composables/useClaims';
+import { isSenadisExpired, formatSenadisExpiry } from '../../utils/senadis';
 
 interface LineEdit {
   lineId: number;
@@ -354,6 +359,20 @@ export default defineComponent({
     // WP-23: F10 hard block + F7 per-line SENADIS floor.
     const caretakerBlocked = ref(false);
     const senadisPatient = ref(false);
+    // WP-37 (SEN-1): the flagged patient's expiry as sent by the API ("...T00:00:00" | null).
+    const senadisExpiry = ref<string | null>(null);
+
+    // WP-37 (SEN-1/G2): the clamp only applies while the SENADIS is active as of the schedule
+    // START date (conservative — a schedule that starts on/before the expiry keeps the per-line
+    // clamp even if later weeks run past it; the API floors per SESSION date server-side, so
+    // only the on/before-expiry sessions are actually floored). A schedule starting after the
+    // expiry gets no clamp at all + the badge. Flag never auto-cleared (G3).
+    const senadisActive = computed(
+      () => senadisPatient.value && !isSenadisExpired(senadisExpiry.value, startDate.value)
+    );
+    const senadisExpired = computed(
+      () => senadisPatient.value && isSenadisExpired(senadisExpiry.value, startDate.value)
+    );
 
     // Alternative selection for conflict resolution
     // Key: "conflictIdx-altIdx", Value: { lineId, alternative }
@@ -411,9 +430,21 @@ export default defineComponent({
 
     // WP-23: one profile + caretaker fetch per wizard open; on failure fail open — the API
     // enforces both rules server-side (caretaker 400, discount floored).
+    // WP-37: shared so the startDate watcher can re-clamp when the date moves back on/before
+    // the expiry (crossing past it just lifts the min — an already-entered discount is kept).
+    const applyLineFloors = () => {
+      for (const line of lineEdits.value) {
+        if (line.discountAmount < lineFloor(line)) {
+          line.discountAmount = lineFloor(line);
+          updateDiscountPct(line);
+        }
+      }
+    };
+
     const checkPatientFlags = async () => {
       caretakerBlocked.value = false;
       senadisPatient.value = false;
+      senadisExpiry.value = null;
       if (!props.plan) return;
       try {
         const [patient, caretakers] = await Promise.all([
@@ -422,18 +453,19 @@ export default defineComponent({
         ]);
         caretakerBlocked.value = caretakers.length === 0;
         senadisPatient.value = patient.hasSenadisDiscount === true;
-        if (senadisPatient.value) {
-          for (const line of lineEdits.value) {
-            if (line.discountAmount < lineFloor(line)) {
-              line.discountAmount = lineFloor(line);
-              updateDiscountPct(line);
-            }
-          }
+        senadisExpiry.value = patient.senadisExpirationDate ?? null;
+        if (senadisActive.value) {
+          applyLineFloors();
         }
       } catch {
         // fail open (see above)
       }
     };
+
+    // WP-37 (G2): re-evaluate the clamp when the schedule start date changes.
+    watch(startDate, () => {
+      if (senadisActive.value) applyLineFloors();
+    });
 
     const updateDiscountPct = (line: LineEdit) => {
       const amt = lineAmount(line);
@@ -526,7 +558,8 @@ export default defineComponent({
         dayOfWeek: le.dayOfWeek > 0 ? le.dayOfWeek : null,
         time: le.time || null,
         // WP-23 (F7): last-line clamp to the SENADIS floor; the API floors server-side too.
-        discountAmount: senadisPatient.value
+        // WP-37 (G2): no clamp when the SENADIS is expired as of the schedule start date.
+        discountAmount: senadisActive.value
           ? Math.max(le.discountAmount, lineFloor(le))
           : (le.discountAmount > 0 ? le.discountAmount : null),
       }));
@@ -576,6 +609,10 @@ export default defineComponent({
       lineFloor,
       caretakerBlocked,
       senadisPatient,
+      senadisExpiry,
+      senadisActive,
+      senadisExpired,
+      formatSenadisExpiry,
       updateDiscountPct,
       updateDiscountAmt,
       sessionsByWeek,
