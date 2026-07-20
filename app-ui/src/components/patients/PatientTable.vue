@@ -29,17 +29,8 @@
           class="hover:bg-slate-50 transition-colors"
         >
           <td class="px-4 py-3 text-sm font-medium text-slate-800">{{ patient.patientName }}</td>
-          <td class="px-4 py-3 text-sm">
-            <span v-if="isTemporaryMrn(patient.medicalRecordNumber)" class="inline-flex items-center space-x-1">
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                {{ patient.medicalRecordNumber }}
-              </span>
-              <svg class="w-3.5 h-3.5 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.168 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
-              </svg>
-            </span>
-            <span v-else class="text-slate-600">{{ patient.medicalRecordNumber }}</span>
-          </td>
+          <!-- WP-36 (NP-1): TEMP- MRNs are retired (system mints NC{yy}-#### at create) — plain cell. -->
+          <td class="px-4 py-3 text-sm text-slate-600">{{ patient.medicalRecordNumber }}</td>
           <!-- Cedula is PII: the grid only acknowledges a value exists; the raw ID stays in the
                edit modal + search (intake 2026-06-29-001 item 1). The narrow badge also relieves
                the column-width pressure that clipped Actions (item 2). -->
@@ -116,14 +107,8 @@
               </button>
               <button
                 v-if="hasClaim('Permission', Permissions.PatientsEdit)"
-                class="p-1.5 rounded-lg transition-colors"
-                :class="!patient.isActive && isTemporaryMrn(patient.medicalRecordNumber)
-                  ? 'text-slate-300 cursor-not-allowed'
-                  : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'"
-                :title="!patient.isActive && isTemporaryMrn(patient.medicalRecordNumber)
-                  ? 'Cannot activate — assign a permanent MRN first'
-                  : patient.isActive ? 'Deactivate patient' : 'Activate patient'"
-                :disabled="!patient.isActive && isTemporaryMrn(patient.medicalRecordNumber)"
+                class="p-1.5 rounded-lg transition-colors text-slate-400 hover:text-amber-600 hover:bg-amber-50"
+                :title="patient.isActive ? 'Deactivate patient' : 'Activate patient'"
                 @click="$emit('toggle-active', patient)"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -153,10 +138,7 @@
       <div class="flex items-start justify-between mb-2">
         <div>
           <p class="text-sm font-semibold text-slate-800">{{ patient.patientName }}</p>
-          <p class="text-xs" :class="isTemporaryMrn(patient.medicalRecordNumber) ? 'text-amber-600 font-medium' : 'text-slate-400'">
-            MRN: {{ patient.medicalRecordNumber }}
-            <span v-if="isTemporaryMrn(patient.medicalRecordNumber)" class="ml-1 text-amber-500">(temporary)</span>
-          </p>
+          <p class="text-xs text-slate-400">MRN: {{ patient.medicalRecordNumber }}</p>
         </div>
         <span
           :class="[
@@ -208,13 +190,7 @@
         <button
           v-if="hasClaim('Permission', Permissions.PatientsEdit)"
           class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-          :class="!patient.isActive && isTemporaryMrn(patient.medicalRecordNumber)
-            ? 'text-slate-300 cursor-not-allowed'
-            : patient.isActive ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'"
-          :disabled="!patient.isActive && isTemporaryMrn(patient.medicalRecordNumber)"
-          :title="!patient.isActive && isTemporaryMrn(patient.medicalRecordNumber)
-            ? 'Assign a permanent MRN before activating'
-            : ''"
+          :class="patient.isActive ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'"
           @click="$emit('toggle-active', patient)"
         >
           {{ patient.isActive ? 'Deactivate' : 'Activate' }}
@@ -230,7 +206,6 @@
 <script lang="ts">
 import { defineComponent, ref, computed, type PropType } from 'vue';
 import type { Patient } from '../../interfaces/Patient';
-import { isTemporaryMrn } from '../../interfaces/Patient';
 import { formatAge } from '../../utils/age';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import AuditPopover from '../shared/AuditPopover.vue';
@@ -311,7 +286,7 @@ export default defineComponent({
       return primary ? primary.caretakerName : '';
     };
 
-    return { columns, sortKey, sortAsc, sortedPatients, toggleSort, formatDate, formatAge, isTemporaryMrn, primaryCaretakerName, hasClaim, Permissions };
+    return { columns, sortKey, sortAsc, sortedPatients, toggleSort, formatDate, formatAge, primaryCaretakerName, hasClaim, Permissions };
   },
 });
 </script>

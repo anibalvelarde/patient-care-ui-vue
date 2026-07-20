@@ -120,6 +120,12 @@ Rules:
 
 - Mount modals with `global: { stubs: { teleport: true } }`, start `visible: false`, then
   `await wrapper.setProps({ visible: true })`.
+- **Driving a parent view's `@event` handler without the real child (2026-07-19,
+  `wp36-system-mrn.spec.ts`):** stub the child (`PatientFormModal: true`), grab it with
+  `wrapper.findComponent({ name: 'PatientFormModal' })`, and `vm.$emit('created', payload)` —
+  the parent's listener runs exactly as if the real modal emitted. Useful when the child's own
+  behavior is covered by its component spec and mounting it for real would drag in more client
+  mocks than the test is about.
 - ⚠️ **Teleport-stub gotcha (2026-07-13, `wp27-cross-add-flows.spec.ts`):** the stub **recreates
   slot children on re-render, silently resetting their local state** (e.g. a form selection after
   a failed submit). That reset is a **stub artifact, not an app bug** — it was verified against a

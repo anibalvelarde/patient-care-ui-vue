@@ -43,6 +43,8 @@ export interface PatientCaretakerSummary {
 }
 
 // Maps to API's PatientProfileRequest (POST)
+// WP-36 (NP-1): NO medicalRecordNumber — the server always mints NC{yy}-#### at create (a
+// client-supplied value would be ignored server-side); the response carries the minted MRN.
 export interface PatientCreateRequest {
   firstName: string;
   middleName?: string;
@@ -51,7 +53,6 @@ export interface PatientCreateRequest {
   email: string;
   phoneNumber: string;
   gender: string;
-  medicalRecordNumber?: string;
   // WP-25 (F5): "Cedula | Passport" — required at create (free text, unique; duplicate → 409).
   cedula: string;
   hasSenadisDiscount?: boolean;
@@ -95,7 +96,5 @@ export interface PatientLookupItem {
   medicalRecordNumber: string | null;
 }
 
-// Temporary MRN helper
-export function isTemporaryMrn(mrn: string | null | undefined): boolean {
-  return !mrn || mrn.toUpperCase().startsWith('TEMP-');
-}
+// WP-36 (NP-1): isTemporaryMrn() removed — the TEMP- flow is retired (prod has zero TEMP- rows;
+// the server mints NC{yy}-#### at create and patients are active immediately).

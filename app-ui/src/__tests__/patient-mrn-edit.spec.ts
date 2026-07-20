@@ -3,7 +3,9 @@
 //   L24-/L25-/L26-#### MRNs could never be corrected — and even an editable value was
 //   dropped from the PUT payload unless the "assign permanent MRN" path was taken.
 //   Fix: MRN is generally editable on edit; a changed, non-blank value is always sent
-//   (the API enforces uniqueness → 409). TEMP- activation semantics are unchanged.
+//   (the API enforces uniqueness → 409).
+// WP-36 (NP-1): the TEMP- flow is retired (system mints NC{yy}-#### at create) — the
+//   temp-MRN hint + two-step assign-then-activate specs were removed with the dead code.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia, type Pinia } from 'pinia';
@@ -132,11 +134,12 @@ describe('PatientFormModal — MRN is editable on edit (B2)', () => {
     );
   });
 
-  it('keeps the input mounted while typing a non-TEMP value char-by-char (repro: patient 917)', async () => {
-    // Pre-fix, the input sat behind v-if="hasTemporaryMrn", which reacts to the value being
-    // typed — clearing "TEMP-917" and typing the first character of a permanent MRN flipped
-    // the v-if and unmounted the input mid-keystroke ("textbox locks after one character").
-    const wrapper = await openEditModal(patient({ medicalRecordNumber: 'TEMP-917', isActive: false }));
+  it('keeps the input mounted while typing a new value char-by-char (repro: patient 917)', async () => {
+    // Pre-B2, the input sat behind a v-if that reacted to the value being typed — clearing the
+    // field and typing the first character of a new MRN flipped the v-if and unmounted the
+    // input mid-keystroke ("textbox locks after one character"). The v-if is long gone (and
+    // WP-36 removed the TEMP- styling branch entirely) — this guards against its return.
+    const wrapper = await openEditModal(patient({ medicalRecordNumber: 'L24-0917', isActive: false }));
 
     for (const partial of ['', 'N', 'NC', 'NC-', 'NC-9', 'NC-91', 'NC-917']) {
       const input = wrapper.find(mrnInput);
@@ -147,25 +150,5 @@ describe('PatientFormModal — MRN is editable on edit (B2)', () => {
     const survivor = wrapper.find(mrnInput);
     expect(survivor.exists()).toBe(true);
     expect((survivor.element as HTMLInputElement).value).toBe('NC-917');
-  });
-
-  it('still shows the temporary-MRN hint and two-step activate flow for TEMP- patients', async () => {
-    const wrapper = await openEditModal(patient({ medicalRecordNumber: 'TEMP-5', isActive: false }));
-    expect(wrapper.text()).toContain('temporary MRN');
-
-    await wrapper.find(mrnInput).setValue('NC-2026-0005');
-    // Toggle Active Status on (enabled once the pending MRN is permanent).
-    await wrapper.find('button.w-11').trigger('click');
-
-    await wrapper.find('form').trigger('submit');
-    await vi.waitFor(() => expect(updatePatientMock).toHaveBeenCalledTimes(2));
-
-    // Step 1: assign the permanent MRN while still inactive; step 2: activate.
-    expect(updatePatientMock.mock.calls[0][1]).toEqual(
-      expect.objectContaining({ medicalRecordNumber: 'NC-2026-0005', activeStatus: false })
-    );
-    expect(updatePatientMock.mock.calls[1][1]).toEqual(
-      expect.objectContaining({ activeStatus: true })
-    );
   });
 });

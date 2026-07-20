@@ -197,16 +197,12 @@
             </select>
           </div>
 
+          <!-- WP-36 (NP-1): MRN is system-managed — the server mints NC{yy}-#### at create and
+               the response carries the value (surfaced in the success banner). No input here. -->
           <div v-if="!isEdit">
             <label class="block text-sm font-medium text-slate-700 mb-1">MRN</label>
-            <input
-              v-model="form.medicalRecordNumber"
-              type="text"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Auto-generated if blank"
-            />
-            <p class="mt-1 text-xs text-slate-400">
-              Leave blank to assign a temporary MRN. Patient will be inactive until a permanent MRN is provided.
+            <p class="text-xs text-slate-400" data-testid="mrn-auto-note">
+              MRN assigned automatically on save.
             </p>
           </div>
 
@@ -215,18 +211,10 @@
             <input
               v-model="form.medicalRecordNumber"
               type="text"
-              :class="[
-                'w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent',
-                hasTemporaryMrn
-                  ? 'border-amber-300 bg-amber-50 focus:ring-amber-500'
-                  : 'border-slate-300 focus:ring-blue-500',
-              ]"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter MRN"
             />
-            <p v-if="hasTemporaryMrn" class="mt-1 text-xs text-amber-600">
-              This patient has a temporary MRN. Assign a permanent MRN to enable activation.
-            </p>
-            <p v-else class="mt-1 text-xs text-slate-400">
+            <p class="mt-1 text-xs text-slate-400">
               Changing the MRN must keep it unique; leave blank to keep the current one.
             </p>
           </div>
@@ -268,11 +256,9 @@
                 type="button"
                 :class="[
                   'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                  cannotActivate ? 'bg-slate-200 cursor-not-allowed' :
                   form.activeStatus ? 'bg-blue-600' : 'bg-slate-300',
                 ]"
-                :disabled="cannotActivate"
-                @click="cannotActivate || (form.activeStatus = !form.activeStatus)"
+                @click="form.activeStatus = !form.activeStatus"
               >
                 <span
                   :class="[
@@ -282,9 +268,6 @@
                 />
               </button>
             </div>
-            <p v-if="cannotActivate" class="text-xs text-amber-600">
-              Cannot activate with a temporary MRN. Enter a permanent MRN above first.
-            </p>
           </div>
 
         </form>
@@ -318,7 +301,6 @@
 <script lang="ts">
 import { defineComponent, reactive, ref, computed, watch, type PropType } from 'vue';
 import type { Patient } from '../../interfaces/Patient';
-import { isTemporaryMrn } from '../../interfaces/Patient';
 import { useModalForm } from '../../composables/useModalForm';
 import FormErrorBanner from '../shared/FormErrorBanner.vue';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
@@ -365,7 +347,7 @@ export default defineComponent({
     // context banner + relationship/primary fields and enriches the `created` emit.
     linkTo: { type: Object as PropType<{ name: string } | null>, default: null },
   },
-  emits: ['close', 'saved', 'created', 'created-temp-mrn'],
+  emits: ['close', 'saved', 'created'],
   setup(props, { emit }) {
     const { error, hasError, saving, setError, clearError, submit } = useModalForm();
     const { hasClaim } = useClaims();
@@ -412,12 +394,6 @@ export default defineComponent({
       () => !isEdit.value || hasClaim('Permission', Permissions.PatientsRequiresDiscoveryEdit)
     );
 
-    // Blank on edit means "keep the current MRN", so temp-ness is judged on the effective value.
-    const effectiveMrn = computed(
-      () => form.medicalRecordNumber.trim() || props.patient?.medicalRecordNumber || ''
-    );
-    const hasTemporaryMrn = computed(() => isEdit.value && isTemporaryMrn(effectiveMrn.value));
-    const cannotActivate = computed(() => hasTemporaryMrn.value && !form.activeStatus);
     const age = computed(() => formatAge(form.dateOfBirth));
 
     // WP-25 (F5): amber nag while a legacy (no stored cedula) patient's field is still blank —
@@ -494,11 +470,6 @@ export default defineComponent({
         setError('Cedula | Passport cannot be cleared.');
         return;
       }
-      // Cannot activate a patient while a temporary MRN is still in place.
-      if (isEdit.value && props.patient && form.activeStatus && isTemporaryMrn(effectiveMrn.value)) {
-        setError('Cannot activate a patient with a temporary MRN. Assign a permanent MRN first.');
-        return;
-      }
       return submit(async () => {
         const client = new PatientsHttpClient();
         if (isEdit.value && props.patient) {
@@ -507,7 +478,6 @@ export default defineComponent({
           // current MRN (the API treats an omitted/empty MRN as "leave as-is"; uniqueness → 409).
           const newMrn = form.medicalRecordNumber.trim();
           const mrnChanged = newMrn !== '' && newMrn !== originalMrn;
-          const assigningPermanentMrn = isTemporaryMrn(originalMrn) && mrnChanged && !isTemporaryMrn(newMrn);
           const baseFields = {
             firstName: form.firstName,
             middleName: form.middleName || undefined,
@@ -533,25 +503,14 @@ export default defineComponent({
             requiresDiscovery: canEditRequiresDiscovery.value ? form.requiresDiscovery : undefined,
           };
 
-          if (assigningPermanentMrn && form.activeStatus) {
-            // Two-step: first assign permanent MRN (keep inactive), then activate
-            await client.updatePatient(props.patient.patientId, {
-              ...baseFields,
-              activeStatus: false,
-              medicalRecordNumber: newMrn,
-            });
-            await client.updatePatient(props.patient.patientId, {
-              ...baseFields,
-              activeStatus: true,
-            });
-          } else {
-            await client.updatePatient(props.patient.patientId, {
-              ...baseFields,
-              activeStatus: form.activeStatus,
-              medicalRecordNumber: mrnChanged ? newMrn : undefined,
-            });
-          }
+          await client.updatePatient(props.patient.patientId, {
+            ...baseFields,
+            activeStatus: form.activeStatus,
+            medicalRecordNumber: mrnChanged ? newMrn : undefined,
+          });
         } else {
+          // WP-36 (NP-1): the payload carries NO medicalRecordNumber — the server mints
+          // NC{yy}-#### and the create response carries the value (patient active at create).
           const created = await client.createPatient({
             firstName: form.firstName,
             middleName: form.middleName || undefined,
@@ -560,7 +519,6 @@ export default defineComponent({
             email: form.email,
             phoneNumber: form.phoneNumber,
             gender: form.gender,
-            medicalRecordNumber: form.medicalRecordNumber || undefined,
             cedula: form.cedula.trim(), // WP-25 (F5): required at create — guard above ensures non-blank
             hasSenadisDiscount: form.hasSenadisDiscount,
             // WP-37 (SEN-2): free at create for any patient-creating role; omitted = no expiry.
@@ -576,16 +534,13 @@ export default defineComponent({
             record: created,
             link: props.linkTo ? { relationship: linkRelationship.value, isPrimary: linkIsPrimary.value } : null,
           });
-          if (isTemporaryMrn(created.medicalRecordNumber ?? '')) {
-            emit('created-temp-mrn', created);
-          }
         }
         emit('saved');
         emit('close');
       });
     };
 
-    return { form, isEdit, saving, error, hasError, hasTemporaryMrn, cannotActivate, canEditSenadis, canEditRequiresDiscovery, age, hadCedulaOnFile, showLegacyCedulaNag, senadisExpired, formatSenadisExpiry, linkRelationship, linkIsPrimary, handleSubmit };
+    return { form, isEdit, saving, error, hasError, canEditSenadis, canEditRequiresDiscovery, age, hadCedulaOnFile, showLegacyCedulaNag, senadisExpired, formatSenadisExpiry, linkRelationship, linkIsPrimary, handleSubmit };
   },
 });
 </script>
