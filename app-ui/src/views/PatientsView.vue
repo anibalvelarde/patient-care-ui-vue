@@ -50,7 +50,6 @@
       @close="modalVisible = false"
       @saved="onSaved"
       @created="onPatientCreated"
-      @created-temp-mrn="onCreatedTempMrn"
     />
 
     <!-- WP-27 (F8): a just-created patient has no caretaker — offer to link/create one now -->
@@ -69,25 +68,27 @@
       @saved="onPaymentSaved"
     />
 
-    <!-- Temp MRN creation banner -->
+    <!-- WP-36 (NP-1): minted-MRN banner — the create response carries the system-minted
+         NC{yy}-#### so front desk can read the new chart number off the screen. -->
     <teleport to="body">
       <div
-        v-if="tempMrnBanner"
-        class="fixed top-4 right-4 z-50 max-w-sm bg-amber-50 border border-amber-300 rounded-xl shadow-lg p-4"
+        v-if="mintedMrnBanner"
+        data-testid="minted-mrn-banner"
+        class="fixed top-4 right-4 z-50 max-w-sm bg-green-50 border border-green-300 rounded-xl shadow-lg p-4"
       >
         <div class="flex items-start space-x-3">
-          <svg class="w-5 h-5 text-amber-500 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.168 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          <svg class="w-5 h-5 text-green-500 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
           </svg>
           <div class="flex-1">
-            <p class="text-sm font-medium text-amber-800">Temporary MRN Assigned</p>
-            <p class="text-xs text-amber-700 mt-1">
-              <span class="font-mono font-semibold">{{ tempMrnBanner }}</span> was assigned as a temporary MRN. The patient is inactive until a permanent MRN is provided.
+            <p class="text-sm font-medium text-green-800">Patient Created</p>
+            <p class="text-xs text-green-700 mt-1">
+              MRN <span class="font-mono font-semibold" data-testid="minted-mrn-value">{{ mintedMrnBanner }}</span> was assigned — this is the patient's chart number.
             </p>
           </div>
           <button
-            class="p-1 rounded text-amber-400 hover:text-amber-600"
-            @click="tempMrnBanner = ''"
+            class="p-1 rounded text-green-400 hover:text-green-600"
+            @click="mintedMrnBanner = ''"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -113,7 +114,6 @@ import PaymentFormModal from '../components/payments/PaymentFormModal.vue';
 import CrossAddChainModal, { type ChainTarget } from '../components/shared/CrossAddChainModal.vue';
 import { PatientsHttpClient } from '../services/PatientsHttpClient';
 import type { Patient } from '../interfaces/Patient';
-import { isTemporaryMrn } from '../interfaces/Patient';
 import type { CreatedForChain } from '../interfaces/CrossAdd';
 import type { DelinquentPatient } from '../interfaces/Delinquency';
 import { useFormError } from '../composables/useFormError';
@@ -146,10 +146,11 @@ export default defineComponent({
       page: 1,
     });
     const loading = ref(false);
-    const { message: error, setError, setFromException, clear: clearError } = useFormError();
+    const { message: error, setFromException, clear: clearError } = useFormError();
     const modalVisible = ref(false);
     const editingPatient = ref<Patient | null>(null);
-    const tempMrnBanner = ref('');
+    // WP-36 (NP-1): system-minted MRN from the create response, shown in the success banner.
+    const mintedMrnBanner = ref('');
     const pastDuePatients = ref<DelinquentPatient[]>([]);
     const pastDueLoaded = ref(false);
     const selectedPatient = ref<Patient | null>(null);
@@ -188,11 +189,6 @@ export default defineComponent({
     };
 
     const toggleActive = async (patient: Patient) => {
-      // Guard: cannot activate a patient with a temporary MRN
-      if (!patient.isActive && isTemporaryMrn(patient.medicalRecordNumber)) {
-        setError('Cannot activate a patient with a temporary MRN. Edit the patient to assign a permanent MRN first.');
-        return;
-      }
       try {
         const parsed = parseName(patient.patientName);
         await client.updatePatient(patient.patientId, {
@@ -269,6 +265,9 @@ export default defineComponent({
     // WP-27 (F8): every create lands caretaker-less — open the chain when this user holds the
     // claim the link endpoint enforces (Caretakers.LinkPatient; linking is caretaker-side only).
     const onPatientCreated = (payload: CreatedForChain<Patient>) => {
+      // WP-36 (NP-1): surface the system-minted NC{yy}-#### so FD can note the chart number.
+      mintedMrnBanner.value = payload.record.medicalRecordNumber ?? '';
+      setTimeout(() => { mintedMrnBanner.value = ''; }, 8000);
       if (!hasClaim('Permission', Permissions.CaretakersLinkPatient)) return;
       chainTarget.value = { id: payload.record.patientId, name: payload.record.patientName };
       chainVisible.value = true;
@@ -277,11 +276,6 @@ export default defineComponent({
     const onChainClose = () => {
       chainVisible.value = false;
       loadPatients(); // a caretaker may have been created/linked — refresh booking-readiness
-    };
-
-    const onCreatedTempMrn = (patient: Patient) => {
-      tempMrnBanner.value = patient.medicalRecordNumber ?? '';
-      setTimeout(() => { tempMrnBanner.value = ''; }, 8000);
     };
 
     const viewPlans = (patient: Patient) => {
@@ -301,7 +295,7 @@ export default defineComponent({
       modalVisible,
       editingPatient,
       selectedPatient,
-      tempMrnBanner,
+      mintedMrnBanner,
       pastDuePatients,
       initialTab,
       loadPatients,
@@ -311,7 +305,6 @@ export default defineComponent({
       viewCaretakers,
       onCaretakersUpdated,
       onSaved,
-      onCreatedTempMrn,
       chainVisible,
       chainTarget,
       onPatientCreated,
