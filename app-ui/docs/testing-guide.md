@@ -157,6 +157,12 @@ function patient(overrides: Partial<Patient> = {}): Patient {
 ```
 
 - One factory per entity, defaults valid, override only what the test cares about.
+- **Date-comparison features don't need fake timers** (2026-07-19, `wp37-senadis-expiration.spec.ts`):
+  when the code compares a fixture date against "today" or a form date, use **far-past (2020) /
+  far-future (2099)** fixture dates for the static cases, and drive the form's own date field
+  explicitly (`vm.form.sessionDate = '2026-08-15'`) for boundary/flip cases — assertions then
+  never depend on the real clock. Reserve `vi.useFakeTimers()` for code that reads `Date.now()`
+  itself (debounce, idle logoff).
 - Form-fill helpers are local per spec and index positional inputs (first `input[type="email"]`,
   `findAll('input[type="text"]')[0]`, first `select` = gender, …) — if you add a field to a form,
   check the positional helpers in its specs.

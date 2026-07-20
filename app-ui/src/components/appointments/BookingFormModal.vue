@@ -93,9 +93,14 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">Discount</label>
-              <!-- WP-23 (F7): min rides the SENADIS floor; the clamp re-applies on amount/patient change and at submit -->
+              <!-- WP-23 (F7): min rides the SENADIS floor; the clamp re-applies on amount/patient change and at submit.
+                   WP-37 (SEN-1/G2): floor/min/hint only while the SENADIS is active for the chosen
+                   session date — expired ⇒ no floor at all, amber badge explains why (G3). -->
               <input v-model.number="form.discount" type="number" :min="senadisFloor" step="0.01" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500" />
-              <p v-if="senadisPatient" class="mt-1 text-xs text-violet-600">SENADIS: min {{ senadisFloor.toFixed(2) }} (20%)</p>
+              <p v-if="senadisActive" class="mt-1 text-xs text-violet-600">SENADIS: min {{ senadisFloor.toFixed(2) }} (20%)</p>
+              <p v-else-if="senadisExpired" data-testid="senadis-expired-badge" class="mt-1 text-xs font-medium text-amber-600">
+                SENADIS expired {{ formatSenadisExpiry(senadisExpiry) }} — no discount floor for this session date.
+              </p>
             </div>
             <!-- WP-17C: cosmetic only — the API still returns ProviderAmount to anyone with Appointments.View; true field-level enforcement needs API response-shaping (deferred). -->
             <div v-if="hasClaim('Permission', Permissions.AppointmentsProviderAmount)">
@@ -153,6 +158,7 @@ import type { LookupItem } from '../../interfaces/Lookups';
 import { isDiscoverySpecialty } from '../../interfaces/TreatmentPlan';
 import { TIME_MIN, TIME_MAX, TIME_STEP } from '../../utils/timeSlots';
 import { useClaims, Permissions } from '../../composables/useClaims';
+import { isSenadisExpired, formatSenadisExpiry } from '../../utils/senadis';
 import { useNotificationsStore } from '../../stores/notifications';
 import LookupSelect, { type LookupOption } from '../shared/LookupSelect.vue';
 
@@ -181,6 +187,8 @@ export default defineComponent({
     const caretakerWarning = ref(false);
     const needsDiscovery = ref(false);
     const senadisPatient = ref(false);
+    // WP-37 (SEN-1): the flagged patient's expiry as sent by the API ("...T00:00:00" | null).
+    const senadisExpiry = ref<string | null>(null);
     const notifications = useNotificationsStore();
 
     const today = new Date().toISOString().split('T')[0];
@@ -260,13 +268,25 @@ export default defineComponent({
       }
     });
 
-    // WP-23 (F7): statutory SENADIS floor — 20% of Amount, 2dp; 0 for unflagged patients.
+    // WP-37 (SEN-1/G2): the floor applies only while the SENADIS is active for the SESSION DATE
+    // being booked — no expiry (null) = always active; boundary (session date == expiry) still
+    // floors; expired ⇒ no floor/min/clamp and the badge explains why. Re-evaluates when the
+    // user changes the booking date. The flag itself is never auto-cleared (G3).
+    const senadisActive = computed(
+      () => senadisPatient.value && !isSenadisExpired(senadisExpiry.value, form.value.sessionDate)
+    );
+    const senadisExpired = computed(
+      () => senadisPatient.value && isSenadisExpired(senadisExpiry.value, form.value.sessionDate)
+    );
+
+    // WP-23 (F7): statutory SENADIS floor — 20% of Amount, 2dp; 0 for unflagged patients
+    // (and, as of WP-37, for flagged-but-expired ones).
     const senadisFloor = computed(() =>
-      senadisPatient.value ? Math.round(0.20 * form.value.amount * 100) / 100 : 0
+      senadisActive.value ? Math.round(0.20 * form.value.amount * 100) / 100 : 0
     );
 
     const applySenadisFloor = () => {
-      if (senadisPatient.value && form.value.discount < senadisFloor.value) {
+      if (senadisActive.value && form.value.discount < senadisFloor.value) {
         form.value.discount = senadisFloor.value;
       }
     };
@@ -330,7 +350,7 @@ export default defineComponent({
     };
 
     const checkDiscovery = async (patientId: number) => {
-      if (patientId <= 0) { needsDiscovery.value = false; senadisPatient.value = false; return; }
+      if (patientId <= 0) { needsDiscovery.value = false; senadisPatient.value = false; senadisExpiry.value = null; return; }
       try {
         const patient = await patientsClient.getPatient(patientId);
         // WP-24 (F3/F4): requiresDiscovery=false waives the discovery-first rule (legacy
@@ -338,20 +358,27 @@ export default defineComponent({
         needsDiscovery.value = patient.requiresDiscovery !== false && patient.hasCompletedDiscovery === false;
         // WP-23 (F7): same fetched profile carries the SENADIS flag — one toast per
         // patient selection, then clamp the discount up to the floor.
+        // WP-37: also carries the expiry; toast + clamp only when active for the session date
+        // (a flagged-but-expired patient gets the badge instead — no floor).
         senadisPatient.value = patient.hasSenadisDiscount === true;
-        if (senadisPatient.value) {
+        senadisExpiry.value = patient.senadisExpirationDate ?? null;
+        if (senadisActive.value) {
           notifications.info('SENADIS: statutory 20% discount applied — it cannot be reduced.');
           applySenadisFloor();
         }
       } catch {
         needsDiscovery.value = false; // Fail open — don't block booking
         senadisPatient.value = false; // (the API floors server-side regardless)
+        senadisExpiry.value = null;
       }
     };
 
     watch(() => form.value.patientId, (id) => { checkCaretaker(id); checkDiscovery(id); });
     // WP-23 (F7): re-clamp when the amount moves the floor.
     watch(() => form.value.amount, applySenadisFloor);
+    // WP-37 (G2): re-clamp when the session date crosses back on/before the expiry (the floor
+    // computed lifts on its own when the date crosses past it — an existing discount is kept).
+    watch(() => form.value.sessionDate, applySenadisFloor);
     watch(form, () => { saveError.value = ''; }, { deep: true });
 
     watch(() => props.visible, (val) => {
@@ -360,6 +387,7 @@ export default defineComponent({
         saveError.value = '';
         needsDiscovery.value = false;
         senadisPatient.value = false;
+        senadisExpiry.value = null;
         selectedPatient.value = null;
         if (props.preSelectPatientId > 0) {
           loadPreselectedPatient(props.preSelectPatientId);
@@ -409,7 +437,7 @@ export default defineComponent({
       }
     };
 
-    return { form, selectedPatient, fetchPatientOptions, filteredTherapists, filteredSpecialties, saving, saveError, caretakerWarning, needsDiscovery, senadisPatient, senadisFloor, isValid, handleSubmit, timeMin: TIME_MIN, timeMax: TIME_MAX, timeStep: TIME_STEP, hasClaim, Permissions };
+    return { form, selectedPatient, fetchPatientOptions, filteredTherapists, filteredSpecialties, saving, saveError, caretakerWarning, needsDiscovery, senadisPatient, senadisExpiry, senadisActive, senadisExpired, senadisFloor, formatSenadisExpiry, isValid, handleSubmit, timeMin: TIME_MIN, timeMax: TIME_MAX, timeStep: TIME_STEP, hasClaim, Permissions };
   },
 });
 </script>
