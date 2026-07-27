@@ -44,6 +44,22 @@
           </label>
         </div>
 
+        <!-- WP-35 addendum 4: notes are internal reference (can contain clinic policy) —
+             the caretaker-facing PDF omits them unless the operator explicitly opts in.
+             Resets to CHECKED on every open; never persisted. -->
+        <label class="mt-4 flex items-start gap-2 cursor-pointer">
+          <input
+            v-model="suppressNotes"
+            type="checkbox"
+            data-testid="shp-print-suppress-notes"
+            class="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span class="text-xs">
+            <span class="font-medium text-slate-700">Suppress Notes</span>
+            <span class="block text-[11px] text-slate-400">Uncheck to include session notes in the printed report.</span>
+          </span>
+        </label>
+
         <p v-if="rangeError" data-testid="shp-print-range-error" class="mt-2 text-xs text-red-600">
           {{ rangeError }}
         </p>
@@ -212,6 +228,9 @@ export default defineComponent({
     const exporting = ref(false);
     const fetchError = ref('');
     const printData = ref<PrintData | null>(null);
+    // WP-35 addendum 4: suppress notes in the printed report by default; the operator must
+    // explicitly opt in per print. Reset to true on every dialog open (safe default).
+    const suppressNotes = ref(true);
 
     // Clamp bounds = the patient's actual session span. firstSessionDate may be absent (older
     // API during rollout) — then the lower bound is simply unclamped.
@@ -225,6 +244,7 @@ export default defineComponent({
         if (!visible || !props.patient) return;
         from.value = props.patient.firstSessionDate ?? props.patient.lastSessionDate ?? '';
         to.value = props.patient.lastSessionDate ?? '';
+        suppressNotes.value = true; // safe default every open — an unchecked state never persists
         fetchError.value = '';
         printData.value = null;
       },
@@ -288,8 +308,13 @@ export default defineComponent({
         // The endpoint returns newest-first; a printed history reads chronologically.
         fetched.sort((a, b) =>
           (a.sessionDate + a.sessionTime).localeCompare(b.sessionDate + b.sessionTime));
-        // Sanitize note text for the external report (raw notes untouched elsewhere).
-        const sessions: PrintSession[] = fetched.map((s) => ({ ...s, printNotes: sanitizePrintNotes(s.notes) }));
+        // Suppressed (default) → no note lines at all. Opted in → notes still ALWAYS pass
+        // through the addendum-3 sanitizer — unchecking reveals sanitized notes, never raw
+        // internal markers. Raw notes untouched elsewhere (screen popover).
+        const sessions: PrintSession[] = fetched.map((s) => ({
+          ...s,
+          printNotes: suppressNotes.value ? '' : sanitizePrintNotes(s.notes),
+        }));
         printData.value = {
           patientName: props.patient.patientName,
           medicalRecordNumber: props.patient.medicalRecordNumber,
@@ -325,7 +350,7 @@ export default defineComponent({
 
     return {
       from, to, minDate, maxDate, rangeError, fetchError, exporting, printData, totals,
-      onConfirm, formatDate, formatCurrency,
+      suppressNotes, onConfirm, formatDate, formatCurrency,
     };
   },
 });

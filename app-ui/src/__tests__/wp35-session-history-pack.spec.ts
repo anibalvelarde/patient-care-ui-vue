@@ -441,11 +441,16 @@ describe('SH-3 — print view assembles all pages and prints', () => {
       )));
   }
 
-  async function confirmPrint(patient: PatientSessionHistorySummary = summary()) {
+  async function confirmPrint(patient: PatientSessionHistorySummary = summary(), opts: { includeNotes?: boolean } = {}) {
     const w = mount(SessionHistoryPrintDialog, {
       props: { patient, visible: true },
       global: { stubs: { teleport: true } },
     });
+    // Addendum 4: notes are suppressed by default — tests that assert printed notes must
+    // opt in explicitly, exactly like the operator does.
+    if (opts.includeNotes) {
+      await w.find('[data-testid="shp-print-suppress-notes"]').setValue(false);
+    }
     await w.find('[data-testid="shp-print-confirm"]').trigger('click');
     await flushPromises();
     return w;
@@ -495,7 +500,7 @@ describe('SH-3 — print view assembles all pages and prints', () => {
 
   it('prints each session\'s FULL note inline beneath its row and omits the line otherwise — and never ProviderAmount', async () => {
     pagedMock(makeRangedSessions(130), 100);
-    const w = await confirmPrint();
+    const w = await confirmPrint(summary(), { includeNotes: true });
 
     const notes = w.findAll('[data-testid="shp-print-note"]');
     expect(notes.length).toBe(2); // exactly the two noted sessions out of 130
@@ -572,7 +577,7 @@ describe('SH-3 — print view assembles all pages and prints', () => {
       session({ sessionId: 2, sessionDate: '2026-01-02', notes: `${MERGED_MARKER}\nReal follow-up note.` }), // marker + content
       session({ sessionId: 1, sessionDate: '2026-01-01', notes: LEGACY_MARKER }), // pure marker
     ], 100);
-    const w = await confirmPrint();
+    const w = await confirmPrint(summary(), { includeNotes: true });
 
     const notes = w.findAll('[data-testid="shp-print-note"]');
     expect(notes.length).toBe(2); // the pure-marker session prints NO notes line at all
@@ -584,6 +589,57 @@ describe('SH-3 — print view assembles all pages and prints', () => {
     expect(rootText).not.toContain('LEGACY-IMPORT');
     expect(rootText).not.toContain('[MERGED');
     expect(rootText).not.toContain('absorbed Patient');
+  });
+
+  // ---- Addendum 4: Suppress Notes checkbox (default CHECKED — notes are internal reference) ----
+
+  it('Suppress Notes is checked by default and resets to checked on EVERY open, even after an unchecked print', async () => {
+    pagedMock(makeRangedSessions(3), 100);
+    const w = mount(SessionHistoryPrintDialog, {
+      props: { patient: summary(), visible: true },
+      global: { stubs: { teleport: true } },
+    });
+    // Re-find on every assertion — never cache the DOMWrapper (teleport-stub gotcha).
+    const box = () => w.find('[data-testid="shp-print-suppress-notes"]').element as HTMLInputElement;
+
+    expect(box().checked).toBe(true); // safe default on first open
+
+    await w.find('[data-testid="shp-print-suppress-notes"]').setValue(false);
+    expect(box().checked).toBe(false);
+    await w.find('[data-testid="shp-print-confirm"]').trigger('click');
+    await flushPromises(); // an unchecked print completes...
+
+    await w.setProps({ visible: false });
+    await w.setProps({ visible: true });
+    expect(box().checked).toBe(true); // ...and the next open is back to suppressed
+  });
+
+  it('checked (default): the report renders NO note lines at all, everything else unchanged', async () => {
+    pagedMock([
+      session({ sessionId: 1, sessionDate: '2026-01-01', notes: LONG_NOTE }),
+      session({ sessionId: 2, sessionDate: '2026-01-02', notes: 'Another perfectly printable note.' }),
+    ], 100);
+    const w = await confirmPrint(); // default — no opt-in
+
+    expect(w.findAll('[data-testid="shp-print-note"]').length).toBe(0); // as if no session had notes
+    const rootText = w.find('[data-testid="shp-print-root"]').text();
+    expect(rootText).not.toContain(LONG_NOTE);
+    expect(rootText).not.toContain('Another perfectly printable note.');
+    // the rest of the report is untouched
+    expect(w.findAll('[data-testid="shp-print-session-row"]').length).toBe(2);
+    expect(w.find('[data-testid="shp-print-totals"]').exists()).toBe(true);
+    expect(rootText).toContain('NeuroCorp Therapy Center');
+    expect(window.print).toHaveBeenCalledTimes(1);
+  });
+
+  it('unchecked (explicit opt-in): notes print but STILL sanitized — internal markers never appear in this path either', async () => {
+    pagedMock([session({ notes: `${LEGACY_MARKER}\nReal content for the caretaker.` })], 100);
+    const w = await confirmPrint(summary(), { includeNotes: true });
+
+    const notes = w.findAll('[data-testid="shp-print-note"]');
+    expect(notes.length).toBe(1);
+    expect(notes[0].text()).toContain('Real content for the caretaker.');
+    expect(w.find('[data-testid="shp-print-root"]').text()).not.toContain('LEGACY-IMPORT');
   });
 
   it('shows a fetch error and keeps the dialog open when the export load fails', async () => {

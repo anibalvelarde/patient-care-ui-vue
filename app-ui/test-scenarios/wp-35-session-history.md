@@ -45,20 +45,26 @@ and printing still works (the From picker simply isn't clamped at the lower end)
 
 1. Pick a patient with **more than 25 sessions** (their expanded list shows several pages).
 2. Click the **printer** icon on their row. A small dialog opens with **From / Through** date
-   pickers **pre-filled with that patient's actual first and last session dates**.
+   pickers **pre-filled with that patient's actual first and last session dates**, and a
+   **"Suppress Notes" checkbox — CHECKED by default** (session notes are internal reference;
+   the caretaker-facing PDF omits them unless you explicitly opt in).
 3. Try to pick a date outside that span — the pickers won't allow it (and typing one shows an
    error and disables the button).
-4. Confirm **Print / Save as PDF**. The browser print dialog opens showing ONLY the report —
-   no sidebar/header/app chrome:
+4. Confirm **Print / Save as PDF** (leave Suppress Notes checked). The browser print dialog
+   opens showing ONLY the report — no sidebar/header/app chrome:
    - Header: **NeuroCorp Therapy Center · Session History**, patient name + MRN, the chosen
      From/Through range, and today's printed-on date.
    - **Every** session in the range, oldest first — including the ones beyond page 1 of the
      on-screen list. Verify the trailing "N sessions" count matches the row's Total Sessions.
-   - Each session with a note prints the **full note text** on a line beneath its row;
-     sessions without notes have no notes line.
+   - **No note lines anywhere** — the default print carries no session notes at all.
    - **No Provider amount column anywhere** (regardless of who is logged in).
 5. Choose "Save as PDF" as the destination and save — that's the PDF.
-6. Cancel the browser dialog instead: you're back on the app, nothing broken.
+6. Print the same patient again, this time **unchecking "Suppress Notes"**: now each session
+   with a note prints its note text on a line beneath its row; sessions without notes still
+   have no notes line.
+7. Reopen the print dialog once more: the checkbox is **back to checked** — the opt-in never
+   sticks between prints.
+8. Cancel the browser dialog instead of printing: you're back on the app, nothing broken.
 
 ## Scenario 5 — totals band foots against the table
 
@@ -112,8 +118,10 @@ and printing still works (the From picker simply isn't clamped at the lower end)
 1. Pick a **legacy patient** (MRN like `L24-####`/`L25-####`) whose imported sessions carry
    `[LEGACY-IMPORT: ...]` note markers. Confirm via the on-screen note icon that the marker is
    there (staff still see the raw note — that's intended).
-2. Print that patient's sessions to PDF. Search the PDF: **no `[LEGACY-IMPORT` and no
-   `[MERGED` anywhere.**
+2. Print that patient's sessions to PDF **with "Suppress Notes" UNCHECKED** (with the default
+   checked box there are no note lines at all, markers included). Search the PDF:
+   **no `[LEGACY-IMPORT` and no `[MERGED` anywhere** — the sanitizer applies even when you
+   opt in to printing notes.
    - A note that was **only** a marker prints **no notes line at all** for that session.
    - A note with a marker **plus** real text prints just the real text, cleanly (no stray
      blank lines or double spaces where the marker was).
