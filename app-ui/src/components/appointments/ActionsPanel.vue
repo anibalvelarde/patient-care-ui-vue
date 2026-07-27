@@ -116,16 +116,37 @@
               <div class="grid grid-cols-3 gap-2">
                 <div>
                   <label class="block text-xs font-medium text-slate-600 mb-1">Amount</label>
-                  <input v-model.number="financialForm.amount" type="number" min="0" step="0.01" class="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
+                  <input v-model.number="financialForm.amount" type="number" min="0" step="0.01" data-testid="edit-amount-input" class="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-slate-600 mb-1">Discount</label>
-                  <input v-model.number="financialForm.discount" type="number" min="0" step="0.01" class="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
+                  <!-- WP-40 (BK-3): editing the discount is gated on Sessions.Discount.Edit
+                       (AM/MGR) — the API 403s a changed discount without it. -->
+                  <input
+                    v-if="canEditDiscount"
+                    v-model.number="financialForm.discount"
+                    type="number" :min="editSenadisFloor" step="0.01"
+                    data-testid="edit-discount-input"
+                    class="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+                  />
+                  <p v-else data-testid="edit-discount-readonly" class="w-full rounded-lg border border-slate-200 bg-slate-100 px-2 py-1.5 text-sm text-slate-500">
+                    ${{ financialForm.discount.toFixed(2) }}
+                  </p>
+                  <p v-if="canEditDiscount && editSenadisActive" data-testid="edit-senadis-floor-hint" class="mt-1 text-[11px] text-violet-600">
+                    SENADIS floor: min ${{ editSenadisFloor.toFixed(2) }} (20%) — may go up, never below.
+                  </p>
+                  <p v-else-if="!canEditDiscount" class="mt-1 text-[11px] text-slate-400">
+                    Discount edits need a Manager / Assistant Manager.
+                  </p>
                 </div>
-                <!-- WP-17C: cosmetic only — the API still returns ProviderAmount to anyone with Appointments.View; true field-level enforcement needs API response-shaping (deferred). -->
+                <!-- WP-40: the manual Provider input is gone — the API derives the fee from the
+                     therapist's model and recomputes whenever amount/discount change. -->
                 <div v-if="hasClaim('Permission', Permissions.AppointmentsProviderAmount)">
                   <label class="block text-xs font-medium text-slate-600 mb-1">Provider</label>
-                  <input v-model.number="financialForm.providerAmount" type="number" min="0" step="0.01" class="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
+                  <p data-testid="edit-provider-display" class="w-full rounded-lg border border-slate-200 bg-slate-100 px-2 py-1.5 text-sm text-slate-500">
+                    ${{ (appointment.providerAmount ?? 0).toFixed(2) }}
+                  </p>
+                  <p class="mt-1 text-[11px] text-slate-400">Recomputed on save.</p>
                 </div>
               </div>
               <div class="flex items-center space-x-2">
@@ -311,8 +332,10 @@ import { useRouter } from 'vue-router';
 import StatusBadge from './StatusBadge.vue';
 import AuditPopover from '../shared/AuditPopover.vue';
 import { SessionsHttpClient } from '../../services/SessionsHttpClient';
+import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import type { Appointment } from '../../interfaces/Appointment';
 import { useClaims, Permissions } from '../../composables/useClaims';
+import { isSenadisExpired } from '../../utils/senadis';
 
 const TERMINAL_STATUSES = [3, 4, 5]; // Cancelled, Completed, NoShow
 
@@ -334,7 +357,16 @@ export default defineComponent({
     const confirmForm = ref({ method: 'Phone', result: '', notes: '' });
     const correctionConfirmed = ref(false);
     const editingFinancials = ref(false);
-    const financialForm = ref({ amount: 0, discount: 0, providerAmount: 0 });
+    // WP-40: no providerAmount here — the fee is server-derived, never hand-entered.
+    const financialForm = ref({ amount: 0, discount: 0 });
+    const patientsClient = new PatientsHttpClient();
+    // WP-40 (BK-3): whether the session's patient has SENADIS active AT THE SESSION DATE —
+    // drives the floor hint (the API enforces the floor regardless).
+    const editSenadisActive = ref(false);
+    const canEditDiscount = computed(() => hasClaim('Permission', Permissions.SessionsDiscountEdit));
+    const editSenadisFloor = computed(() =>
+      editSenadisActive.value ? Math.round(0.20 * financialForm.value.amount * 100) / 100 : 0
+    );
 
     const isTerminalStatus = computed(() => {
       const id = props.appointment?.appointmentStatusId;
@@ -386,14 +418,22 @@ export default defineComponent({
       return actions.filter(a => a.statusId !== currentId);
     });
 
-    const startEditFinancials = () => {
+    const startEditFinancials = async () => {
       if (!props.appointment) return;
       financialForm.value = {
         amount: props.appointment.amount,
         discount: props.appointment.discount,
-        providerAmount: 0, // Not in the Appointment response — user can set
       };
       editingFinancials.value = true;
+      // WP-40 (BK-3): floor hint — active SENADIS (expiry-aware, at the SESSION date).
+      editSenadisActive.value = false;
+      try {
+        const patient = await patientsClient.getPatient(props.appointment.patientId);
+        editSenadisActive.value = patient.hasSenadisDiscount === true
+          && !isSenadisExpired(patient.senadisExpirationDate ?? null, props.appointment.sessionDate);
+      } catch {
+        // Hint only — the API enforces the floor server-side regardless
+      }
     };
 
     const saveFinancials = async () => {
@@ -401,14 +441,15 @@ export default defineComponent({
       actionInProgress.value = true;
       actionError.value = '';
       try {
+        // WP-40: duration is OMITTED (the read model doesn't carry it — the API keeps the
+        // stored value; the old hardcoded 60 silently overwrote legacy durations) and
+        // providerAmount is no longer sent (server-derived, recomputed on money change).
         await client.updateSession(props.appointment.sessionId, {
           sessionTime: props.appointment.sessionTime + (props.appointment.sessionTime.length === 5 ? ':00' : ''),
           therapyType: props.appointment.therapyTypes || 'N/A',
-          duration: 60,
           amount: financialForm.value.amount,
           amountPaid: props.appointment.amountPaid,
           discount: financialForm.value.discount,
-          providerAmount: financialForm.value.providerAmount,
           isPaidOff: props.appointment.isPaidOff,
           notes: props.appointment.notes,
           appointmentStatusId: props.appointment.appointmentStatusId,
@@ -492,6 +533,7 @@ export default defineComponent({
     return {
       confirmForm, cancelReason, actionInProgress, actionError,
       correctionConfirmed, editingFinancials, financialForm, isTerminalStatus,
+      canEditDiscount, editSenadisActive, editSenadisFloor,
       showConfirmSection, showCancelSection, availableActions,
       isCompletedDiscovery, createPlanFromDiscovery, viewPatientPlans,
       startEditFinancials, saveFinancials,

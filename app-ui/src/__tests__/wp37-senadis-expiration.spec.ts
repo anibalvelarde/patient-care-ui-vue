@@ -169,10 +169,11 @@ describe('isSenadisExpired — G1/G2 predicate', () => {
 // ── BookingFormModal — expiry-aware floor (G2) ───────────────────────────────
 
 type BookingVm = {
-  form: { patientId: number; sessionDate: string; amount: number; discount: number };
+  form: { patientId: number; sessionDate: string; specialtyTypeId: number };
   senadisPatient: boolean;
   senadisActive: boolean;
-  senadisFloor: number;
+  // WP-40: money derives read-only — 20% of the derived amount while active, else 0.
+  derivedDiscount: number;
 };
 
 async function openBookingModal(pinia: Pinia) {
@@ -188,105 +189,93 @@ async function openBookingModal(pinia: Pinia) {
 const badge = (wrapper: ReturnType<typeof mount>) =>
   wrapper.find('[data-testid="senadis-expired-badge"]'); // re-find after every change (teleport-stub gotcha)
 
-describe('BookingFormModal — WP-37 expiry-aware SENADIS clamp', () => {
-  it('null expiry: floor + clamp still apply (G1 open-ended), no badge', async () => {
+describe('BookingFormModal — WP-37 expiry-aware SENADIS derivation (WP-40: read-only exact-20%)', () => {
+  it('null expiry: discount derives to 20% (G1 open-ended), no badge', async () => {
     const wrapper = await openBookingModal(authAs('MGR'));
     const vm = wrapper.vm as unknown as BookingVm;
 
     vm.form.patientId = NULL_EXPIRY_ID;
-    await flushPromises();
-    vm.form.amount = 100;
+    vm.form.specialtyTypeId = 6; // defaultAmount 65
     await flushPromises();
 
     expect(vm.senadisActive).toBe(true);
-    expect(vm.senadisFloor).toBe(20);
-    expect(vm.form.discount).toBe(20);
+    expect(vm.derivedDiscount).toBe(13); // round(0.20 × 65, 2)
     expect(badge(wrapper).exists()).toBe(false);
   });
 
-  it('future expiry: floor + toast apply, no badge', async () => {
+  it('future expiry: discount derives to 20% — badge in place of the retired toast', async () => {
     const pinia = authAs('MGR');
     const wrapper = await openBookingModal(pinia);
     const vm = wrapper.vm as unknown as BookingVm;
     const notifications = useNotificationsStore();
 
     vm.form.patientId = FUTURE_ID;
-    await flushPromises();
-    vm.form.amount = 100;
+    vm.form.specialtyTypeId = 6;
     await flushPromises();
 
-    expect(vm.form.discount).toBe(20);
-    expect(notifications.items.filter((n) => n.message.includes('SENADIS'))).toHaveLength(1);
+    expect(vm.derivedDiscount).toBe(13);
+    // WP-40: no toast — the "SENADIS 20% applied" badge explains the derived value in place.
+    expect(notifications.items.filter((n) => n.message.includes('SENADIS'))).toHaveLength(0);
+    expect(wrapper.find('[data-testid="senadis-applied-badge"]').exists()).toBe(true);
     expect(badge(wrapper).exists()).toBe(false);
   });
 
-  it('expired: NO floor, NO min, NO toast, NO clamp-on-submit — badge shown instead', async () => {
+  it('expired: discount derives to 0 — badge shown, derived 0 goes to the API', async () => {
     const pinia = authAs('MGR');
     const wrapper = await openBookingModal(pinia);
     const vm = wrapper.vm as unknown as BookingVm;
-    const notifications = useNotificationsStore();
 
     vm.form.patientId = EXPIRED_ID;
-    await flushPromises();
-    vm.form.amount = 100;
-    vm.form.discount = 5;
+    vm.form.specialtyTypeId = 6;
     await flushPromises();
 
     expect(vm.senadisPatient).toBe(true); // flag stays on (G3 — never auto-cleared)
     expect(vm.senadisActive).toBe(false);
-    expect(vm.senadisFloor).toBe(0);
-    expect(vm.form.discount).toBe(5); // not clamped
-    expect(notifications.items.filter((n) => n.message.includes('SENADIS'))).toHaveLength(0);
+    expect(vm.derivedDiscount).toBe(0);
     expect(badge(wrapper).exists()).toBe(true);
     expect(badge(wrapper).text()).toContain('SENADIS expired Jun 30, 2020');
 
-    // submit does NOT clamp an expired patient's discount; the requested value goes through
     (wrapper.vm as unknown as { handleSubmit: () => Promise<void> }).handleSubmit();
     await vi.waitFor(() => expect(createSessionMock).toHaveBeenCalled());
-    expect(createSessionMock).toHaveBeenCalledWith(expect.objectContaining({ discount: 5 }));
+    expect(createSessionMock).toHaveBeenCalledWith(expect.objectContaining({ discount: 0 }));
   });
 
-  it('boundary: session date == expiry still floors (G2: expired only when strictly past)', async () => {
+  it('boundary: session date == expiry still derives 20% (G2: expired only when strictly past)', async () => {
     const wrapper = await openBookingModal(authAs('MGR'));
     const vm = wrapper.vm as unknown as BookingVm;
 
     vm.form.sessionDate = '2026-08-15'; // == WINDOW expiry
     vm.form.patientId = WINDOW_ID;
-    await flushPromises();
-    vm.form.amount = 100;
+    vm.form.specialtyTypeId = 6;
     await flushPromises();
 
     expect(vm.senadisActive).toBe(true);
-    expect(vm.form.discount).toBe(20);
+    expect(vm.derivedDiscount).toBe(13);
     expect(badge(wrapper).exists()).toBe(false);
   });
 
-  it('changing the session date across the expiry flips floor/badge both ways', async () => {
+  it('changing the session date across the expiry flips derived discount/badge both ways', async () => {
     const wrapper = await openBookingModal(authAs('MGR'));
     const vm = wrapper.vm as unknown as BookingVm;
 
     vm.form.sessionDate = '2026-08-10'; // before expiry
     vm.form.patientId = WINDOW_ID;
+    vm.form.specialtyTypeId = 6;
     await flushPromises();
-    vm.form.amount = 100;
-    await flushPromises();
-    expect(vm.form.discount).toBe(20); // clamped
+    expect(vm.derivedDiscount).toBe(13);
 
-    // cross past the expiry: floor lifts, badge appears, discount can go below 20%
+    // cross past the expiry: the derived discount drops to 0, badge appears
     vm.form.sessionDate = '2026-08-20';
     await nextTick();
     expect(vm.senadisActive).toBe(false);
-    expect(vm.senadisFloor).toBe(0);
+    expect(vm.derivedDiscount).toBe(0);
     expect(badge(wrapper).exists()).toBe(true);
-    vm.form.discount = 3;
-    await nextTick();
-    expect(vm.form.discount).toBe(3); // no re-clamp while expired
 
-    // move back on/before the expiry: the clamp re-applies
+    // move back on/before the expiry: the 20% derivation re-applies
     vm.form.sessionDate = '2026-08-15';
     await nextTick();
     expect(vm.senadisActive).toBe(true);
-    expect(vm.form.discount).toBe(20);
+    expect(vm.derivedDiscount).toBe(13);
     expect(badge(wrapper).exists()).toBe(false);
   });
 });

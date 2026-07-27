@@ -1,6 +1,6 @@
 // services/SessionsHttpClient.ts
 import { HttpClientBase } from './HttpClientBase';
-import type { Appointment, SessionEventRequest, ConfirmationRequest, ConfirmationRecord } from '../interfaces/Appointment';
+import type { Appointment, SessionEventRequest, SessionEventUpdateRequest, ConfirmationRequest, ConfirmationRecord } from '../interfaces/Appointment';
 import type { LookupItem } from '../interfaces/Lookups';
 import type { DiscoverySessionSummary } from '../interfaces/TreatmentPlan';
 import type { ScheduleMatrixResponse } from '../interfaces/ScheduleMatrix';
@@ -20,7 +20,7 @@ export class SessionsHttpClient extends HttpClientBase {
     return this.post<Appointment>('/api/Sessions', data);
   }
 
-  async updateSession(id: number, data: Record<string, unknown>): Promise<void> {
+  async updateSession(id: number, data: SessionEventUpdateRequest): Promise<void> {
     return this.put(`/api/Sessions/${id}`, data);
   }
 
