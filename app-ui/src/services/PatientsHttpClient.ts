@@ -2,7 +2,7 @@
 import { HttpClientBase } from './HttpClientBase';
 import type { Patient, PatientCreateRequest, PatientUpdateRequest, PatientCaretakerSummary, PatientLookupItem } from '../interfaces/Patient';
 import type { DelinquentPatient } from '../interfaces/Delinquency';
-import type { PagedResult, PatientSessionHistorySummary, PatientHistorySession } from '../interfaces/SessionHistory';
+import type { PagedResult, PatientHistorySession, SessionHistoryPagedResult } from '../interfaces/SessionHistory';
 import type { PatientMergeRequest, PatientMergePreview, PatientMergeResult } from '../interfaces/PatientMerge';
 
 // WP-30 (U2): shared query shape for the paged list endpoints.
@@ -50,15 +50,21 @@ export class PatientsHttpClient extends HttpClientBase {
   }
 
   // WP-21 (F1): paged patient summaries ordered by most-recent-session first.
-  async getSessionHistory(search: string, page: number, pageSize = 30): Promise<PagedResult<PatientSessionHistorySummary>> {
+  // WP-35 money addendum: the envelope now carries `totals` over the full filtered set;
+  // money keys (rows + totals) are absent without Appointments.ProviderAmount.
+  async getSessionHistory(search: string, page: number, pageSize = 30): Promise<SessionHistoryPagedResult> {
     const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
     if (search.trim()) params.set('search', search.trim());
-    return this.get<PagedResult<PatientSessionHistorySummary>>(`/api/patients/session-history?${params.toString()}`);
+    return this.get<SessionHistoryPagedResult>(`/api/patients/session-history?${params.toString()}`);
   }
 
   // WP-21 (F1): one patient's paged sessions, newest first.
-  async getPatientSessions(patientId: number, page: number, pageSize = 25): Promise<PagedResult<PatientHistorySession>> {
+  // WP-35 (SH-3): optional from/to ("yyyy-MM-dd", inclusive both ends) narrow to a date range —
+  // omitted = unchanged behavior. Used by the print/PDF export's paged fetch-all loop.
+  async getPatientSessions(patientId: number, page: number, pageSize = 25, from?: string, to?: string): Promise<PagedResult<PatientHistorySession>> {
     const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
     return this.get<PagedResult<PatientHistorySession>>(`/api/patients/${patientId}/sessions?${params.toString()}`);
   }
 

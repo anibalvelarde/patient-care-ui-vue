@@ -21,7 +21,7 @@
 
     <template v-else-if="result">
       <!-- Column headers (desktop) -->
-      <div class="hidden md:grid grid-cols-[6rem_7rem_1fr_1fr_4.5rem_4.5rem_6.5rem_1rem] gap-2 px-4 py-2 bg-slate-100/70 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+      <div class="hidden md:grid grid-cols-[6rem_7rem_1fr_1fr_4.5rem_4.5rem_6.5rem_1.75rem_1rem] gap-2 px-4 py-2 bg-slate-100/70 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
         <span>Date</span>
         <span>Status</span>
         <span>Specialty</span>
@@ -29,6 +29,7 @@
         <span class="text-right">Amount</span>
         <span class="text-right">Discount</span>
         <span class="text-right">Paid / Owed</span>
+        <span></span>
         <span></span>
       </div>
 
@@ -41,7 +42,7 @@
           class="block px-4 py-2 hover:bg-blue-50/60 transition-colors group"
         >
           <!-- Desktop grid row -->
-          <div class="hidden md:grid grid-cols-[6rem_7rem_1fr_1fr_4.5rem_4.5rem_6.5rem_1rem] gap-2 items-center text-xs">
+          <div class="hidden md:grid grid-cols-[6rem_7rem_1fr_1fr_4.5rem_4.5rem_6.5rem_1.75rem_1rem] gap-2 items-center text-xs">
             <span class="text-slate-500">{{ formatDate(session.sessionDate) }}</span>
             <span>
               <StatusBadge :status-id="session.appointmentStatusId" :status-name="session.statusName" />
@@ -72,6 +73,11 @@
                 Owes {{ formatCurrency(session.amountDue) }}
               </span>
             </span>
+            <!-- WP-35 (SH-2): notes icon only when the session has notes; tap/click reveals the
+                 full text. The popover prevents+stops its own clicks so the row link doesn't fire. -->
+            <span class="flex justify-center">
+              <NotesPopover :notes="session.notes" />
+            </span>
             <svg class="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
             </svg>
@@ -80,7 +86,11 @@
           <!-- Mobile stacked row -->
           <div class="md:hidden text-xs space-y-1">
             <div class="flex items-center justify-between">
-              <span class="font-medium text-slate-700">{{ formatDate(session.sessionDate) }}</span>
+              <span class="flex items-center gap-1">
+                <span class="font-medium text-slate-700">{{ formatDate(session.sessionDate) }}</span>
+                <!-- WP-35 (SH-2): tappable notes reveal on mobile too -->
+                <NotesPopover :notes="session.notes" />
+              </span>
               <span v-if="session.isPaidOff" class="font-medium text-green-700" :title="'Paid ' + formatCurrency(session.amountPaid)">
                 ✓ Paid
               </span>
@@ -127,12 +137,13 @@ import type { PagedResult, PatientHistorySession } from '../../interfaces/Sessio
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import { formatCurrency } from '../../utils/formatCurrency';
 import StatusBadge from '../appointments/StatusBadge.vue';
+import NotesPopover from '../shared/NotesPopover.vue';
 
 export const SESSIONS_PAGE_SIZE = 25;
 
 export default defineComponent({
   name: 'PatientSessionsTable',
-  components: { StatusBadge },
+  components: { StatusBadge, NotesPopover },
   props: {
     patientId: { type: Number, required: true },
   },
