@@ -216,9 +216,16 @@ export default defineComponent({
 
     const stats = computed<StatTile[]>(() => {
       const total = props.appointments.length;
-      const paid = props.appointments.filter((a) => a.isPaidOff).length;
-      const pastDue = props.appointments.filter((a) => a.isPastDue).length;
-      const pending = total - paid - pastDue;
+      // WP-42C cherry-pick (owner 2026-07-28): the payment buckets are status-AWARE —
+      // cancelled/no-show sessions (ids 3/5, same predicate as the WP-34 tile) can never be
+      // "pending payment" or "paid off"; they have their own tile. "Today's Appointments"
+      // deliberately still counts them (known quirk, ruled out of scope in WP-34).
+      const payable = props.appointments.filter(
+        (a) => a.appointmentStatusId !== 3 && a.appointmentStatusId !== 5
+      );
+      const paid = payable.filter((a) => a.isPaidOff).length;
+      const pastDue = payable.filter((a) => a.isPastDue).length;
+      const pending = payable.length - paid - pastDue;
       // WP-34C (G3 ruling): combined Cancelled + No-Show tile, keyed on appointmentStatusId
       // (3 = Cancelled, 5 = NoShow — FK ids from the AppointmentStatus lookup seed; ids are
       // the robust representation, statusName strings are admin-editable lookup values).
