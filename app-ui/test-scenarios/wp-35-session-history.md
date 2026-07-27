@@ -60,7 +60,21 @@ and printing still works (the From picker simply isn't clamped at the lower end)
 5. Choose "Save as PDF" as the destination and save — that's the PDF.
 6. Cancel the browser dialog instead: you're back on the app, nothing broken.
 
-## Scenario 5 — range-narrowed export
+## Scenario 5 — totals band foots against the table
+
+1. Print a patient with a healthy mix of sessions (include at least one discounted session and
+   one that's only partially paid).
+2. Below the report header, above the sessions table, a **totals band** shows:
+   **Sessions · Amount · Discount · Paid · Owed**.
+3. Verify the numbers **foot against the table rows** — over ALL printed pages, not just the
+   first: Sessions = the row count (equals the trailing "N sessions" line), Amount / Discount /
+   Paid = the sums of those columns, and **Owed = the sum of the "Owes …" cells** (rows marked
+   "Paid …" contribute nothing to Owed).
+4. Cancelled/zeroed sessions are **counted** in Sessions and simply add their $0.00 amounts.
+5. No Provider figure appears in the band (or anywhere else in the report).
+6. On an empty-range print, the band reads 0 sessions and $0.00 across.
+
+## Scenario 6 — range-narrowed export
 
 1. Open the print dialog for the same patient, but narrow the range (e.g. just the last
    two months).

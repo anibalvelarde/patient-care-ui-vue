@@ -376,6 +376,48 @@ describe('SH-3 — print view assembles all pages and prints', () => {
     expect(w.find('[data-testid="shp-print-range"]').text()).toContain('from 02/01/2026 through 03/15/2026');
   });
 
+  // ---- Addendum: summary/totals band over the FULL fetched set ----
+  // Owed mirrors PatientSessionsTable's Paid/Owed cell verbatim: a paid-off session
+  // contributes 0 (even with a stray amountDue), others contribute their server-computed
+  // amountDue — nothing is re-derived from amount/discount client-side.
+
+  it('foots the totals band over the whole multi-page set (discounted, partially-paid, and paid-off-with-stray-due sessions)', async () => {
+    const all = makeRangedSessions(130); // 130 defaults: amount 45, paid 45, due 0, isPaidOff
+    // day counter maps newest-first: all[i] has day = 130 - i → pick by sessionId (1000 + day)
+    const byDay = (day: number) => all.find((s) => s.sessionId === 1000 + day)!;
+    Object.assign(byDay(5), { amount: 75, discount: 10, amountPaid: 0, amountDue: 65, isPaidOff: false });
+    Object.assign(byDay(6), { amount: 100, discount: 0, amountPaid: 40, amountDue: 60, isPaidOff: false });
+    // Paid-off but with a stray non-zero amountDue — must NOT count toward Owed (isPaidOff gate).
+    Object.assign(byDay(7), { amountDue: 5, isPaidOff: true });
+    pagedMock(all, 100);
+
+    const w = await confirmPrint();
+
+    const band = w.find('[data-testid="shp-print-totals"]');
+    expect(band.exists()).toBe(true);
+    expect(w.find('[data-testid="shp-print-totals-count"]').text()).toBe('130');
+    // 127 × $45 + $75 + $100 + $45 = $5,935.00 — includes page-2 rows, not just page 1
+    expect(w.find('[data-testid="shp-print-totals-amount"]').text()).toBe('$5,935.00');
+    expect(w.find('[data-testid="shp-print-totals-discount"]').text()).toBe('$10.00');
+    // 127 × $45 + $0 + $40 + $45 = $5,800.00
+    expect(w.find('[data-testid="shp-print-totals-paid"]').text()).toBe('$5,800.00');
+    // $65 + $60 + $0 (stray due on a paid-off session excluded) = $125.00
+    expect(w.find('[data-testid="shp-print-totals-owed"]').text()).toBe('$125.00');
+    expect(band.text()).not.toContain('Provider');
+  });
+
+  it('totals band is null-safe over an empty in-range set (all zeros, no NaN)', async () => {
+    pagedMock([], 100);
+    const w = await confirmPrint();
+
+    expect(w.find('[data-testid="shp-print-totals-count"]').text()).toBe('0');
+    expect(w.find('[data-testid="shp-print-totals-amount"]').text()).toBe('$0.00');
+    expect(w.find('[data-testid="shp-print-totals-discount"]').text()).toBe('$0.00');
+    expect(w.find('[data-testid="shp-print-totals-paid"]').text()).toBe('$0.00');
+    expect(w.find('[data-testid="shp-print-totals-owed"]').text()).toBe('$0.00');
+    expect(w.find('[data-testid="shp-print-totals"]').text()).not.toContain('NaN');
+  });
+
   it('shows a fetch error and keeps the dialog open when the export load fails', async () => {
     getPatientSessionsMock.mockRejectedValue(new Error('boom'));
     const w = await confirmPrint();

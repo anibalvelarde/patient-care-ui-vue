@@ -92,6 +92,35 @@
         </p>
       </div>
 
+      <!-- WP-35 addendum: summary/totals band over the FULL fetched in-range set (the same
+           array the table below renders — never just one page). Owed mirrors the table's
+           Paid/Owed column exactly: paid-off sessions contribute 0, others their amountDue. -->
+      <div
+        class="mb-4 grid grid-cols-5 gap-3 border-y border-slate-300 py-2 text-center"
+        data-testid="shp-print-totals"
+      >
+        <div>
+          <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Sessions</p>
+          <p class="mt-0.5 text-sm font-semibold text-slate-900" data-testid="shp-print-totals-count">{{ totals.count }}</p>
+        </div>
+        <div>
+          <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Amount</p>
+          <p class="mt-0.5 text-sm font-semibold text-slate-900" data-testid="shp-print-totals-amount">{{ formatCurrency(totals.amount) }}</p>
+        </div>
+        <div>
+          <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Discount</p>
+          <p class="mt-0.5 text-sm font-semibold text-slate-900" data-testid="shp-print-totals-discount">{{ formatCurrency(totals.discount) }}</p>
+        </div>
+        <div>
+          <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Paid</p>
+          <p class="mt-0.5 text-sm font-semibold text-slate-900" data-testid="shp-print-totals-paid">{{ formatCurrency(totals.paid) }}</p>
+        </div>
+        <div>
+          <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Owed</p>
+          <p class="mt-0.5 text-sm font-semibold text-slate-900" data-testid="shp-print-totals-owed">{{ formatCurrency(totals.owed) }}</p>
+        </div>
+      </div>
+
       <table class="min-w-full text-xs">
         <thead>
           <tr class="border-b border-slate-300 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
@@ -208,6 +237,26 @@ export default defineComponent({
       return '';
     });
 
+    // WP-35 addendum: totals over the FULL fetched set. Owed mirrors PatientSessionsTable's
+    // Paid/Owed cell verbatim (`isPaidOff ? Paid : Owes amountDue`) — the server-computed
+    // amountDue is trusted, gated by isPaidOff; nothing is re-derived from amount/discount.
+    // Null-safe (`?? 0`) so a sparse payload can never yield NaN. Cancelled/zeroed sessions
+    // simply contribute their (zero) amounts; the count includes every rendered session.
+    const totals = computed(() => {
+      const sessions = printData.value?.sessions ?? [];
+      return sessions.reduce(
+        (acc, s) => {
+          acc.count += 1;
+          acc.amount += s.amount ?? 0;
+          acc.discount += s.discount ?? 0;
+          acc.paid += s.amountPaid ?? 0;
+          acc.owed += s.isPaidOff ? 0 : (s.amountDue ?? 0);
+          return acc;
+        },
+        { count: 0, amount: 0, discount: 0, paid: 0, owed: 0 },
+      );
+    });
+
     const fetchAllInRange = async (patientId: number): Promise<PatientHistorySession[]> => {
       const all: PatientHistorySession[] = [];
       let page = 1;
@@ -265,7 +314,7 @@ export default defineComponent({
     onBeforeUnmount(() => document.body.classList.remove('shp-print-mode'));
 
     return {
-      from, to, minDate, maxDate, rangeError, fetchError, exporting, printData,
+      from, to, minDate, maxDate, rangeError, fetchError, exporting, printData, totals,
       onConfirm, formatDate, formatCurrency,
     };
   },
