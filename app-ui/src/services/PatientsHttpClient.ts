@@ -57,8 +57,12 @@ export class PatientsHttpClient extends HttpClientBase {
   }
 
   // WP-21 (F1): one patient's paged sessions, newest first.
-  async getPatientSessions(patientId: number, page: number, pageSize = 25): Promise<PagedResult<PatientHistorySession>> {
+  // WP-35 (SH-3): optional from/to ("yyyy-MM-dd", inclusive both ends) narrow to a date range —
+  // omitted = unchanged behavior. Used by the print/PDF export's paged fetch-all loop.
+  async getPatientSessions(patientId: number, page: number, pageSize = 25, from?: string, to?: string): Promise<PagedResult<PatientHistorySession>> {
     const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
     return this.get<PagedResult<PatientHistorySession>>(`/api/patients/${patientId}/sessions?${params.toString()}`);
   }
 

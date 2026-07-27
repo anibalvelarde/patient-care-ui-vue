@@ -23,8 +23,10 @@
               <th class="px-4 py-3 text-left text-xs font-semibold text-blue-700 uppercase tracking-wider w-8"></th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-blue-700 uppercase tracking-wider">Patient</th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-blue-700 uppercase tracking-wider">MRN</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-blue-700 uppercase tracking-wider">From</th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-blue-700 uppercase tracking-wider">Last Session</th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-blue-700 uppercase tracking-wider">Total Sessions</th>
+              <th class="px-4 py-3 w-10"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
@@ -43,22 +45,43 @@
                 </td>
                 <td class="px-4 py-3 text-sm font-medium text-slate-800">{{ p.patientName }}</td>
                 <td class="px-4 py-3 text-sm text-slate-500 font-mono">{{ p.medicalRecordNumber || '—' }}</td>
+                <!-- WP-35 (SH-1): first-session date so the row reads From/Through. Tolerates
+                     the field being absent (older API during rollout) — renders "—". -->
+                <td class="px-4 py-3 text-sm text-slate-600" data-testid="session-history-from">
+                  {{ formatDate(p.firstSessionDate ?? '') || '—' }}
+                </td>
                 <td class="px-4 py-3 text-sm text-slate-600">{{ formatDate(p.lastSessionDate ?? '') || '—' }}</td>
                 <td class="px-4 py-3 text-sm">
                   <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
                     {{ p.totalSessions }}
                   </span>
                 </td>
+                <!-- WP-35 (SH-3): print/save-as-PDF for this patient's sessions -->
+                <td class="px-4 py-3 text-right">
+                  <button
+                    type="button"
+                    data-testid="session-history-print"
+                    class="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    :disabled="p.totalSessions === 0"
+                    title="Print / Save as PDF"
+                    aria-label="Print / Save as PDF"
+                    @click.stop="openPrint(p)"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                  </button>
+                </td>
               </tr>
               <tr v-if="expanded.has(p.patientId)" class="bg-slate-50/40">
                 <td class="px-4 py-2"></td>
-                <td colspan="4" class="px-4 py-2">
+                <td colspan="6" class="px-4 py-2">
                   <PatientSessionsTable :patient-id="p.patientId" />
                 </td>
               </tr>
             </template>
             <tr v-if="result.items.length === 0">
-              <td colspan="5" class="px-4 py-12 text-center text-sm text-slate-400">
+              <td colspan="7" class="px-4 py-12 text-center text-sm text-slate-400">
                 No patients found.
               </td>
             </tr>
@@ -84,12 +107,31 @@
                 </svg>
                 <p class="text-sm font-semibold text-slate-800">{{ p.patientName }}</p>
               </div>
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                {{ p.totalSessions }}
-              </span>
+              <div class="flex items-center gap-1">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                  {{ p.totalSessions }}
+                </span>
+                <!-- WP-35 (SH-3): print/save-as-PDF for this patient's sessions -->
+                <button
+                  type="button"
+                  data-testid="session-history-print-mobile"
+                  class="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  :disabled="p.totalSessions === 0"
+                  title="Print / Save as PDF"
+                  aria-label="Print / Save as PDF"
+                  @click.stop="openPrint(p)"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <div class="text-xs text-slate-500">
               <span class="font-mono">{{ p.medicalRecordNumber || '—' }}</span>
+              <span class="mx-1 text-slate-300">·</span>
+              <!-- WP-35 (SH-1): From/Last span on the mobile card too -->
+              <span class="font-medium">From:</span> {{ formatDate(p.firstSessionDate ?? '') || '—' }}
               <span class="mx-1 text-slate-300">·</span>
               <span class="font-medium">Last:</span> {{ formatDate(p.lastSessionDate ?? '') || '—' }}
             </div>
@@ -123,6 +165,13 @@
           Next ▶
         </button>
       </div>
+
+      <!-- WP-35 (SH-3): date-range dialog + print-only report for the selected patient -->
+      <SessionHistoryPrintDialog
+        :patient="printPatient"
+        :visible="printPatient !== null"
+        @close="printPatient = null"
+      />
     </template>
   </div>
 </template>
@@ -132,13 +181,14 @@ import { defineComponent, ref, computed, onMounted, watch } from 'vue';
 import type { PagedResult, PatientSessionHistorySummary } from '../../interfaces/SessionHistory';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import PatientSessionsTable from './PatientSessionsTable.vue';
+import SessionHistoryPrintDialog from './SessionHistoryPrintDialog.vue';
 
 export const PATIENTS_PAGE_SIZE = 30;
 export const SEARCH_DEBOUNCE_MS = 300;
 
 export default defineComponent({
   name: 'SessionHistoryPanel',
-  components: { PatientSessionsTable },
+  components: { PatientSessionsTable, SessionHistoryPrintDialog },
   props: {
     // Fed by the Patients page's shared search box; unlike the other tabs this searches
     // SERVER-side (the patient list is server-paged so client filtering would miss rows).
@@ -167,6 +217,12 @@ export default defineComponent({
       } finally {
         loading.value = false;
       }
+    };
+
+    // WP-35 (SH-3): which patient the print date-range dialog is open for (null = closed).
+    const printPatient = ref<PatientSessionHistorySummary | null>(null);
+    const openPrint = (p: PatientSessionHistorySummary) => {
+      printPatient.value = p;
     };
 
     const toggleExpand = (patientId: number) => {
@@ -201,7 +257,7 @@ export default defineComponent({
 
     onMounted(() => load(1));
 
-    return { result, page, loading, error, expanded, totalPages, load, toggleExpand, formatDate };
+    return { result, page, loading, error, expanded, totalPages, load, toggleExpand, formatDate, printPatient, openPrint };
   },
 });
 </script>

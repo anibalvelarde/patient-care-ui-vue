@@ -11,10 +11,13 @@ export interface PagedResult<T> {
 
 // One row of the Session History tab's patient list — ordered most-recent-session first by the
 // API; lastSessionDate null / totalSessions 0 = patient has never had a session (sorts last).
+// WP-35 (SH-1): firstSessionDate ("yyyy-MM-dd") is additive and OPTIONAL — an older API during
+// rollout won't send it, so consumers must tolerate `undefined` as well as null (zero sessions).
 export interface PatientSessionHistorySummary {
   patientId: number;
   patientName: string;
   medicalRecordNumber: string | null;
+  firstSessionDate?: string | null;
   lastSessionDate: string | null;
   totalSessions: number;
 }
@@ -37,4 +40,7 @@ export interface PatientHistorySession {
   isPaidOff: boolean;
   appointmentStatusId: number;
   statusName: string;
+  // WP-35 (SH-2): the API has always sent SessionEvent.Notes on this endpoint — the interface
+  // simply omitted it. Optional so older fixtures/payloads without it stay valid.
+  notes?: string | null;
 }
