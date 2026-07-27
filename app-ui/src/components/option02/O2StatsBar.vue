@@ -1,13 +1,19 @@
 <template>
   <div>
     <!-- Stat Tiles -->
-    <div :class="['grid grid-cols-2 gap-4',
-                  stats.length >= 6 ? 'lg:grid-cols-6' : stats.length >= 5 ? 'lg:grid-cols-5' : 'lg:grid-cols-4']">
+    <!-- WP-34C (G4): wrap-friendly auto-fit grid replaces the old stats.length ladder
+         (lg:grid-cols-6/-5/-4) — any tile count (4..7+) wraps cleanly at every role
+         perspective without adding ladder rungs. Mobile stays 2-up. -->
+    <div
+      data-testid="stats-grid"
+      class="grid grid-cols-2 gap-4 lg:grid-cols-[repeat(auto-fit,minmax(11rem,1fr))]"
+    >
       <component
         :is="stat.to ? 'router-link' : 'div'"
         v-for="stat in stats"
         :key="stat.label"
         :to="stat.to"
+        :data-testid="stat.testId"
         :class="[
           'bg-white rounded-xl border px-5 py-4 flex items-center gap-4',
           stat.borderClass,
@@ -18,9 +24,9 @@
           <font-awesome-icon :icon="['fas', stat.icon]" :class="stat.iconColor" />
         </div>
         <div class="min-w-0">
-          <p class="text-2xl font-bold text-gray-800 truncate">{{ stat.value }}</p>
+          <p class="text-2xl font-bold text-gray-800 truncate" :data-testid="`${stat.testId}-value`">{{ stat.value }}</p>
           <p class="text-xs text-gray-400">{{ stat.label }}</p>
-          <p v-if="stat.subtitle" class="text-[11px] text-gray-400 mt-0.5">{{ stat.subtitle }}</p>
+          <p v-if="stat.subtitle" class="text-[11px] text-gray-400 mt-0.5" :data-testid="`${stat.testId}-subtitle`">{{ stat.subtitle }}</p>
         </div>
       </component>
     </div>
@@ -155,10 +161,11 @@ import {
   faDollarSign,
   faMoneyBillWave,
   faHandHoldingDollar,
+  faBan,
 } from '@fortawesome/free-solid-svg-icons';
 
 library.add(faCalendarDay, faHourglassHalf, faExclamationTriangle, faCheckCircle, faDollarSign,
-  faMoneyBillWave, faHandHoldingDollar);
+  faMoneyBillWave, faHandHoldingDollar, faBan);
 
 interface StatTile {
   label: string;
@@ -169,6 +176,7 @@ interface StatTile {
   iconColor: string;
   borderClass: string;
   to?: RouteLocationRaw;   // when set, the tile renders as a router-link
+  testId: string;          // stat-* data-testid for specs
 }
 
 export default defineComponent({
@@ -211,6 +219,12 @@ export default defineComponent({
       const paid = props.appointments.filter((a) => a.isPaidOff).length;
       const pastDue = props.appointments.filter((a) => a.isPastDue).length;
       const pending = total - paid - pastDue;
+      // WP-34C (G3 ruling): combined Cancelled + No-Show tile, keyed on appointmentStatusId
+      // (3 = Cancelled, 5 = NoShow — FK ids from the AppointmentStatus lookup seed; ids are
+      // the robust representation, statusName strings are admin-editable lookup values).
+      // Same id predicate as the AppointmentsList "Cancelled" filter tab.
+      const cancelled = props.appointments.filter((a) => a.appointmentStatusId === 3).length;
+      const noShow = props.appointments.filter((a) => a.appointmentStatusId === 5).length;
 
       const tiles: StatTile[] = [
         {
@@ -220,6 +234,7 @@ export default defineComponent({
           iconBg: 'bg-violet-100',
           iconColor: 'text-violet-600',
           borderClass: 'border-gray-200',
+          testId: 'stat-todays-appointments',
         },
         {
           label: 'Paid Off',
@@ -228,6 +243,7 @@ export default defineComponent({
           iconBg: 'bg-green-100',
           iconColor: 'text-green-600',
           borderClass: 'border-gray-200',
+          testId: 'stat-paid-off',
         },
         {
           label: 'Pending Payment',
@@ -236,6 +252,7 @@ export default defineComponent({
           iconBg: 'bg-amber-100',
           iconColor: 'text-amber-600',
           borderClass: 'border-gray-200',
+          testId: 'stat-pending-payment',
         },
         {
           label: 'Past Due',
@@ -244,6 +261,21 @@ export default defineComponent({
           iconBg: 'bg-red-100',
           iconColor: 'text-red-600',
           borderClass: pastDue > 0 ? 'border-red-200' : 'border-gray-200',
+          testId: 'stat-past-due',
+        },
+        {
+          // WP-34C: always-on (rides Dashboard.View like the 4 tiles above — shows 0 on a
+          // clean day, matching their behavior). Links to the EXISTING Cancelled/No-Show
+          // filter tab on the Appointments view (no new view or filter built).
+          label: 'Cancelled / No-Show',
+          value: cancelled + noShow,
+          subtitle: `${cancelled} cancelled · ${noShow} no-show`,
+          icon: 'ban',
+          iconBg: 'bg-slate-100',
+          iconColor: 'text-slate-500',
+          borderClass: 'border-gray-200',
+          to: { path: '/appointments', query: { filter: 'cancelled' } },
+          testId: 'stat-cancelled-noshow',
         },
       ];
 
@@ -258,6 +290,7 @@ export default defineComponent({
           iconColor: 'text-sky-600',
           borderClass: summary.totalPending > 0 ? 'border-sky-200' : 'border-gray-200',
           to: { path: '/therapists', query: { tab: 'pending-pay' } },
+          testId: 'stat-pending-therapist-pay',
         });
       }
 
@@ -273,6 +306,7 @@ export default defineComponent({
           iconColor: 'text-rose-600',
           borderClass: receivable > 0 ? 'border-rose-200' : 'border-gray-200',
           to: { path: '/patients', query: { tab: 'delinquent' } },
+          testId: 'stat-pending-caretaker-pay',
         });
       }
 
