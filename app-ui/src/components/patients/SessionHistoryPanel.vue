@@ -15,6 +15,32 @@
     </div>
 
     <template v-else-if="result">
+      <!-- WP-35 money addendum: overall totals band — server-aggregated over the FULL filtered
+           set (respects search; no client math). Counts always show; money tiles only when the
+           API sent the fields (claim-shaped away for FD/ACCT, absent on an older API). -->
+      <div class="flex flex-wrap gap-3" data-testid="session-history-totals-band">
+        <div class="bg-white rounded-xl border border-slate-200 px-4 py-2">
+          <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Patients</p>
+          <p class="text-sm font-semibold text-slate-800" data-testid="session-history-totals-patients">{{ result.totalCount }}</p>
+        </div>
+        <div v-if="result.totals" class="bg-white rounded-xl border border-slate-200 px-4 py-2">
+          <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Sessions</p>
+          <p class="text-sm font-semibold text-slate-800" data-testid="session-history-totals-sessions">{{ result.totals.sessionCount }}</p>
+        </div>
+        <div v-if="result.totals?.grossAmount !== undefined" class="bg-white rounded-xl border border-slate-200 px-4 py-2">
+          <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Gross</p>
+          <p class="text-sm font-semibold text-slate-800" data-testid="session-history-totals-gross">{{ formatCurrency(result.totals.grossAmount) }}</p>
+        </div>
+        <div v-if="result.totals?.discountAmount !== undefined" class="bg-white rounded-xl border border-slate-200 px-4 py-2">
+          <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Discounts</p>
+          <p class="text-sm font-semibold text-slate-800" data-testid="session-history-totals-discount">{{ formatCurrency(result.totals.discountAmount) }}</p>
+        </div>
+        <div v-if="result.totals?.grossProfit !== undefined" class="bg-white rounded-xl border border-slate-200 px-4 py-2">
+          <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Gross Profit</p>
+          <p class="text-sm font-semibold text-slate-800" data-testid="session-history-totals-gross-profit">{{ formatCurrency(result.totals.grossProfit) }}</p>
+        </div>
+      </div>
+
       <!-- Desktop table -->
       <div class="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
         <table class="w-full">
@@ -26,6 +52,13 @@
               <th class="px-4 py-3 text-left text-xs font-semibold text-blue-700 uppercase tracking-wider">From</th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-blue-700 uppercase tracking-wider">Last Session</th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-blue-700 uppercase tracking-wider">Total Sessions</th>
+              <!-- WP-35 money addendum: columns exist only when the API sent the fields
+                   (claim-shaped for FD/ACCT; absent on an older API) -->
+              <template v-if="hasMoney">
+                <th class="px-4 py-3 text-right text-xs font-semibold text-blue-700 uppercase tracking-wider">Gross</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold text-blue-700 uppercase tracking-wider">Discount</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold text-blue-700 uppercase tracking-wider">Gross Profit</th>
+              </template>
               <th class="px-4 py-3 w-10"></th>
             </tr>
           </thead>
@@ -56,6 +89,17 @@
                     {{ p.totalSessions }}
                   </span>
                 </td>
+                <template v-if="hasMoney">
+                  <td class="px-4 py-3 text-sm text-right text-slate-600" data-testid="session-history-gross">
+                    {{ p.grossAmount !== undefined ? formatCurrency(p.grossAmount) : '—' }}
+                  </td>
+                  <td class="px-4 py-3 text-sm text-right" :class="(p.discountAmount ?? 0) > 0 ? 'text-green-600' : 'text-slate-400'" data-testid="session-history-discount">
+                    {{ p.discountAmount !== undefined ? formatCurrency(p.discountAmount) : '—' }}
+                  </td>
+                  <td class="px-4 py-3 text-sm text-right text-slate-600" data-testid="session-history-gross-profit">
+                    {{ p.grossProfit !== undefined ? formatCurrency(p.grossProfit) : '—' }}
+                  </td>
+                </template>
                 <!-- WP-35 (SH-3): print/save-as-PDF for this patient's sessions -->
                 <td class="px-4 py-3 text-right">
                   <button
@@ -75,13 +119,13 @@
               </tr>
               <tr v-if="expanded.has(p.patientId)" class="bg-slate-50/40">
                 <td class="px-4 py-2"></td>
-                <td colspan="6" class="px-4 py-2">
+                <td :colspan="hasMoney ? 9 : 6" class="px-4 py-2">
                   <PatientSessionsTable :patient-id="p.patientId" />
                 </td>
               </tr>
             </template>
             <tr v-if="result.items.length === 0">
-              <td colspan="7" class="px-4 py-12 text-center text-sm text-slate-400">
+              <td :colspan="hasMoney ? 10 : 7" class="px-4 py-12 text-center text-sm text-slate-400">
                 No patients found.
               </td>
             </tr>
@@ -135,6 +179,14 @@
               <span class="mx-1 text-slate-300">·</span>
               <span class="font-medium">Last:</span> {{ formatDate(p.lastSessionDate ?? '') || '—' }}
             </div>
+            <!-- WP-35 money addendum: per-patient money line, only when the API sent it -->
+            <div v-if="p.grossAmount !== undefined" class="mt-1 text-xs text-slate-500" data-testid="session-history-money-mobile">
+              <span class="font-medium">Gross:</span> {{ formatCurrency(p.grossAmount) }}
+              <span class="mx-1 text-slate-300">·</span>
+              <span class="font-medium">Disc:</span> {{ p.discountAmount !== undefined ? formatCurrency(p.discountAmount) : '—' }}
+              <span class="mx-1 text-slate-300">·</span>
+              <span class="font-medium">GP:</span> {{ p.grossProfit !== undefined ? formatCurrency(p.grossProfit) : '—' }}
+            </div>
           </div>
           <div v-if="expanded.has(p.patientId)" class="border-t border-slate-100 p-2">
             <PatientSessionsTable :patient-id="p.patientId" />
@@ -178,8 +230,9 @@
 
 <script lang="ts">
 import { defineComponent, ref, computed, onMounted, watch } from 'vue';
-import type { PagedResult, PatientSessionHistorySummary } from '../../interfaces/SessionHistory';
+import type { PatientSessionHistorySummary, SessionHistoryPagedResult } from '../../interfaces/SessionHistory';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
+import { formatCurrency } from '../../utils/formatCurrency';
 import PatientSessionsTable from './PatientSessionsTable.vue';
 import SessionHistoryPrintDialog from './SessionHistoryPrintDialog.vue';
 
@@ -196,7 +249,7 @@ export default defineComponent({
   },
   setup(props) {
     const client = new PatientsHttpClient();
-    const result = ref<PagedResult<PatientSessionHistorySummary> | null>(null);
+    const result = ref<SessionHistoryPagedResult | null>(null);
     const page = ref(1);
     const loading = ref(false);
     const error = ref('');
@@ -205,6 +258,17 @@ export default defineComponent({
     const totalPages = computed(() =>
       result.value ? Math.max(1, Math.ceil(result.value.totalCount / result.value.pageSize)) : 1,
     );
+
+    // WP-35 money addendum: money columns render only when the API actually sent the fields.
+    // Presence in the payload is the single gate — it covers claim-shaping (FD/ACCT get the
+    // keys omitted server-side) AND an older API during rollout, same tolerance discipline
+    // as firstSessionDate. Shaping is all-or-nothing per response, so any row (or the totals
+    // object) carrying grossAmount means the caller holds the claim.
+    const hasMoney = computed(() => {
+      const r = result.value;
+      if (!r) return false;
+      return r.totals?.grossAmount !== undefined || r.items.some((p) => p.grossAmount !== undefined);
+    });
 
     const load = async (targetPage: number) => {
       loading.value = true;
@@ -257,7 +321,7 @@ export default defineComponent({
 
     onMounted(() => load(1));
 
-    return { result, page, loading, error, expanded, totalPages, load, toggleExpand, formatDate, printPatient, openPrint };
+    return { result, page, loading, error, expanded, totalPages, hasMoney, load, toggleExpand, formatDate, formatCurrency, printPatient, openPrint };
   },
 });
 </script>

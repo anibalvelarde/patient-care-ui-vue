@@ -2,7 +2,7 @@
 import { HttpClientBase } from './HttpClientBase';
 import type { Patient, PatientCreateRequest, PatientUpdateRequest, PatientCaretakerSummary, PatientLookupItem } from '../interfaces/Patient';
 import type { DelinquentPatient } from '../interfaces/Delinquency';
-import type { PagedResult, PatientSessionHistorySummary, PatientHistorySession } from '../interfaces/SessionHistory';
+import type { PagedResult, PatientHistorySession, SessionHistoryPagedResult } from '../interfaces/SessionHistory';
 import type { PatientMergeRequest, PatientMergePreview, PatientMergeResult } from '../interfaces/PatientMerge';
 
 // WP-30 (U2): shared query shape for the paged list endpoints.
@@ -50,10 +50,12 @@ export class PatientsHttpClient extends HttpClientBase {
   }
 
   // WP-21 (F1): paged patient summaries ordered by most-recent-session first.
-  async getSessionHistory(search: string, page: number, pageSize = 30): Promise<PagedResult<PatientSessionHistorySummary>> {
+  // WP-35 money addendum: the envelope now carries `totals` over the full filtered set;
+  // money keys (rows + totals) are absent without Appointments.ProviderAmount.
+  async getSessionHistory(search: string, page: number, pageSize = 30): Promise<SessionHistoryPagedResult> {
     const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
     if (search.trim()) params.set('search', search.trim());
-    return this.get<PagedResult<PatientSessionHistorySummary>>(`/api/patients/session-history?${params.toString()}`);
+    return this.get<SessionHistoryPagedResult>(`/api/patients/session-history?${params.toString()}`);
   }
 
   // WP-21 (F1): one patient's paged sessions, newest first.

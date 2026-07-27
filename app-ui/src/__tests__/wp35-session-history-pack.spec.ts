@@ -18,7 +18,7 @@ import { createRouter, createMemoryHistory, type Router } from 'vue-router';
 import SessionHistoryPanel from '../components/patients/SessionHistoryPanel.vue';
 import PatientSessionsTable from '../components/patients/PatientSessionsTable.vue';
 import SessionHistoryPrintDialog from '../components/patients/SessionHistoryPrintDialog.vue';
-import type { PagedResult, PatientSessionHistorySummary, PatientHistorySession } from '../interfaces/SessionHistory';
+import type { PagedResult, PatientSessionHistorySummary, PatientHistorySession, SessionHistoryPagedResult } from '../interfaces/SessionHistory';
 
 const { getSessionHistoryMock, getPatientSessionsMock } = vi.hoisted(() => ({
   getSessionHistoryMock: vi.fn(),
@@ -46,8 +46,8 @@ function summary(overrides: Partial<PatientSessionHistorySummary> = {}): Patient
   };
 }
 
-function summaryPage(items: PatientSessionHistorySummary[]): PagedResult<PatientSessionHistorySummary> {
-  return { items, page: 1, pageSize: 30, totalCount: items.length };
+function summaryPage(items: PatientSessionHistorySummary[], extra: Partial<SessionHistoryPagedResult> = {}): SessionHistoryPagedResult {
+  return { items, page: 1, pageSize: 30, totalCount: items.length, ...extra };
 }
 
 function session(overrides: Partial<PatientHistorySession> = {}): PatientHistorySession {
@@ -110,6 +110,7 @@ beforeEach(() => {
 
 afterEach(() => {
   document.body.classList.remove('shp-print-mode');
+  vi.useRealTimers();
 });
 
 // ---------- SH-1: From/Through on the summary row ----------
@@ -143,6 +144,98 @@ describe('SH-1 — From (first-session) date on the summary row', () => {
 
     expect(w.find('[data-testid="session-history-from"]').text()).toBe('—');
     expect(w.text()).toContain('Old-Api, Row'); // row still renders, no crash
+  });
+});
+
+// ---------- Money addendum: per-patient columns + overall totals band ----------
+// The money keys ride Appointments.ProviderAmount: the API OMITS them from the wire for
+// FD/ACCT (not null, not 0). Presence-in-payload is the UI's single render gate — it covers
+// both claim-shaping and an older API during rollout.
+
+describe('Money addendum — columns and band when the API sends money', () => {
+  const MONEY_TOTALS = { sessionCount: 10930, grossAmount: 667293.5, discountAmount: 1200, grossProfit: 52000.75 };
+
+  it('renders Gross / Discount / Gross Profit columns with house currency formatting', async () => {
+    getSessionHistoryMock.mockResolvedValue(summaryPage(
+      [summary({ grossAmount: 1350.5, discountAmount: 25, grossProfit: 400.25 })],
+      { totals: MONEY_TOTALS },
+    ));
+    const w = await mountPanel();
+
+    expect(w.text()).toContain('Gross Profit'); // column header present
+    expect(w.find('[data-testid="session-history-gross"]').text()).toBe('$1,350.50');
+    expect(w.find('[data-testid="session-history-discount"]').text()).toBe('$25.00');
+    expect(w.find('[data-testid="session-history-gross-profit"]').text()).toBe('$400.25');
+    // mobile card money line too
+    expect(w.find('[data-testid="session-history-money-mobile"]').exists()).toBe(true);
+  });
+
+  it('band shows patient count, session count, and the SERVER totals (full filtered set, not client row math)', async () => {
+    // Row money deliberately does NOT sum to the totals — the band must echo the envelope.
+    getSessionHistoryMock.mockResolvedValue(summaryPage(
+      [summary({ grossAmount: 1350.5, discountAmount: 25, grossProfit: 400.25 })],
+      { totalCount: 866, totals: MONEY_TOTALS },
+    ));
+    const w = await mountPanel();
+
+    expect(w.find('[data-testid="session-history-totals-patients"]').text()).toBe('866');
+    expect(w.find('[data-testid="session-history-totals-sessions"]').text()).toBe('10930');
+    expect(w.find('[data-testid="session-history-totals-gross"]').text()).toBe('$667,293.50');
+    expect(w.find('[data-testid="session-history-totals-discount"]').text()).toBe('$1,200.00');
+    expect(w.find('[data-testid="session-history-totals-gross-profit"]').text()).toBe('$52,000.75');
+  });
+
+  it('band re-renders from the fresh envelope when the search changes', async () => {
+    getSessionHistoryMock.mockResolvedValue(summaryPage(
+      [summary({ grossAmount: 1350.5, discountAmount: 25, grossProfit: 400.25 })],
+      { totalCount: 866, totals: MONEY_TOTALS },
+    ));
+    const w = await mountPanel();
+    expect(w.find('[data-testid="session-history-totals-gross"]').text()).toBe('$667,293.50');
+
+    // Narrowed search → the server aggregates the filtered set and returns smaller totals.
+    getSessionHistoryMock.mockResolvedValue(summaryPage(
+      [summary({ grossAmount: 1350.5, discountAmount: 25, grossProfit: 400.25 })],
+      { totalCount: 1, totals: { sessionCount: 3, grossAmount: 1350.5, discountAmount: 25, grossProfit: 400.25 } },
+    ));
+    vi.useFakeTimers(); // the panel's search watch debounces via a real setTimeout
+    await w.setProps({ search: 'anderson' });
+    vi.advanceTimersByTime(300);
+    await flushPromises();
+
+    expect(getSessionHistoryMock).toHaveBeenLastCalledWith('anderson', 1, 30);
+    expect(w.find('[data-testid="session-history-totals-patients"]').text()).toBe('1');
+    expect(w.find('[data-testid="session-history-totals-sessions"]').text()).toBe('3');
+    expect(w.find('[data-testid="session-history-totals-gross"]').text()).toBe('$1,350.50');
+  });
+});
+
+describe('Money addendum — counts-only callers and older APIs', () => {
+  it('FD/ACCT shaping: money keys absent → no money columns and no $ in the band, counts still shown', async () => {
+    // summary() carries no money keys, mirroring the shaped wire (omitted, not 0).
+    getSessionHistoryMock.mockResolvedValue(summaryPage(
+      [summary()],
+      { totalCount: 866, totals: { sessionCount: 10930 } },
+    ));
+    const w = await mountPanel();
+
+    expect(w.find('[data-testid="session-history-gross"]').exists()).toBe(false);
+    expect(w.find('[data-testid="session-history-money-mobile"]').exists()).toBe(false);
+    expect(w.text()).not.toContain('Gross'); // neither column headers nor band tiles
+    const band = w.find('[data-testid="session-history-totals-band"]');
+    expect(band.find('[data-testid="session-history-totals-patients"]').text()).toBe('866');
+    expect(band.find('[data-testid="session-history-totals-sessions"]').text()).toBe('10930');
+    expect(band.text()).not.toContain('$'); // absent means absent — never $0.00
+  });
+
+  it('older API (plain PagedResult, no totals at all): page still renders, band shows the patient count only', async () => {
+    getSessionHistoryMock.mockResolvedValue(summaryPage([summary()]) as PagedResult<PatientSessionHistorySummary>);
+    const w = await mountPanel();
+
+    expect(w.text()).toContain('Anderson, Amy'); // no crash
+    expect(w.find('[data-testid="session-history-totals-patients"]').text()).toBe('1');
+    expect(w.find('[data-testid="session-history-totals-sessions"]').exists()).toBe(false);
+    expect(w.find('[data-testid="session-history-totals-band"]').text()).not.toContain('$');
   });
 });
 

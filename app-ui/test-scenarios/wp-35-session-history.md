@@ -83,6 +83,26 @@ and printing still works (the From picker simply isn't clamped at the lower end)
    narrowed range.
 3. A range with no sessions in it prints a page saying "No sessions in the selected range."
 
+## Scenario 7 — lifetime money columns + page totals band (claim-gated)
+
+> Needs the WP-35B money addendum deployed API-side. Money visibility rides the existing
+> **Appointments.ProviderAmount** claim (MGR/AM/OWN see it; FD/ACCT don't) — no re-login
+> change, no new permission.
+
+1. Sign in as **MGR** and open **Patients › Session History**.
+2. Above the list, a **totals band** shows: **Patients** (all matching patients), **Sessions**,
+   **Gross**, **Discounts**, **Gross Profit** — aggregated over the WHOLE filtered census,
+   not just the visible page.
+3. Each patient row now also has **Gross / Discount / Gross Profit** columns (lifetime sums,
+   any status) next to Total Sessions; the mobile card gains a `Gross · Disc · GP` line.
+4. **Type a search** (e.g. a family name): as the list narrows, watch the band's numbers
+   shrink to just the matching patients — they always describe everything the search matches,
+   even across multiple pages.
+5. Sign in as **FD** (front desk): the page still works — Patients and Sessions counts show in
+   the band, but there are **no money columns and no $ figures anywhere** (not even $0.00 —
+   the API omits the fields entirely). No error, no 403.
+6. Nowhere on this page (screen or the printed report) does a Provider amount appear.
+
 ## Notes
 
 - No new permission — everything rides `Patients.View`, no re-login needed.
