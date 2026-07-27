@@ -146,11 +146,15 @@ beforeEach(() => {
 // ── BookingFormModal ─────────────────────────────────────────────────────────
 
 type BookingVm = {
-  form: { patientId: number; specialtyTypeId: number; amount: number; discount: number };
+  form: { patientId: number; specialtyTypeId: number; duration: number };
   senadisPatient: boolean;
-  senadisFloor: number;
   caretakerWarning: boolean;
   isValid: boolean;
+  // WP-40: money is derived + read-only in the booking form.
+  derivedAmount: number | null;
+  derivedDiscount: number;
+  amountSource: string;
+  missingPrice: boolean;
 };
 
 async function openBookingModal(pinia: Pinia) {
@@ -163,61 +167,61 @@ async function openBookingModal(pinia: Pinia) {
   return wrapper;
 }
 
-describe('BookingFormModal — F6 default-price pre-fill', () => {
-  it('pre-fills Amount from the specialty defaultAmount and refills on change', async () => {
+describe('BookingFormModal — F6 default-price fallback (WP-40: derived, read-only)', () => {
+  it('derives Amount from the specialty defaultAmount when no duration row exists — and blocks when neither exists', async () => {
     const wrapper = await openBookingModal(authAs('MGR'));
     const vm = wrapper.vm as unknown as BookingVm;
 
-    vm.form.specialtyTypeId = 6; // TL, defaultAmount 65
+    vm.form.specialtyTypeId = 6; // TL, defaultAmount 65, no duration rows
     await flushPromises();
-    expect(vm.form.amount).toBe(65);
+    expect(vm.derivedAmount).toBe(65);
+    expect(vm.amountSource).toBe('defaultAmount'); // G2 badge path
+    expect(wrapper.find('[data-testid="default-amount-badge"]').exists()).toBe(true);
 
-    // NULL default leaves the amount alone (user may have typed one already)
-    vm.form.amount = 42;
+    // No duration row AND null default ⇒ G4 missing-price block
     vm.form.specialtyTypeId = 2; // FS, defaultAmount null
     await flushPromises();
-    expect(vm.form.amount).toBe(42);
+    expect(vm.derivedAmount).toBeNull();
+    expect(vm.missingPrice).toBe(true);
+    expect(vm.isValid).toBe(false);
+    expect(wrapper.find('[data-testid="missing-price-block"]').exists()).toBe(true);
   });
 });
 
-describe('BookingFormModal — F7 SENADIS floor + toast', () => {
-  it('flags the patient, toasts once, and clamps the discount to 20% of amount', async () => {
+describe('BookingFormModal — F7 SENADIS (WP-40: derived exact-20%, no toast/clamp)', () => {
+  it('derives the discount to exactly 20% of the derived amount and submits the derived money', async () => {
     const pinia = authAs('MGR');
     const wrapper = await openBookingModal(pinia);
     const vm = wrapper.vm as unknown as BookingVm;
     const notifications = useNotificationsStore();
 
     vm.form.patientId = FLAGGED_ID;
+    vm.form.specialtyTypeId = 6; // defaultAmount 65
     await flushPromises();
 
     expect(vm.senadisPatient).toBe(true);
-    const senadisToasts = notifications.items.filter((n) => n.message.includes('SENADIS'));
-    expect(senadisToasts).toHaveLength(1);
+    // WP-40: the toast is gone — the in-place "SENADIS 20% applied" badge explains it.
+    expect(notifications.items.filter((n) => n.message.includes('SENADIS'))).toHaveLength(0);
+    expect(wrapper.find('[data-testid="senadis-applied-badge"]').exists()).toBe(true);
+    expect(vm.derivedDiscount).toBe(13); // round(0.20 × 65, 2)
 
-    vm.form.amount = 100;
-    await flushPromises();
-    expect(vm.senadisFloor).toBe(20);
-    expect(vm.form.discount).toBe(20); // re-clamped when the amount moved the floor
-
-    // submit clamps a below-floor discount before sending; server floors too
-    vm.form.discount = 5;
     (wrapper.vm as unknown as { handleSubmit: () => Promise<void> }).handleSubmit();
     await flushPromises();
-    expect(createSessionMock).toHaveBeenCalledWith(expect.objectContaining({ discount: 20 }));
+    expect(createSessionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 65, discount: 13 }));
   });
 
-  it('leaves unflagged patients untouched', async () => {
+  it('derives 0 for unflagged patients regardless of the amount', async () => {
     const wrapper = await openBookingModal(authAs('MGR'));
     const vm = wrapper.vm as unknown as BookingVm;
 
     vm.form.patientId = UNFLAGGED_ID;
-    await flushPromises();
-    vm.form.amount = 100;
-    vm.form.discount = 5;
+    vm.form.specialtyTypeId = 6;
     await flushPromises();
 
     expect(vm.senadisPatient).toBe(false);
-    expect(vm.form.discount).toBe(5);
+    expect(vm.derivedDiscount).toBe(0);
+    expect(wrapper.find('[data-testid="senadis-applied-badge"]').exists()).toBe(false);
   });
 });
 

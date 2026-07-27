@@ -123,15 +123,15 @@ export default defineComponent({
       saving.value = true;
       errorMsg.value = '';
       try {
+        // WP-40: duration OMITTED (keeps the stored value — the old hardcoded 60 silently
+        // overwrote legacy durations); providerAmount no longer sent (server-derived).
         await sessionsClient.updateSession(props.session.sessionId, {
           therapistId: selectedTherapistId.value,
           sessionTime: props.session.sessionTime,
           therapyType: props.session.therapyTypes || 'N/A',
-          duration: 60,
           amount: props.session.amount,
           amountPaid: props.session.amountPaid,
           discount: props.session.discount,
-          providerAmount: props.session.providerAmount,
           isPaidOff: props.session.isPaidOff,
           notes: props.session.notes || '',
           appointmentStatusId: props.session.appointmentStatusId,

@@ -81,31 +81,68 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">Duration (min)</label>
-              <input v-model.number="form.duration" type="number" min="15" step="15" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500" />
+              <!-- WP-40 (BK-1): fixed bookable durations — the API 400s anything else. -->
+              <select v-model.number="form.duration" data-testid="duration-select" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500">
+                <option v-for="d in bookableDurations" :key="d" :value="d">{{ d }}</option>
+              </select>
             </div>
           </div>
 
-          <!-- Amount & Discount -->
+          <!-- WP-40 (BK-2): money is DERIVED, read-only — Amount from the WP-39 price sheet
+               (duration row → default), Discount from SENADIS applicability, ProviderAmt from
+               the therapist's fee model. The API re-derives authoritatively at booking. -->
           <div class="grid grid-cols-3 gap-3">
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">Amount</label>
-              <input v-model.number="form.amount" type="number" min="0" step="0.01" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500" />
+              <p data-testid="derived-amount" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
+                {{ derivedAmount != null ? '$' + derivedAmount.toFixed(2) : '—' }}
+              </p>
             </div>
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">Discount</label>
-              <!-- WP-23 (F7): min rides the SENADIS floor; the clamp re-applies on amount/patient change and at submit.
-                   WP-37 (SEN-1/G2): floor/min/hint only while the SENADIS is active for the chosen
-                   session date — expired ⇒ no floor at all, amber badge explains why (G3). -->
-              <input v-model.number="form.discount" type="number" :min="senadisFloor" step="0.01" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500" />
-              <p v-if="senadisActive" class="mt-1 text-xs text-violet-600">SENADIS: min {{ senadisFloor.toFixed(2) }} (20%)</p>
-              <p v-else-if="senadisExpired" data-testid="senadis-expired-badge" class="mt-1 text-xs font-medium text-amber-600">
-                SENADIS expired {{ formatSenadisExpiry(senadisExpiry) }} — no discount floor for this session date.
+              <p data-testid="derived-discount" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
+                ${{ derivedDiscount.toFixed(2) }}
               </p>
             </div>
-            <!-- WP-17C: cosmetic only — the API still returns ProviderAmount to anyone with Appointments.View; true field-level enforcement needs API response-shaping (deferred). -->
+            <!-- WP-17C: cosmetic only — true field-level enforcement is the API's ProviderAmount response-shaping. -->
             <div v-if="hasClaim('Permission', Permissions.AppointmentsProviderAmount)">
               <label class="block text-sm font-medium text-slate-700 mb-1">Provider Amt</label>
-              <input v-model.number="form.providerAmount" type="number" min="0" step="0.01" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500" />
+              <p data-testid="derived-provider-amount" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
+                ${{ derivedProviderAmount.toFixed(2) }}
+              </p>
+            </div>
+          </div>
+
+          <!-- WP-40 money signals -->
+          <div class="space-y-1">
+            <p v-if="missingPrice" data-testid="missing-price-block" class="text-xs font-medium text-red-600">
+              No price configured for {{ selectedSpecialty?.name }} at {{ form.duration }} min — ask a manager to set it in Admin.
+            </p>
+            <p v-else-if="amountSource === 'defaultAmount'" data-testid="default-amount-badge" class="text-xs font-medium text-amber-600">
+              No pricing configured for this specialty/duration — using the default amount.
+            </p>
+            <p v-if="senadisActive" data-testid="senadis-applied-badge" class="text-xs text-violet-600">
+              SENADIS 20% applied ({{ derivedDiscount.toFixed(2) }})
+            </p>
+            <p v-else-if="senadisExpired" data-testid="senadis-expired-badge" class="text-xs font-medium text-amber-600">
+              SENADIS expired {{ formatSenadisExpiry(senadisExpiry) }} — no discount for this session date.
+            </p>
+          </div>
+
+          <!-- WP-40 on-site leg (dormant until OfferedOnSite flags flip) -->
+          <div v-if="selectedSpecialty?.offeredOnSite" class="rounded-lg border border-slate-200 p-3 space-y-2">
+            <label class="flex items-center gap-2 text-sm text-slate-700">
+              <input v-model="onSiteVisit" type="checkbox" data-testid="onsite-checkbox" class="rounded border-slate-300 text-violet-600 focus:ring-violet-500" />
+              On-site visit (domiciliar)
+            </label>
+            <div v-if="onSiteVisit" class="space-y-1">
+              <select v-model.number="onSiteSiteId" data-testid="onsite-site-select" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                <option :value="0" disabled>Select site...</option>
+                <option v-for="s in sites" :key="s.siteId" :value="s.siteId">{{ s.siteName }}</option>
+              </select>
+              <p v-if="onSiteSiteId > 0" data-testid="onsite-charge-line" class="text-xs text-slate-600">
+                On-site visit charge: ${{ onSiteTripCharge.toFixed(2) }}
+              </p>
             </div>
           </div>
 
@@ -152,15 +189,20 @@ import { SessionsHttpClient } from '../../services/SessionsHttpClient';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import { TherapistsHttpClient } from '../../services/TherapistsHttpClient';
 import { LookupHttpClient } from '../../services/LookupHttpClient';
+import { SitesHttpClient } from '../../services/SitesHttpClient';
 import type { SessionEventRequest } from '../../interfaces/Appointment';
 import type { Therapist } from '../../interfaces/Therapist';
 import type { LookupItem } from '../../interfaces/Lookups';
+import type { Site } from '../../interfaces/Site';
 import { isDiscoverySpecialty } from '../../interfaces/TreatmentPlan';
 import { TIME_MIN, TIME_MAX, TIME_STEP } from '../../utils/timeSlots';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import { isSenadisExpired, formatSenadisExpiry } from '../../utils/senadis';
-import { useNotificationsStore } from '../../stores/notifications';
 import LookupSelect, { type LookupOption } from '../shared/LookupSelect.vue';
+
+// WP-40 (BK-1): the fixed bookable duration set — mirrors the API's validation
+// ({30,40,45,60,90,120}; 40 added by the 2026-07-27 addendum for interview services).
+export const BOOKABLE_DURATIONS = [30, 40, 45, 60, 90, 120];
 
 export default defineComponent({
   name: 'BookingFormModal',
@@ -177,6 +219,7 @@ export default defineComponent({
     const patientsClient = new PatientsHttpClient();
     const therapistsClient = new TherapistsHttpClient();
     const lookupClient = new LookupHttpClient();
+    const sitesClient = new SitesHttpClient();
 
     // WP-30: the patient picker is a lookup typeahead; the selection drives form.patientId.
     const selectedPatient = ref<LookupOption | null>(null);
@@ -189,11 +232,15 @@ export default defineComponent({
     const senadisPatient = ref(false);
     // WP-37 (SEN-1): the flagged patient's expiry as sent by the API ("...T00:00:00" | null).
     const senadisExpiry = ref<string | null>(null);
-    const notifications = useNotificationsStore();
+    // WP-40 on-site leg (dormant while all OfferedOnSite flags are 0).
+    const onSiteVisit = ref(false);
+    const onSiteSiteId = ref(0);
+    const sites = ref<Site[]>([]);
 
     const today = new Date().toISOString().split('T')[0];
     const nowTime = new Date().toTimeString().slice(0, 5);
 
+    // WP-40 (BK-2): no money fields in the form — Amount/Discount/ProviderAmt are derived.
     const form = ref({
       patientId: 0,
       therapistId: 0,
@@ -201,9 +248,6 @@ export default defineComponent({
       sessionTime: nowTime,
       specialtyTypeId: 0,
       duration: 60,
-      amount: 0,
-      discount: 0,
-      providerAmount: 0,
       notes: '',
     });
 
@@ -254,24 +298,24 @@ export default defineComponent({
       }
     });
 
-    watch(() => form.value.specialtyTypeId, (id) => {
+    const selectedSpecialty = computed<LookupItem | null>(() =>
+      specialtyTypes.value.find(s => s.id === form.value.specialtyTypeId) ?? null
+    );
+
+    watch(() => form.value.specialtyTypeId, () => {
       if (form.value.therapistId > 0 && !filteredTherapists.value.some(t => t.therapistId === form.value.therapistId)) {
         form.value.therapistId = 0;
       }
-      // WP-23 (F6): pre-fill Amount from the specialty's default price — refills on every
-      // specialty change (user-editable after; NULL default = leave the amount alone).
-      if (id > 0) {
-        const specialty = specialtyTypes.value.find(s => s.id === id);
-        if (specialty?.defaultAmount != null) {
-          form.value.amount = specialty.defaultAmount;
-        }
+      // WP-40: the on-site choice only survives while the specialty offers it.
+      if (!selectedSpecialty.value?.offeredOnSite) {
+        onSiteVisit.value = false;
+        onSiteSiteId.value = 0;
       }
     });
 
-    // WP-37 (SEN-1/G2): the floor applies only while the SENADIS is active for the SESSION DATE
-    // being booked — no expiry (null) = always active; boundary (session date == expiry) still
-    // floors; expired ⇒ no floor/min/clamp and the badge explains why. Re-evaluates when the
-    // user changes the booking date. The flag itself is never auto-cleared (G3).
+    // WP-37 (SEN-1/G2): SENADIS applies only while active for the SESSION DATE being booked —
+    // no expiry (null) = always active; boundary (session date == expiry) still applies;
+    // expired ⇒ no discount and the badge explains why. The flag is never auto-cleared (G3).
     const senadisActive = computed(
       () => senadisPatient.value && !isSenadisExpired(senadisExpiry.value, form.value.sessionDate)
     );
@@ -279,23 +323,66 @@ export default defineComponent({
       () => senadisPatient.value && isSenadisExpired(senadisExpiry.value, form.value.sessionDate)
     );
 
-    // WP-23 (F7): statutory SENADIS floor — 20% of Amount, 2dp; 0 for unflagged patients
-    // (and, as of WP-37, for flagged-but-expired ones).
-    const senadisFloor = computed(() =>
-      senadisActive.value ? Math.round(0.20 * form.value.amount * 100) / 100 : 0
+    // WP-40 (BK-2): client-side mirror of the WP-39 price resolution — duration row →
+    // defaultAmount → none. UX preview only; the API re-derives authoritatively at the
+    // session date (the lookup projection is current-effective as of today).
+    const priceRow = computed(() =>
+      (selectedSpecialty.value?.durationPrices ?? []).find(p => p.durationMinutes === form.value.duration) ?? null
+    );
+    const amountSource = computed<'durationPrice' | 'defaultAmount' | 'none'>(() => {
+      if (!selectedSpecialty.value) return 'none';
+      if (priceRow.value) return 'durationPrice';
+      if (selectedSpecialty.value.defaultAmount != null) return 'defaultAmount';
+      return 'none';
+    });
+    const derivedAmount = computed<number | null>(() =>
+      priceRow.value?.amount ?? selectedSpecialty.value?.defaultAmount ?? null
+    );
+    // G4: a selected specialty with no resolvable price blocks the booking.
+    const missingPrice = computed(() =>
+      form.value.specialtyTypeId > 0 && amountSource.value === 'none'
     );
 
-    const applySenadisFloor = () => {
-      if (senadisActive.value && form.value.discount < senadisFloor.value) {
-        form.value.discount = senadisFloor.value;
+    // G2 ruling: derived discount — exactly 20% when SENADIS is active, else exactly 0.
+    const derivedDiscount = computed(() =>
+      senadisActive.value && derivedAmount.value != null
+        ? Math.round(0.20 * derivedAmount.value * 100) / 100
+        : 0
+    );
+
+    // Fee preview from the selected therapist's model (flat when pct = 0, else % of net).
+    // Display-gated behind Appointments.ProviderAmount; the API recomputes regardless.
+    const derivedProviderAmount = computed(() => {
+      const t = therapists.value.find(x => x.therapistId === form.value.therapistId);
+      if (!t || derivedAmount.value == null) return 0;
+      const net = derivedAmount.value - derivedDiscount.value;
+      const fee = t.feePctPerSession === 0 ? t.feePerSession : net * t.feePctPerSession;
+      return Math.round(fee * 100) / 100;
+    });
+
+    const onSiteTripCharge = computed(() =>
+      sites.value.find(s => s.siteId === onSiteSiteId.value)?.onSiteTripChargeAmount ?? 0
+    );
+
+    // Lazy: sites are only needed once the (dormant) on-site checkbox is first used.
+    watch(onSiteVisit, async (checked) => {
+      if (checked && sites.value.length === 0) {
+        try {
+          sites.value = await sitesClient.getSites();
+        } catch {
+          // Non-fatal — the select stays empty and submit stays blocked
+        }
       }
-    };
+    });
 
     // WP-23 (F10): the caretaker check is now a hard block (was a soft warning) — the API
     // enforces the same rule with a 400, this keeps the modal honest before submit.
+    // WP-40: missing price (G4) also blocks; an on-site visit needs a site.
     const isValid = computed(() => {
       return form.value.patientId > 0 && form.value.therapistId > 0 && form.value.specialtyTypeId > 0
-        && !caretakerWarning.value;
+        && !caretakerWarning.value
+        && !missingPrice.value
+        && (!onSiteVisit.value || onSiteSiteId.value > 0);
     });
 
     const loadDropdowns = async () => {
@@ -362,23 +449,16 @@ export default defineComponent({
         // (a flagged-but-expired patient gets the badge instead — no floor).
         senadisPatient.value = patient.hasSenadisDiscount === true;
         senadisExpiry.value = patient.senadisExpirationDate ?? null;
-        if (senadisActive.value) {
-          notifications.info('SENADIS: statutory 20% discount applied — it cannot be reduced.');
-          applySenadisFloor();
-        }
+        // WP-40: no toast/clamp — the discount is a derived read-only display and the
+        // "SENADIS 20% applied" badge explains it in place.
       } catch {
         needsDiscovery.value = false; // Fail open — don't block booking
-        senadisPatient.value = false; // (the API floors server-side regardless)
+        senadisPatient.value = false; // (the API derives server-side regardless)
         senadisExpiry.value = null;
       }
     };
 
     watch(() => form.value.patientId, (id) => { checkCaretaker(id); checkDiscovery(id); });
-    // WP-23 (F7): re-clamp when the amount moves the floor.
-    watch(() => form.value.amount, applySenadisFloor);
-    // WP-37 (G2): re-clamp when the session date crosses back on/before the expiry (the floor
-    // computed lifts on its own when the date crosses past it — an existing discount is kept).
-    watch(() => form.value.sessionDate, applySenadisFloor);
     watch(form, () => { saveError.value = ''; }, { deep: true });
 
     watch(() => props.visible, (val) => {
@@ -392,6 +472,8 @@ export default defineComponent({
         if (props.preSelectPatientId > 0) {
           loadPreselectedPatient(props.preSelectPatientId);
         }
+        onSiteVisit.value = false;
+        onSiteSiteId.value = 0;
         form.value = {
           patientId: props.preSelectPatientId || 0,
           therapistId: 0,
@@ -399,9 +481,6 @@ export default defineComponent({
           sessionTime: props.isWalkIn ? nowTime : '09:00',
           specialtyTypeId: 0,
           duration: 60,
-          amount: 0,
-          discount: 0,
-          providerAmount: 0,
           notes: props.isWalkIn ? 'Walk-in patient' : '',
         };
       }
@@ -410,8 +489,9 @@ export default defineComponent({
     const handleSubmit = async () => {
       saving.value = true;
       saveError.value = '';
-      applySenadisFloor(); // WP-23 (F7): last-line clamp; the API floors server-side too
       try {
+        // WP-40: the money values sent are the derived preview — the API ignores them and
+        // re-derives from the price sheet + SENADIS rule + fee model (contract note).
         const request: SessionEventRequest = {
           sessionDate: form.value.sessionDate,
           sessionTime: form.value.sessionTime + ':00',
@@ -419,13 +499,15 @@ export default defineComponent({
           therapistId: form.value.therapistId,
           therapyType: 'N/A', // backward compat — API resolves from specialtyTypeId
           duration: form.value.duration,
-          amount: form.value.amount,
-          discount: form.value.discount,
-          providerAmount: form.value.providerAmount,
+          amount: derivedAmount.value ?? 0,
+          discount: derivedDiscount.value,
+          providerAmount: derivedProviderAmount.value,
           isPaidOff: false,
           notes: form.value.notes,
           appointmentStatusId: props.isWalkIn ? 6 : 1, // CheckedIn for walk-in, Proposed for booking
           specialtyTypeId: form.value.specialtyTypeId,
+          isOnSiteVisit: onSiteVisit.value,
+          siteId: onSiteVisit.value ? onSiteSiteId.value : undefined,
         };
         await sessionsClient.createSession(request);
         emit('saved');
@@ -437,7 +519,7 @@ export default defineComponent({
       }
     };
 
-    return { form, selectedPatient, fetchPatientOptions, filteredTherapists, filteredSpecialties, saving, saveError, caretakerWarning, needsDiscovery, senadisPatient, senadisExpiry, senadisActive, senadisExpired, senadisFloor, formatSenadisExpiry, isValid, handleSubmit, timeMin: TIME_MIN, timeMax: TIME_MAX, timeStep: TIME_STEP, hasClaim, Permissions };
+    return { form, selectedPatient, fetchPatientOptions, filteredTherapists, filteredSpecialties, saving, saveError, caretakerWarning, needsDiscovery, senadisPatient, senadisExpiry, senadisActive, senadisExpired, formatSenadisExpiry, isValid, handleSubmit, timeMin: TIME_MIN, timeMax: TIME_MAX, timeStep: TIME_STEP, hasClaim, Permissions, bookableDurations: BOOKABLE_DURATIONS, selectedSpecialty, derivedAmount, derivedDiscount, derivedProviderAmount, amountSource, missingPrice, onSiteVisit, onSiteSiteId, sites, onSiteTripCharge };
   },
 });
 </script>
