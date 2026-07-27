@@ -19,6 +19,7 @@ import SessionHistoryPanel from '../components/patients/SessionHistoryPanel.vue'
 import PatientSessionsTable from '../components/patients/PatientSessionsTable.vue';
 import SessionHistoryPrintDialog from '../components/patients/SessionHistoryPrintDialog.vue';
 import type { PagedResult, PatientSessionHistorySummary, PatientHistorySession, SessionHistoryPagedResult } from '../interfaces/SessionHistory';
+import { sanitizePrintNotes } from '../utils/sanitizePrintNotes';
 
 const { getSessionHistoryMock, getPatientSessionsMock } = vi.hoisted(() => ({
   getSessionHistoryMock: vi.fn(),
@@ -63,6 +64,12 @@ function session(overrides: Partial<PatientHistorySession> = {}): PatientHistory
 function sessionsPage(items: PatientHistorySession[], overrides: Partial<PagedResult<PatientHistorySession>> = {}): PagedResult<PatientHistorySession> {
   return { items, page: 1, pageSize: 25, totalCount: items.length, ...overrides };
 }
+
+// Real marker shapes as minted by the backfill (promote.py) and PatientMergeService.
+const LEGACY_MARKER = '[LEGACY-IMPORT: 2025 roster hoja2 r14; edad "5" @2019, no DOB]';
+const MERGED_MARKER =
+  '[MERGED: absorbed Patient #212 MRN L24-0313 Cedula — "Perez, Ana" on 2026-06-12 by user 4;' +
+  ' sessions 12, plans 1, caretakerLinks remapped 1/deduped 0/syntheticDeleted 1; filled none]';
 
 const LONG_NOTE =
   'Patient arrived 15 minutes late due to transport issues. Worked on fine-motor sequencing with ' +
@@ -239,6 +246,40 @@ describe('Money addendum — counts-only callers and older APIs', () => {
   });
 });
 
+// ---------- Addendum 3: print-note sanitizer (unit) ----------
+// The printed report is EXTERNAL (caretakers) — internal audit markers must not reach it.
+// Only the two verified marker families are stripped, exact-cased and bracket-bounded.
+
+describe('Addendum 3 — sanitizePrintNotes', () => {
+  it('a pure-marker note sanitizes to empty — both families', () => {
+    expect(sanitizePrintNotes(LEGACY_MARKER)).toBe('');
+    expect(sanitizePrintNotes(MERGED_MARKER)).toBe('');
+    expect(sanitizePrintNotes(`${LEGACY_MARKER}\n${MERGED_MARKER}`)).toBe('');
+    expect(sanitizePrintNotes(null)).toBe('');
+    expect(sanitizePrintNotes(undefined)).toBe('');
+  });
+
+  it('marker + real content keeps only the content, whitespace collapsed clean', () => {
+    expect(sanitizePrintNotes(`${LEGACY_MARKER}\nWorked on grip strength.`)).toBe('Worked on grip strength.');
+    expect(sanitizePrintNotes(`Session went well. ${MERGED_MARKER} Follow up next week.`))
+      .toBe('Session went well. Follow up next week.');
+    // marker on its own line inside a multi-line note → no blank line left behind
+    expect(sanitizePrintNotes(`Line one.\n${LEGACY_MARKER}\nLine two.`)).toBe('Line one.\nLine two.');
+  });
+
+  it('strips every occurrence, not just the first', () => {
+    expect(sanitizePrintNotes(`${LEGACY_MARKER} a ${LEGACY_MARKER} b ${MERGED_MARKER}`)).toBe('a b');
+  });
+
+  it('does NOT strip legitimate therapist brackets or near-miss shapes', () => {
+    expect(sanitizePrintNotes('Bring [orthotic] insert. [follow up next week] check [sic] grip.'))
+      .toBe('Bring [orthotic] insert. [follow up next week] check [sic] grip.');
+    // no colon → not the marker shape; different casing → not the marker shape
+    expect(sanitizePrintNotes('[LEGACY-IMPORT note without colon]')).toBe('[LEGACY-IMPORT note without colon]');
+    expect(sanitizePrintNotes('[merged: lowercase is not the mint format]')).toBe('[merged: lowercase is not the mint format]');
+  });
+});
+
 // ---------- SH-2: notes icon + full-content reveal ----------
 
 describe('SH-2 — notes icon and full-text reveal', () => {
@@ -270,6 +311,18 @@ describe('SH-2 — notes icon and full-text reveal', () => {
     const popover = w.find('[data-testid="notes-popover"]');
     expect(popover.exists()).toBe(true);
     expect(w.find('[data-testid="notes-content"]').text()).toBe(LONG_NOTE);
+  });
+
+  it('screen popover reveals the RAW note including internal markers — sanitizing is print-only (staff-facing guard)', async () => {
+    const raw = `${LEGACY_MARKER}\nInternal observation for staff.`;
+    getPatientSessionsMock.mockResolvedValue(sessionsPage([session({ notes: raw })]));
+    const { wrapper: w } = await mountTable();
+
+    await w.find('[data-testid="notes-button"]').trigger('click');
+
+    const content = w.find('[data-testid="notes-content"]').text();
+    expect(content).toContain('[LEGACY-IMPORT: 2025 roster'); // marker still visible on screen
+    expect(content).toContain('Internal observation for staff.');
   });
 
   it('tapping the icon does NOT navigate the row link, and Escape closes the popover', async () => {
@@ -509,6 +562,28 @@ describe('SH-3 — print view assembles all pages and prints', () => {
     expect(w.find('[data-testid="shp-print-totals-paid"]').text()).toBe('$0.00');
     expect(w.find('[data-testid="shp-print-totals-owed"]').text()).toBe('$0.00');
     expect(w.find('[data-testid="shp-print-totals"]').text()).not.toContain('NaN');
+  });
+
+  // ---- Addendum 3: internal audit markers never reach the external printed report ----
+
+  it('strips [LEGACY-IMPORT:]/[MERGED:] markers from printed notes; pure-marker notes omit the line; therapist brackets survive', async () => {
+    pagedMock([
+      session({ sessionId: 3, sessionDate: '2026-01-03', notes: 'Bring [orthotic] insert next time.' }), // legit brackets
+      session({ sessionId: 2, sessionDate: '2026-01-02', notes: `${MERGED_MARKER}\nReal follow-up note.` }), // marker + content
+      session({ sessionId: 1, sessionDate: '2026-01-01', notes: LEGACY_MARKER }), // pure marker
+    ], 100);
+    const w = await confirmPrint();
+
+    const notes = w.findAll('[data-testid="shp-print-note"]');
+    expect(notes.length).toBe(2); // the pure-marker session prints NO notes line at all
+    expect(notes[0].text()).toContain('Real follow-up note.'); // chronological: Jan 02 first of the two
+    expect(notes[0].text()).not.toContain('MERGED');
+    expect(notes[1].text()).toContain('Bring [orthotic] insert next time.'); // untouched
+
+    const rootText = w.find('[data-testid="shp-print-root"]').text();
+    expect(rootText).not.toContain('LEGACY-IMPORT');
+    expect(rootText).not.toContain('[MERGED');
+    expect(rootText).not.toContain('absorbed Patient');
   });
 
   it('shows a fetch error and keeps the dialog open when the export load fails', async () => {

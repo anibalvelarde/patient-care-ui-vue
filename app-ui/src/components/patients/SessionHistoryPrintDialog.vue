@@ -146,11 +146,14 @@
                 {{ session.isPaidOff ? 'Paid ' + formatCurrency(session.amountPaid) : 'Owes ' + formatCurrency(session.amountDue) }}
               </td>
             </tr>
-            <!-- Full note text inline beneath its row; sessions without notes omit the line. -->
-            <tr v-if="session.notes && session.notes.trim()" class="border-b border-slate-100">
+            <!-- Full note text inline beneath its row; sessions without notes omit the line.
+                 printNotes is pre-sanitized (internal [LEGACY-IMPORT:]/[MERGED:] audit markers
+                 stripped — external audience); a pure-marker note sanitizes to '' and the line
+                 is omitted exactly as if the session had no notes. -->
+            <tr v-if="session.printNotes" class="border-b border-slate-100">
               <td></td>
               <td colspan="6" class="py-1 pb-2 text-[11px] text-slate-600 whitespace-pre-wrap" data-testid="shp-print-note">
-                <span class="font-semibold text-slate-500">Notes:</span> {{ session.notes }}
+                <span class="font-semibold text-slate-500">Notes:</span> {{ session.printNotes }}
               </td>
             </tr>
           </template>
@@ -172,9 +175,14 @@ import { computed, defineComponent, nextTick, onBeforeUnmount, ref, watch, type 
 import type { PatientHistorySession, PatientSessionHistorySummary } from '../../interfaces/SessionHistory';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { sanitizePrintNotes } from '../../utils/sanitizePrintNotes';
 
 // Server clamps pageSize at 100 (WP-30) — biggest legal page keeps the fetch-all loop short.
 export const PRINT_FETCH_PAGE_SIZE = 100;
+
+// A fetched session plus its print-safe note text (internal audit markers stripped —
+// WP-35 addendum 3; the raw `notes` stays untouched for anything screen-facing).
+type PrintSession = PatientHistorySession & { printNotes: string };
 
 interface PrintData {
   patientName: string;
@@ -182,7 +190,7 @@ interface PrintData {
   from: string;
   to: string;
   printedOn: string;
-  sessions: PatientHistorySession[];
+  sessions: PrintSession[];
 }
 
 // WP-35 (SH-3): "Print / Save as PDF" for one patient's session history. Opens a date-range
@@ -276,10 +284,12 @@ export default defineComponent({
       exporting.value = true;
       fetchError.value = '';
       try {
-        const sessions = await fetchAllInRange(props.patient.patientId);
+        const fetched = await fetchAllInRange(props.patient.patientId);
         // The endpoint returns newest-first; a printed history reads chronologically.
-        sessions.sort((a, b) =>
+        fetched.sort((a, b) =>
           (a.sessionDate + a.sessionTime).localeCompare(b.sessionDate + b.sessionTime));
+        // Sanitize note text for the external report (raw notes untouched elsewhere).
+        const sessions: PrintSession[] = fetched.map((s) => ({ ...s, printNotes: sanitizePrintNotes(s.notes) }));
         printData.value = {
           patientName: props.patient.patientName,
           medicalRecordNumber: props.patient.medicalRecordNumber,

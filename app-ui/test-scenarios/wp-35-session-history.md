@@ -103,6 +103,25 @@ and printing still works (the From picker simply isn't clamped at the lower end)
    the API omits the fields entirely). No error, no 403.
 6. Nowhere on this page (screen or the printed report) does a Provider amount appear.
 
+## Scenario 8 — internal audit markers never reach the printed report
+
+> The PDF's audience is external (caretakers receiving a record of services). Legacy-imported
+> sessions carry `[LEGACY-IMPORT: ...]` provenance markers in their notes, and merged patients
+> carry `[MERGED: ...]` markers — internal bookkeeping, not for customers.
+
+1. Pick a **legacy patient** (MRN like `L24-####`/`L25-####`) whose imported sessions carry
+   `[LEGACY-IMPORT: ...]` note markers. Confirm via the on-screen note icon that the marker is
+   there (staff still see the raw note — that's intended).
+2. Print that patient's sessions to PDF. Search the PDF: **no `[LEGACY-IMPORT` and no
+   `[MERGED` anywhere.**
+   - A note that was **only** a marker prints **no notes line at all** for that session.
+   - A note with a marker **plus** real text prints just the real text, cleanly (no stray
+     blank lines or double spaces where the marker was).
+3. A note where a therapist legitimately used brackets (e.g. `[follow up next week]`) prints
+   **unchanged** — only the two known marker families are stripped.
+4. Back on screen, open the same session's note icon: the **full raw text including the
+   marker** is still shown. Sanitizing is print-only.
+
 ## Notes
 
 - No new permission — everything rides `Patients.View`, no re-login needed.
