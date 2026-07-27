@@ -158,6 +158,12 @@ export default defineComponent({
     const onStatusUpdated = () => loadAppointments();
 
     onMounted(async () => {
+      // WP-34C: the dashboard Cancelled/No-Show tile deep-links to the EXISTING filter tab
+      // (?filter=cancelled). Pre-selects any known tab value; no new filter logic added.
+      const filterParam = route.query.filter;
+      if (typeof filterParam === 'string' && filterParam) {
+        activeFilter.value = filterParam;
+      }
       await loadAppointments();
       // Auto-open booking modal if deep-linked with bookFor param
       const bookFor = Number(route.query.bookFor);
