@@ -47,7 +47,7 @@
           <div
             :class="[
               'w-1 h-10 rounded-full flex-shrink-0',
-              appt.isPastDue ? 'bg-red-400' : appt.isPaidOff ? 'bg-green-400' : 'bg-violet-400',
+              isCancelledOrNoShow(appt) ? 'bg-slate-300' : appt.isPastDue ? 'bg-red-400' : appt.isPaidOff ? 'bg-green-400' : 'bg-violet-400',
             ]"
           ></div>
 
@@ -124,8 +124,19 @@
 
           <!-- Status badge (clickable) -->
           <div class="flex-shrink-0 flex items-center gap-1">
+            <!-- WP-42C cherry-pick (owner 2026-07-28): cancelled/no-show rows show their
+                 APPOINTMENT state, never a payment chip — and never a Pay button (pre-WP-42
+                 legacy rows can still carry money; collecting on a cancelled session is
+                 exactly the mistake this prevents). -->
+            <span
+              v-if="isCancelledOrNoShow(appt)"
+              :data-testid="`appt-status-chip-${appt.sessionId}`"
+              :class="['inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium', getStatusBadgeClass(appt.appointmentStatusId)]"
+            >
+              {{ appt.appointmentStatusId === 3 ? 'Cancelled' : 'No Show' }}
+            </span>
             <button
-              v-if="appt.amountDue > 0 && !appt.isPaidOff"
+              v-else-if="appt.amountDue > 0 && !appt.isPaidOff"
               class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer transition-colors"
               title="Record payment for this session"
               @click.stop="$emit('pay', appt)"
@@ -134,7 +145,7 @@
               Pay
             </button>
             <button
-              v-if="appt.isPaidOff"
+              v-else-if="appt.isPaidOff"
               class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-700 hover:bg-green-200 cursor-pointer transition-colors"
               title="View payment details"
               @click.stop="$emit('view-payments', appt)"
@@ -175,6 +186,7 @@
 import { defineComponent, ref, watch, computed, onMounted, nextTick } from 'vue';
 import { Appointment } from '../../interfaces/Appointment';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { getStatusBadgeClass } from '../../utils/statusHelpers';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import { SessionsHttpClient } from '../../services/SessionsHttpClient';
 import { library } from '@fortawesome/fontawesome-svg-core';
@@ -278,6 +290,10 @@ export default defineComponent({
       }
     );
 
+    // WP-42C cherry-pick: same id predicate as the WP-34 tile (statusName is admin-editable).
+    const isCancelledOrNoShow = (a: Appointment) =>
+      a.appointmentStatusId === 3 || a.appointmentStatusId === 5;
+
     return {
       allAppointments,
       amAppointments,
@@ -289,6 +305,8 @@ export default defineComponent({
       formatCurrency,
       hasClaim,
       Permissions,
+      isCancelledOrNoShow,
+      getStatusBadgeClass,
     };
   },
 });
