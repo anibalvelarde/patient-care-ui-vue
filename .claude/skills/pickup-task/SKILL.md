@@ -11,8 +11,8 @@ You are receiving a plan scoped to the **UI layer**.
 ## Steps
 
 1. **Read the plan.** User provides it inline or as a file path.
-2. **Review conventions.** Re-read `CLAUDE.md` (Vue 3 Composition API, TypeScript, Tailwind, component patterns).
-3. **Check contracts.** Read `../patient-care-super/_contracts/` for API response shapes to match.
+2. **Conventions** (Vue 3 Composition API, TypeScript, Tailwind, component patterns) are in the auto-loaded `CLAUDE.md` — don't re-read it.
+3. **Check contracts.** List `../patient-care-super/_contracts/` filenames, then read **only** the contract file(s) for the domain(s) the plan touches (e.g. `sessions-api.md` for session work) — never the whole directory.
 4. **Check for existing branch:** `git branch -a | grep -E "feature/|fix/"` — reuse if one exists.
 5. **Create branch** if needed: `feature/<desc>` or `fix/<desc>`. Never commit to main.
 6. **Kanban** — Move related card to DOING:
