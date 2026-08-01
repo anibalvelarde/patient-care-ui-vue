@@ -119,6 +119,38 @@
             </p>
           </div>
 
+          <!-- WP-42: no-show fee pct. Hidden entirely when editing a site served by an older
+               API (field absent on the wire). Editable for SYSADMIN only; everyone else sees
+               the value read-only (they may hold Admin.Sites.View/Manage) and the PUT echoes
+               the stored value unchanged — echoed-unchanged passes the API field-gate. -->
+          <div v-if="feeFieldAvailable">
+            <label class="block text-sm font-medium text-slate-700 mb-1">No-show fee (% of booked amount)</label>
+            <input
+              v-if="isSystemAdmin"
+              v-model.number="form.noShowFeePct"
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              data-testid="site-noshow-fee-input"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <p
+              v-else
+              data-testid="site-noshow-fee-readonly"
+              class="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500"
+            >
+              {{ form.noShowFeePct.toFixed(2) }}%
+            </p>
+            <p class="mt-1 text-xs text-slate-500">
+              WP-42: no-show fee = this % of the booked amount, charged when a session is marked
+              No Show. <span class="font-medium">0 = no fee.</span>
+              <span v-if="!isSystemAdmin" data-testid="site-noshow-fee-sa-hint">
+                Only a System Administrator can change it.
+              </span>
+            </p>
+          </div>
+
         </form>
 
         <!-- Footer -->
@@ -149,9 +181,10 @@
 
 <script lang="ts">
 import { defineComponent, reactive, ref, watch, type PropType } from 'vue';
-import type { Site } from '../../interfaces/Site';
+import type { Site, SiteCreateRequest } from '../../interfaces/Site';
 import { SitesHttpClient } from '../../services/SitesHttpClient';
 import { useModalForm } from '../../composables/useModalForm';
+import { useClaims } from '../../composables/useClaims';
 import FormErrorBanner from '../shared/FormErrorBanner.vue';
 
 function formatDateForInput(dateStr: string): string {
@@ -174,6 +207,7 @@ export default defineComponent({
   emits: ['close', 'saved'],
   setup(props, { emit }) {
     const { error, hasError, saving, setError, clearError, submit } = useModalForm();
+    const { isSystemAdmin } = useClaims();
     const client = new SitesHttpClient();
 
     const form = reactive({
@@ -185,9 +219,13 @@ export default defineComponent({
       longitude: null as number | null,
       idleLogoffMinutes: 60,
       onSiteTripChargeAmount: 0,
+      noShowFeePct: 30, // WP-42: API default
     });
 
     const isEdit = ref(false);
+    // WP-42 rollout tolerance: an older API omits noShowFeePct — hide the fee UI and never
+    // send the field so the form stays usable against a pre-V032 deployment.
+    const feeFieldAvailable = ref(true);
 
     watch(form, () => clearError(), { deep: true });
 
@@ -206,6 +244,8 @@ export default defineComponent({
           form.longitude = props.site.longitude;
           form.idleLogoffMinutes = props.site.idleLogoffMinutes ?? 60;
           form.onSiteTripChargeAmount = props.site.onSiteTripChargeAmount ?? 0;
+          feeFieldAvailable.value = props.site.noShowFeePct !== undefined && props.site.noShowFeePct !== null;
+          form.noShowFeePct = props.site.noShowFeePct ?? 30;
         } else {
           isEdit.value = false;
           form.siteName = '';
@@ -216,6 +256,8 @@ export default defineComponent({
           form.longitude = null;
           form.idleLogoffMinutes = 60;
           form.onSiteTripChargeAmount = 0;
+          feeFieldAvailable.value = true;
+          form.noShowFeePct = 30;
         }
       }
     );
@@ -235,8 +277,15 @@ export default defineComponent({
         setError('On-site trip charge must be a number greater than or equal to 0.');
         return;
       }
+      if (feeFieldAvailable.value && isSystemAdmin.value) {
+        const fee = form.noShowFeePct;
+        if (typeof fee !== 'number' || Number.isNaN(fee) || fee < 0 || fee > 100) {
+          setError('No-show fee must be a percentage between 0 and 100.');
+          return;
+        }
+      }
       return submit(async () => {
-        const data = {
+        const data: SiteCreateRequest = {
           siteName: form.siteName,
           ruc: form.ruc || undefined,
           inceptionDate: form.inceptionDate,
@@ -246,6 +295,16 @@ export default defineComponent({
           idleLogoffMinutes: form.idleLogoffMinutes,
           onSiteTripChargeAmount: form.onSiteTripChargeAmount,
         };
+        // WP-42: SYSADMIN sends the (possibly changed) value; non-SYSADMIN ECHOES the stored
+        // value unchanged on PUT (passes the API field-gate) and omits it on POST (API
+        // defaults 30). Field absent on the wire (older API) → never sent at all.
+        if (feeFieldAvailable.value) {
+          if (isSystemAdmin.value) {
+            data.noShowFeePct = form.noShowFeePct;
+          } else if (isEdit.value && props.site) {
+            data.noShowFeePct = props.site.noShowFeePct;
+          }
+        }
 
         if (isEdit.value && props.site) {
           await client.updateSite(props.site.siteId, data);
@@ -257,7 +316,7 @@ export default defineComponent({
       });
     };
 
-    return { form, isEdit, saving, error, hasError, handleSubmit };
+    return { form, isEdit, saving, error, hasError, handleSubmit, isSystemAdmin, feeFieldAvailable };
   },
 });
 </script>

@@ -201,6 +201,7 @@
                   <button
                     v-for="result in ['Confirmed', 'NoAnswer', 'LeftMessage', 'Declined']"
                     :key="result"
+                    :data-testid="`confirm-result-${result.toLowerCase()}`"
                     @click="confirmForm.result = result"
                     :class="[
                       'px-2 py-2 text-xs font-medium rounded-lg border transition-colors',
@@ -213,7 +214,20 @@
                   </button>
                 </div>
               </div>
+              <!-- WP-42: Declined routes to Cancelled and zeroes the session's money -->
+              <div
+                v-if="confirmForm.result === 'Declined' && appointment.amount > 0"
+                data-testid="declined-money-note"
+                class="bg-amber-50 border border-amber-200 rounded-lg p-2.5"
+              >
+                <p class="text-xs text-amber-700">
+                  Recording <span class="font-semibold">Declined</span> cancels this session and
+                  zeroes its money (amount ${{ appointment.amount.toFixed(2) }}, discount, therapist
+                  pay). The original figures are stamped into the session notes.
+                </p>
+              </div>
               <button
+                data-testid="confirm-submit-btn"
                 @click="handleConfirm"
                 :disabled="!confirmForm.result || actionInProgress"
                 :class="[
@@ -258,6 +272,7 @@
                   <button
                     v-for="action in availableActions"
                     :key="action.statusId"
+                    :data-testid="`status-action-${action.statusId}`"
                     @click="handleStatusChange(action.statusId)"
                     :disabled="actionInProgress"
                     :class="[
@@ -267,6 +282,32 @@
                   >
                     {{ action.label }}
                   </button>
+                </div>
+                <!-- WP-42: no-show confirm step — states the fee before the transition fires.
+                     The line is display-only; the API applies the authoritative fee. -->
+                <div
+                  v-if="noShowConfirmPending"
+                  data-testid="noshow-confirm"
+                  class="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2"
+                >
+                  <p data-testid="noshow-fee-line" class="text-xs text-red-700">{{ noShowFeeMessage }}</p>
+                  <div class="flex items-center gap-2">
+                    <button
+                      data-testid="noshow-confirm-btn"
+                      @click="confirmNoShow"
+                      :disabled="actionInProgress"
+                      class="px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                      {{ actionInProgress ? 'Saving...' : 'Mark No Show' }}
+                    </button>
+                    <button
+                      data-testid="noshow-back-btn"
+                      @click="noShowConfirmPending = false"
+                      class="px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                    >
+                      Back
+                    </button>
+                  </div>
                 </div>
               </template>
               <div v-if="isCompletedDiscovery" class="bg-violet-50 border border-violet-200 rounded-lg p-4 text-center">
@@ -304,20 +345,35 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
             </summary>
-            <div class="px-3 pb-3 border-t border-red-50 pt-2.5 flex items-center gap-2">
-              <input v-model="cancelReason" type="text" placeholder="Reason (optional)" class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-              <button
-                @click="handleCancel"
-                :disabled="actionInProgress"
-                class="px-4 py-2 text-sm font-medium rounded-lg bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition-colors flex-shrink-0"
+            <div class="px-3 pb-3 border-t border-red-50 pt-2.5 space-y-2">
+              <!-- WP-42: pre-confirm money note — only when the session currently carries money -->
+              <div
+                v-if="appointment.amount > 0"
+                data-testid="cancel-money-note"
+                class="bg-amber-50 border border-amber-200 rounded-lg p-2.5"
               >
-                {{ actionInProgress ? 'Cancelling...' : 'Cancel Appointment' }}
-              </button>
+                <p class="text-xs text-amber-700">
+                  Cancelling zeroes this session's money (amount
+                  ${{ appointment.amount.toFixed(2) }}, discount, therapist pay). The original
+                  figures are stamped into the session notes.
+                </p>
+              </div>
+              <div class="flex items-center gap-2">
+                <input v-model="cancelReason" type="text" placeholder="Reason (optional)" class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                <button
+                  data-testid="cancel-appointment-btn"
+                  @click="handleCancel"
+                  :disabled="actionInProgress"
+                  class="px-4 py-2 text-sm font-medium rounded-lg bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition-colors flex-shrink-0"
+                >
+                  {{ actionInProgress ? 'Cancelling...' : 'Cancel Appointment' }}
+                </button>
+              </div>
             </div>
           </details>
 
-          <!-- Error -->
-          <div v-if="actionError" class="bg-red-50 border border-red-200 rounded-lg p-3">
+          <!-- Error (WP-42: guard/lock 400 details from the API render verbatim here) -->
+          <div v-if="actionError" data-testid="action-error" class="bg-red-50 border border-red-200 rounded-lg p-3">
             <p class="text-sm text-red-700">{{ actionError }}</p>
           </div>
         </div>
@@ -333,6 +389,7 @@ import StatusBadge from './StatusBadge.vue';
 import AuditPopover from '../shared/AuditPopover.vue';
 import { SessionsHttpClient } from '../../services/SessionsHttpClient';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
+import { SitesHttpClient } from '../../services/SitesHttpClient';
 import type { Appointment } from '../../interfaces/Appointment';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import { isSenadisExpired } from '../../utils/senadis';
@@ -360,6 +417,12 @@ export default defineComponent({
     // WP-40: no providerAmount here — the fee is server-derived, never hand-entered.
     const financialForm = ref({ amount: 0, discount: 0 });
     const patientsClient = new PatientsHttpClient();
+    const sitesClient = new SitesHttpClient();
+    // WP-42: no-show confirm step state. The fee line is display-only (best-effort from the
+    // session's Site); the API applies the authoritative fee at transition.
+    const noShowConfirmPending = ref(false);
+    const noShowFeeMessage = ref('');
+    const NOSHOW_GENERIC_MESSAGE = "The site's no-show fee will apply to this session.";
     // WP-40 (BK-3): whether the session's patient has SENADIS active AT THE SESSION DATE —
     // drives the floor hint (the API enforces the floor regardless).
     const editSenadisActive = ref(false);
@@ -470,6 +533,8 @@ export default defineComponent({
         confirmForm.value = { method: 'Phone', result: '', notes: '' };
         correctionConfirmed.value = false;
         editingFinancials.value = false;
+        noShowConfirmPending.value = false;
+        noShowFeeMessage.value = '';
       }
     });
 
@@ -502,13 +567,57 @@ export default defineComponent({
           case 1: // Can't directly set to Proposed via endpoint — use confirm with special handling
           case 2: await client.confirmSession(id, { confirmationMethod: 'InPerson', confirmationResult: 'Confirmed' }); break;
           case 4: await client.completeSession(id); break;
-          case 5: await client.noShowSession(id); break;
+          case 5:
+            // WP-42: no immediate transition — show the fee confirm step first.
+            await requestNoShow();
+            return;
           case 6: await client.checkInSession(id); break;
           case 7: await client.startTherapy(id); break;
         }
         emit('updated');
         emit('close');
       } catch (e: unknown) {
+        actionError.value = e instanceof Error ? e.message : 'Failed to update status.';
+      } finally {
+        actionInProgress.value = false;
+      }
+    };
+
+    // WP-42: open the no-show confirm step and (best-effort) compute the fee line from the
+    // session's site pct. Unreachable site / older API without the pct → generic line.
+    const requestNoShow = async () => {
+      if (!props.appointment) return;
+      noShowFeeMessage.value = NOSHOW_GENERIC_MESSAGE;
+      noShowConfirmPending.value = true;
+      const amount = props.appointment.amount;
+      const siteId = props.appointment.siteId;
+      if (siteId) {
+        try {
+          const site = await sitesClient.getSite(siteId);
+          const pct = site.noShowFeePct;
+          if (typeof pct === 'number') {
+            // Mirrors the API's round(pct% × gross, 2); display-only.
+            const fee = Math.round(pct * amount) / 100;
+            noShowFeeMessage.value =
+              `A no-show fee of ${pct}% of $${amount.toFixed(2)} (= $${fee.toFixed(2)}) will be charged.`;
+          }
+        } catch {
+          // Keep the generic line — the API applies the authoritative fee regardless.
+        }
+      }
+    };
+
+    const confirmNoShow = async () => {
+      if (!props.appointment) return;
+      actionInProgress.value = true;
+      actionError.value = '';
+      try {
+        await client.noShowSession(props.appointment.sessionId);
+        noShowConfirmPending.value = false;
+        emit('updated');
+        emit('close');
+      } catch (e: unknown) {
+        // WP-42 guard 400s (money moved / covering allocations) surface here verbatim.
         actionError.value = e instanceof Error ? e.message : 'Failed to update status.';
       } finally {
         actionInProgress.value = false;
@@ -537,6 +646,7 @@ export default defineComponent({
       showConfirmSection, showCancelSection, availableActions,
       isCompletedDiscovery, createPlanFromDiscovery, viewPatientPlans,
       startEditFinancials, saveFinancials,
+      noShowConfirmPending, noShowFeeMessage, confirmNoShow,
       handleConfirm, handleStatusChange, handleCancel,
       hasClaim, Permissions,
     };
