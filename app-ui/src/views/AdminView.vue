@@ -62,6 +62,11 @@
                 <PatientMergePanel />
               </div>
 
+              <!-- Users (WP-41: view = Admin.Users.View, actions = Admin.Users.Manage) -->
+              <div v-if="activeSection === 'users'">
+                <UsersPanel />
+              </div>
+
               <!-- About -->
               <div v-if="activeSection === 'about'">
                 <AboutPanel />
@@ -116,6 +121,7 @@ import LookupFormModal from '../components/admin/LookupFormModal.vue';
 import SpecialtyPricesModal from '../components/admin/SpecialtyPricesModal.vue';
 import AboutPanel from '../components/admin/AboutPanel.vue';
 import PatientMergePanel from '../components/admin/PatientMergePanel.vue';
+import UsersPanel from '../components/admin/UsersPanel.vue';
 import type { FieldDef } from '../components/admin/LookupFormModal.vue';
 import type { ColumnDef } from '../components/admin/LookupTableManager.vue';
 import { SitesHttpClient } from '../services/SitesHttpClient';
@@ -132,7 +138,7 @@ export default defineComponent({
     O2MobileNav, O2Sidebar, O2Header, O2Footer,
     SiteList, SiteFormModal,
     AdminAccordionNav, LookupTableManager, LookupFormModal, SpecialtyPricesModal,
-    AboutPanel, PatientMergePanel,
+    AboutPanel, PatientMergePanel, UsersPanel,
   },
   setup() {
     // WP-39C: /admin admits every Admin.View holder (MGR/AM/OWN + SYSADMIN), so each section
@@ -270,6 +276,8 @@ export default defineComponent({
       { key: 'sites', allowed: () => canViewSites },
       ...lookupSections.map((s) => ({ key: s.key, allowed: () => canViewLookup(s.key) })),
       { key: 'merge-patients', allowed: () => hasClaim('Permission', Permissions.PatientsMerge) },
+      // WP-41: Users lands last so MGR/OWN still default into their editable sections first.
+      { key: 'users', allowed: () => hasClaim('Permission', Permissions.AdminUsersView) },
     ];
     const firstVisibleSection = sectionOrder.find((s) => s.allowed())?.key ?? 'sites';
     const activeSection = ref(firstVisibleSection);

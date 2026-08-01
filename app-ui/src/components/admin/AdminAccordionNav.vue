@@ -108,31 +108,38 @@
       </div>
     </div>
 
-    <!-- Security group (placeholder, SYSADMIN-only) -->
-    <div v-if="isSystemAdmin" data-testid="nav-group-security">
+    <!-- Security group (WP-41C: Users rides Admin.Users.View — MGR/OWN read-only + SYSADMIN) -->
+    <div v-if="canViewUsers" data-testid="nav-group-security">
       <button
         class="w-full px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between hover:bg-slate-100 transition-colors"
         @click="securityOpen = !securityOpen"
       >
-        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Security</span>
-        <div class="flex items-center gap-2">
-          <span class="text-[10px] text-slate-300 font-medium uppercase tracking-wider">Coming Soon</span>
-          <svg
-            class="w-4 h-4 text-slate-300 transition-transform duration-200"
-            :class="{ 'rotate-180': securityOpen }"
-            fill="none" stroke="currentColor" viewBox="0 0 24 24"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Security</span>
+        <svg
+          class="w-4 h-4 text-slate-400 transition-transform duration-200"
+          :class="{ 'rotate-180': securityOpen }"
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
       </button>
       <div
         class="overflow-hidden transition-all duration-200"
         :class="securityOpen ? 'max-h-20' : 'max-h-0'"
       >
-        <div class="px-4 py-3 text-xs text-slate-400 italic">
-          OAuth settings, RBAC roles, and audit logs will appear here.
-        </div>
+        <button
+          class="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors border-b border-slate-50"
+          :class="activeSection === 'users'
+            ? 'bg-violet-50 text-violet-700 font-medium border-l-2 border-l-violet-600'
+            : 'text-slate-600 hover:bg-slate-50'"
+          data-testid="nav-users"
+          @click="$emit('select', 'users')"
+        >
+          <svg class="w-4 h-4" :class="activeSection === 'users' ? 'text-violet-500' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+          </svg>
+          Users
+        </button>
       </div>
     </div>
 
@@ -191,10 +198,13 @@ export default defineComponent({
     const configOpen = ref(true);
     const refdataOpen = ref(true);
     const dataMaintOpen = ref(true);
-    const securityOpen = ref(false);
+    const securityOpen = ref(true);
     const aboutOpen = ref(false);
 
     const canViewSites = computed(() => hasClaim('Permission', Permissions.AdminSitesView));
+    // WP-41C: section entry rides Admin.Users.View (MGR/OWN + SYSADMIN wildcard); write
+    // actions inside UsersPanel ride Admin.Users.Manage separately.
+    const canViewUsers = computed(() => hasClaim('Permission', Permissions.AdminUsersView));
 
     const refDataItems = [
       {
@@ -225,7 +235,7 @@ export default defineComponent({
 
     return {
       configOpen, refdataOpen, dataMaintOpen, securityOpen, aboutOpen,
-      visibleRefDataItems, canViewSites, hasClaim, isSystemAdmin, Permissions,
+      visibleRefDataItems, canViewSites, canViewUsers, hasClaim, isSystemAdmin, Permissions,
     };
   },
 });
