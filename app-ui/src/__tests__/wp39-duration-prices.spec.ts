@@ -448,13 +448,15 @@ describe('AdminAccordionNav — per-claim section visibility', () => {
     expect(w.find('[data-testid="nav-group-about"]').exists()).toBe(false);
   });
 
-  it('MGR: Sites + all four lookup tables, but no merge/security/about (SYSADMIN-only)', () => {
+  it('MGR: Sites + all four lookup tables + Security (WP-41: Admin.Users.View), but no merge/about (SYSADMIN-only)', () => {
     const w = mountNav(authAs('MGR'));
     expect(w.find('[data-testid="nav-sites"]').exists()).toBe(true);
     expect(w.find('[data-testid="nav-specialty-types"]').exists()).toBe(true);
     expect(w.find('[data-testid="nav-payment-types"]').exists()).toBe(true);
     expect(w.find('[data-testid="nav-group-data-maintenance"]').exists()).toBe(false);
-    expect(w.find('[data-testid="nav-group-security"]').exists()).toBe(false);
+    // WP-41C: the Security group now carries the Users entry and rides Admin.Users.View,
+    // which MGR holds (read-only inside the panel — Manage stays SYSADMIN-only).
+    expect(w.find('[data-testid="nav-group-security"]').exists()).toBe(true);
     expect(w.find('[data-testid="nav-group-about"]').exists()).toBe(false);
   });
 

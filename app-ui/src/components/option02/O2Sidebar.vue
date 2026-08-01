@@ -1,5 +1,12 @@
 <template>
-  <aside class="hidden md:flex flex-col w-20 bg-violet-900 text-white">
+  <!-- WP-41 (P1): sticky + self-scrolling so the bottom Admin entry never sinks below the fold
+       on long pages. h-screen bounds the aside to the viewport; sticky top-0 pins it while the
+       page scrolls; overflow-y-auto lets the nav itself scroll on short viewports. All md:-scoped —
+       mobile (O2MobileNav) is untouched because the aside stays hidden below md. -->
+  <aside
+    data-testid="o2-sidebar"
+    class="hidden md:flex flex-col w-20 shrink-0 bg-violet-900 text-white md:sticky md:top-0 md:h-screen md:overflow-y-auto"
+  >
     <!-- Brand -->
     <div class="flex items-center justify-center h-16 border-b border-violet-800">
       <div class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
