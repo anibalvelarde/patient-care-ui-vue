@@ -94,6 +94,11 @@
                 <div class="rounded-lg bg-slate-50 py-2">
                   <p class="text-[11px] text-slate-500">Amount</p>
                   <p class="text-sm font-semibold text-slate-800">${{ appointment.amount.toFixed(2) }}</p>
+                  <!-- WP-49: on a no-show this figure IS the fee (WP-42 wrote it into Amount),
+                       so say so here rather than repeating the money in the Fee tile. -->
+                  <p v-if="amountTileNote" data-testid="financial-amount-note" class="text-[10px] text-amber-600 leading-tight">
+                    {{ amountTileNote }}
+                  </p>
                 </div>
                 <div class="rounded-lg bg-slate-50 py-2">
                   <p class="text-[11px] text-slate-500">Discount</p>
@@ -541,27 +546,37 @@ export default defineComponent({
     watch(() => props.appointment?.sessionId, () => { waiveConfirmation.value = ''; });
 
     // ── WP-49: the Fee tile in the Financials strip ──────────────────────────────────────
-    // A fee is part of what is Due, so it belongs beside the other money — not only in a
+    // A fee is part of what is Due, so it belongs beside the other money rather than only in a
     // collapsed section further down. Shown only when a fee exists, so the strip an operator
     // sees every day is unchanged.
+    //
+    // ⚠️ The tile carries ONLY money that is ADDITIONAL to Amount — i.e. the late fee.
+    //
+    // The two fees sit in different places and it matters here. The late chargeback has its own
+    // column and adds on top of the session charge. The NO-SHOW fee has no column: WP-42 writes
+    // it INTO Amount, replacing the original booking value. So including the no-show fee here
+    // showed the same money twice, once as Amount and once as Fee, and the strip stopped adding
+    // up — `Amount − Discount + Fee − Paid` came to 170.00 on an 85.00 no-show. Tiles in a row
+    // read as addends; anything in them has to actually be one.
+    //
+    // The no-show fee is disclosed instead on the Amount tile it actually lives in (see
+    // amountTileNote), which is both honest and more useful — it tells the operator that this
+    // Amount is a penalty rather than a service charge.
     const lateFeeOnFile = computed(() => props.appointment?.lateFeeAmount ?? 0);
-    const noShowFeeOnFile = computed(() => (hasWaivableNoShowFee.value && props.appointment)
-      ? props.appointment.amount - props.appointment.discount
-      : 0);
-    const feeTileAmount = computed(() => lateFeeOnFile.value + noShowFeeOnFile.value);
+    const feeTileAmount = computed(() => lateFeeOnFile.value);
 
     // A waived late fee reads 0.00 with its latch still set. The tile still appears — "this
     // session had a fee and it was forgiven" is information, and hiding it would make the
     // waive look like it never happened.
-    const showFeeTile = computed(() =>
-      carriesFee.value && (feeTileAmount.value > 0 || props.appointment?.feeWaivedOn != null));
+    const lateFeeWasApplied = computed(() => props.appointment?.lateFeeAppliedOn != null);
+    const showFeeTile = computed(() => lateFeeOnFile.value > 0 || lateFeeWasApplied.value);
+    const feeTileLabel = computed(() => (lateFeeOnFile.value > 0 ? 'late' : 'waived'));
 
-    const feeTileLabel = computed(() => {
-      if (feeTileAmount.value === 0) return 'waived';
-      const parts: string[] = [];
-      if (lateFeeOnFile.value > 0) parts.push('late');
-      if (noShowFeeOnFile.value > 0) parts.push('no-show');
-      return parts.join(' + ');
+    // What the Amount tile actually represents on a no-show session, since the figure there is
+    // the fee rather than the booked price.
+    const amountTileNote = computed(() => {
+      if (!props.appointment?.notes?.includes('[NOSHOW-FEE')) return '';
+      return hasWaivableNoShowFee.value ? 'no-show fee' : 'no-show fee · waived';
     });
 
     const financialTileColumns = computed(() => {
@@ -789,7 +804,7 @@ export default defineComponent({
       canEditDiscount, editSenadisActive, editSenadisFloor,
       canManageFees, carriesFee, hasWaivableLateFee, hasWaivableNoShowFee,
       showFeesSection, canWaiveFee, waiveModalVisible, onFeeWaived, waiveConfirmation,
-      showFeeTile, feeTileAmount, feeTileLabel, financialTileColumns,
+      showFeeTile, feeTileAmount, feeTileLabel, financialTileColumns, amountTileNote,
       showConfirmSection, showCancelSection, availableActions,
       isCompletedDiscovery, createPlanFromDiscovery, viewPatientPlans,
       startEditFinancials, saveFinancials,

@@ -369,22 +369,73 @@ describe('WP-49 — Actions panel fee surfacing', () => {
     expect(w.find('[data-testid="financial-fee-tile"]').exists()).toBe(false);
   });
 
-  it('labels a combined fee with both kinds', () => {
-    const w = mountPanel(appointment({
-      amount: 85, discount: 0, lateFeeAmount: 25.5, amountDue: 110.5,
-      notes: '[NOSHOW-FEE 2026-07-01: was A:85.00]', appointmentStatusId: 5,
-    }));
-    const tile = w.find('[data-testid="financial-fee-tile"]');
-    expect(tile.text()).toContain('$110.50');   // 25.50 late + 85.00 no-show
-    expect(tile.text()).toContain('late + no-show');
+  // ⭐ The strip is a row of tiles, so it reads as addends. Everything in it must actually be
+  // one. The Fee tile first shipped including the NO-SHOW fee — but WP-42 writes that fee INTO
+  // Amount, so the same money appeared twice and `Amount − Discount + Fee − Paid` came to
+  // 170.00 on an 85.00 no-show. The tile now carries only the late fee, which is genuinely
+  // additional; the no-show fee is disclosed on the Amount tile it actually lives in.
+
+  /** What an operator gets if they read the strip left to right. */
+  const stripReconciles = (a: Appointment, feeTileShown: number) =>
+    a.amount - a.discount + feeTileShown - a.amountPaid === a.amountDue;
+
+  it('does NOT put the no-show fee in the Fee tile — it is already inside Amount', () => {
+    const noShow = appointment({
+      amount: 85, discount: 0, amountPaid: 0, amountDue: 85, lateFeeAmount: null,
+      lateFeeAppliedOn: null, notes: '[NOSHOW-FEE 2026-07-01: was A:85.00]', appointmentStatusId: 5,
+    });
+    const w = mountPanel(noShow);
+
+    expect(w.find('[data-testid="financial-fee-tile"]').exists()).toBe(false);
+    // …but the operator is still told what that Amount represents.
+    expect(w.find('[data-testid="financial-amount-note"]').text()).toBe('no-show fee');
+    expect(stripReconciles(noShow, 0)).toBe(true);
   });
 
-  it('keeps the tile visible once a fee is waived, marked "waived"', () => {
+  it('shows only the late fee when a session carries both, and the strip still adds up', () => {
+    const both = appointment({
+      amount: 85, discount: 0, amountPaid: 0, amountDue: 110.5,
+      lateFeeAmount: 25.5, lateFeeAppliedOn: '2026-08-08',
+      notes: '[NOSHOW-FEE 2026-07-01: was A:85.00]', appointmentStatusId: 5,
+    });
+    const w = mountPanel(both);
+    const tile = w.find('[data-testid="financial-fee-tile"]');
+
+    expect(tile.text()).toContain('$25.50');       // late only — NOT 110.50
+    expect(tile.text()).not.toContain('$110.50');
+    expect(tile.text()).toContain('late');
+    expect(w.find('[data-testid="financial-amount-note"]').text()).toBe('no-show fee');
+    expect(stripReconciles(both, 25.5)).toBe(true);   // 85 − 0 + 25.50 − 0 === 110.50
+  });
+
+  it('the plain late-fee strip adds up too', () => {
+    const late = appointment({ amount: 200, discount: 0, amountPaid: 0, amountDue: 260, lateFeeAmount: 60 });
+    mountPanel(late);
+    expect(stripReconciles(late, 60)).toBe(true);     // 200 − 0 + 60 − 0 === 260
+  });
+
+  it('marks the Amount note as waived once the no-show fee is forgiven', () => {
+    const w = mountPanel(appointment({
+      amount: 85, discount: 85, amountDue: 0, lateFeeAmount: null, lateFeeAppliedOn: null,
+      feeWaivedOn: '2026-08-08', notes: '[NOSHOW-FEE 2026-07-01: was A:85.00]', appointmentStatusId: 5,
+    }));
+    expect(w.find('[data-testid="financial-amount-note"]').text()).toBe('no-show fee · waived');
+  });
+
+  it('keeps the Fee tile visible once a LATE fee is waived, marked "waived"', () => {
     // Hiding it would make the waive look like it never happened.
-    const w = mountPanel(appointment({ lateFeeAmount: 0, feeWaivedOn: '2026-08-08', amountDue: 200, notes: '' }));
+    const w = mountPanel(appointment({
+      lateFeeAmount: 0, lateFeeAppliedOn: '2026-08-08', feeWaivedOn: '2026-08-08',
+      amountDue: 200, notes: '',
+    }));
     const tile = w.find('[data-testid="financial-fee-tile"]');
     expect(tile.exists()).toBe(true);
     expect(tile.text()).toContain('waived');
+  });
+
+  it('shows no Amount note on an ordinary session', () => {
+    const w = mountPanel(appointment({ notes: 'patient did well', lateFeeAmount: 60 }));
+    expect(w.find('[data-testid="financial-amount-note"]').exists()).toBe(false);
   });
 
   it('confirms in words what a waive removed', async () => {
