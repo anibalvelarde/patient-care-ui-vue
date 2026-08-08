@@ -143,8 +143,9 @@
               {{ form.noShowFeePct.toFixed(2) }}%
             </p>
             <p class="mt-1 text-xs text-slate-500">
-              WP-42: no-show fee = this % of the booked amount, charged when a session is marked
-              No Show. <span class="font-medium">0 = no fee.</span>
+              No-show fee = this <span class="font-medium">percent</span> of the booked amount,
+              charged when a session is marked No Show.
+              <span class="font-medium">Default 100 = the full session price; 0 = no fee.</span>
               <span v-if="!isSystemAdmin" data-testid="site-noshow-fee-sa-hint">
                 Only a System Administrator can change it.
               </span>
@@ -219,7 +220,7 @@ export default defineComponent({
       longitude: null as number | null,
       idleLogoffMinutes: 60,
       onSiteTripChargeAmount: 0,
-      noShowFeePct: 30, // WP-42: API default
+      noShowFeePct: 100, // WP-49/BR1: API default (percent — 100 = full session price)
     });
 
     const isEdit = ref(false);
@@ -245,7 +246,7 @@ export default defineComponent({
           form.idleLogoffMinutes = props.site.idleLogoffMinutes ?? 60;
           form.onSiteTripChargeAmount = props.site.onSiteTripChargeAmount ?? 0;
           feeFieldAvailable.value = props.site.noShowFeePct !== undefined && props.site.noShowFeePct !== null;
-          form.noShowFeePct = props.site.noShowFeePct ?? 30;
+          form.noShowFeePct = props.site.noShowFeePct ?? 100;
         } else {
           isEdit.value = false;
           form.siteName = '';
@@ -257,7 +258,7 @@ export default defineComponent({
           form.idleLogoffMinutes = 60;
           form.onSiteTripChargeAmount = 0;
           feeFieldAvailable.value = true;
-          form.noShowFeePct = 30;
+          form.noShowFeePct = 100;
         }
       }
     );

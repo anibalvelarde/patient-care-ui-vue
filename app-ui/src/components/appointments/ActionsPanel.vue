@@ -135,7 +135,13 @@
                   <p v-if="canEditDiscount && editSenadisActive" data-testid="edit-senadis-floor-hint" class="mt-1 text-[11px] text-violet-600">
                     SENADIS floor: min ${{ editSenadisFloor.toFixed(2) }} (20%) — may go up, never below.
                   </p>
-                  <p v-else-if="!canEditDiscount" class="mt-1 text-[11px] text-slate-400">
+                  <!-- WP-49 (ruling 4): distinguish the two reasons a discount is read-only,
+                       so the operator isn't left guessing which rule they hit. -->
+                  <p v-else-if="carriesFee" data-testid="edit-discount-fee-locked" class="mt-1 text-[11px] text-amber-600">
+                    This session carries a fee — changing the discount needs Manager fee rights.
+                    Use Waive Fee instead of discounting it away.
+                  </p>
+                  <p v-else class="mt-1 text-[11px] text-slate-400">
                     Discount edits need a Manager / Assistant Manager.
                   </p>
                 </div>
@@ -166,6 +172,47 @@
               </div>
             </div>
           </div>
+
+          <!-- WP-49 (BR4): Fees. Appears only on sessions that actually carry one, so the
+               panel stays quiet for the overwhelming majority of sessions. -->
+          <details v-if="showFeesSection" class="group rounded-xl border border-slate-200" data-testid="fees-section">
+            <summary class="flex items-center justify-between px-3 py-2.5 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+              <span class="text-sm font-semibold text-slate-700">Fees</span>
+              <svg class="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div class="px-3 pb-3 space-y-2">
+              <div v-if="hasWaivableLateFee" class="flex justify-between text-sm" data-testid="fees-late-line">
+                <span class="text-slate-600">Late chargeback</span>
+                <span class="font-medium text-slate-800">${{ (appointment.lateFeeAmount ?? 0).toFixed(2) }}</span>
+              </div>
+              <div v-if="hasWaivableNoShowFee" class="flex justify-between text-sm" data-testid="fees-noshow-line">
+                <span class="text-slate-600">No-show fee</span>
+                <span class="font-medium text-slate-800">${{ (appointment.amount - appointment.discount).toFixed(2) }}</span>
+              </div>
+              <p v-if="appointment.feeWaivedOn" class="text-[11px] text-slate-500" data-testid="fees-waived-note">
+                A fee on this session was waived on {{ appointment.feeWaivedOn }}. See the session notes for the reason.
+              </p>
+              <p v-else-if="!hasWaivableLateFee && !hasWaivableNoShowFee" class="text-[11px] text-slate-400">
+                No fee is currently outstanding on this session.
+              </p>
+
+              <button
+                v-if="hasWaivableLateFee || hasWaivableNoShowFee"
+                :disabled="!canWaiveFee"
+                :title="canWaiveFee ? '' : 'Waiving a fee is a manager action.'"
+                data-testid="waive-fee-btn"
+                class="px-3 py-1.5 text-xs font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                @click="waiveModalVisible = true"
+              >
+                Waive Fee
+              </button>
+              <p v-if="(hasWaivableLateFee || hasWaivableNoShowFee) && !canWaiveFee" class="text-[11px] text-slate-400">
+                Waiving a fee is a manager action.
+              </p>
+            </div>
+          </details>
 
           <!-- Record Confirmation Attempt (only for Proposed) -->
           <details
@@ -380,6 +427,14 @@
       </div>
     </div>
   </teleport>
+
+  <!-- WP-49 (BR4). Sits outside the panel's teleport so it stacks above it (z-60 vs z-50). -->
+  <WaiveFeeModal
+    :visible="waiveModalVisible"
+    :appointment="appointment"
+    @close="waiveModalVisible = false"
+    @waived="onFeeWaived"
+  />
 </template>
 
 <script lang="ts">
@@ -387,6 +442,7 @@ import { defineComponent, ref, computed, watch, type PropType } from 'vue';
 import { useRouter } from 'vue-router';
 import StatusBadge from './StatusBadge.vue';
 import AuditPopover from '../shared/AuditPopover.vue';
+import WaiveFeeModal from './WaiveFeeModal.vue';
 import { SessionsHttpClient } from '../../services/SessionsHttpClient';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import { SitesHttpClient } from '../../services/SitesHttpClient';
@@ -398,7 +454,7 @@ const TERMINAL_STATUSES = [3, 4, 5]; // Cancelled, Completed, NoShow
 
 export default defineComponent({
   name: 'ActionsPanel',
-  components: { StatusBadge, AuditPopover },
+  components: { StatusBadge, AuditPopover, WaiveFeeModal },
   props: {
     visible: { type: Boolean, required: true },
     appointment: { type: Object as PropType<Appointment | null>, default: null },
@@ -426,7 +482,34 @@ export default defineComponent({
     // WP-40 (BK-3): whether the session's patient has SENADIS active AT THE SESSION DATE —
     // drives the floor hint (the API enforces the floor regardless).
     const editSenadisActive = ref(false);
-    const canEditDiscount = computed(() => hasClaim('Permission', Permissions.SessionsDiscountEdit));
+    const canManageFees = computed(() => hasClaim('Permission', Permissions.SessionsFeeManage));
+    // WP-49 (ruling 4): on a FEE-BEARING session a discount edit needs Sessions.Fee.Manage as
+    // well, because setting discount = amount would erase the fee — the same money as a waiver
+    // with none of the record. The API 403s regardless; mirroring it here means an AM sees a
+    // read-only field with a reason instead of a control that always fails on save.
+    const carriesFee = computed(() => props.appointment?.carriesFee ?? false);
+    const canEditDiscount = computed(() =>
+      hasClaim('Permission', Permissions.SessionsDiscountEdit)
+      && (!carriesFee.value || canManageFees.value));
+
+    // Waive is offered only when there is actually something to forgive. A late fee already
+    // waived reads 0.00 with its latch still set, so it must not re-open the modal.
+    const hasWaivableLateFee = computed(() => (props.appointment?.lateFeeAmount ?? 0) > 0);
+    const hasWaivableNoShowFee = computed(() => {
+      const a = props.appointment;
+      if (!a) return false;
+      return (a.notes?.includes('[NOSHOW-FEE') ?? false) && a.amount - a.discount > 0;
+    });
+    const showFeesSection = computed(() =>
+      carriesFee.value || hasWaivableLateFee.value || hasWaivableNoShowFee.value);
+    const canWaiveFee = computed(() =>
+      canManageFees.value && (hasWaivableLateFee.value || hasWaivableNoShowFee.value));
+    const waiveModalVisible = ref(false);
+
+    const onFeeWaived = () => {
+      waiveModalVisible.value = false;
+      emit('updated');
+    };
     const editSenadisFloor = computed(() =>
       editSenadisActive.value ? Math.round(0.20 * financialForm.value.amount * 100) / 100 : 0
     );
@@ -643,6 +726,8 @@ export default defineComponent({
       confirmForm, cancelReason, actionInProgress, actionError,
       correctionConfirmed, editingFinancials, financialForm, isTerminalStatus,
       canEditDiscount, editSenadisActive, editSenadisFloor,
+      canManageFees, carriesFee, hasWaivableLateFee, hasWaivableNoShowFee,
+      showFeesSection, canWaiveFee, waiveModalVisible, onFeeWaived,
       showConfirmSection, showCancelSection, availableActions,
       isCompletedDiscovery, createPlanFromDiscovery, viewPatientPlans,
       startEditFinancials, saveFinancials,
