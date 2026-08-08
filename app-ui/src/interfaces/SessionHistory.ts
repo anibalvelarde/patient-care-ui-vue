@@ -67,4 +67,8 @@ export interface PatientHistorySession {
   // WP-35 (SH-2): the API has always sent SessionEvent.Notes on this endpoint — the interface
   // simply omitted it. Optional so older fixtures/payloads without it stay valid.
   notes?: string | null;
+  // WP-49 (BR3): the late chargeback in force on this session. Optional so an older API and
+  // existing fixtures stay valid; null/absent = never applied, 0 = applied then waived.
+  // Already included in amountDue — the column EXPLAINS that number rather than adding to it.
+  lateFeeAmount?: number | null;
 }

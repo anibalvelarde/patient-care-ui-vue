@@ -4,6 +4,10 @@ import type { Appointment, SessionEventRequest, SessionEventUpdateRequest, Confi
 import type { LookupItem } from '../interfaces/Lookups';
 import type { DiscoverySessionSummary } from '../interfaces/TreatmentPlan';
 import type { ScheduleMatrixResponse } from '../interfaces/ScheduleMatrix';
+import type {
+  LateFeePreviewResult, ApplyLateFeesRequest, ApplyLateFeesResult,
+  WaiveFeeRequest, WaiveFeeResult,
+} from '../interfaces/SessionFee';
 
 export class SessionsHttpClient extends HttpClientBase {
   async getSessions(date: string): Promise<Appointment[]> {
@@ -81,6 +85,25 @@ export class SessionsHttpClient extends HttpClientBase {
   async getScheduleMatrix(date: string, siteId: number): Promise<ScheduleMatrixResponse> {
     const formattedDate = this.formatDateForApi(date);
     return this.get<ScheduleMatrixResponse>(`/api/Sessions/${formattedDate}/schedule-matrix?siteId=${siteId}`);
+  }
+
+  // ── WP-49 (BR3/BR4): late-fee batch + fee waiver ──────────────────────────────────────
+
+  /**
+   * Read-only; charges nothing. Rides Patients.Delinquent.View, so AM can preview but the
+   * two calls below (Sessions.Fee.Manage) will 403 for them.
+   */
+  async previewLateFees(asOf?: string): Promise<LateFeePreviewResult> {
+    const qs = asOf ? `?asOf=${asOf}` : '';
+    return this.get<LateFeePreviewResult>(`/api/sessions/late-fees/preview${qs}`);
+  }
+
+  async applyLateFees(data: ApplyLateFeesRequest): Promise<ApplyLateFeesResult> {
+    return this.post<ApplyLateFeesResult>('/api/sessions/late-fees/batch', data);
+  }
+
+  async waiveFee(id: number, data: WaiveFeeRequest): Promise<WaiveFeeResult> {
+    return this.post<WaiveFeeResult>(`/api/sessions/${id}/waive-fee`, data);
   }
 
   private formatDateForApi(date: string): string {

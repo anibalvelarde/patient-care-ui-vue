@@ -73,6 +73,16 @@
                   <div class="flex items-center space-x-4">
                     <span class="text-xs text-slate-500">${{ session.amount.toFixed(2) }}</span>
                     <span v-if="session.discount > 0" class="text-xs text-green-600">-${{ session.discount.toFixed(2) }}</span>
+                    <!-- WP-49 (BR3): already inside amountDue — shown so the "due" figure is
+                         explainable rather than just larger than amount − discount. -->
+                    <span
+                      v-if="(session.lateFeeAmount ?? 0) > 0"
+                      data-testid="delinquent-late-fee"
+                      class="text-xs text-amber-600"
+                      title="Late payment chargeback (30%)"
+                    >
+                      +${{ (session.lateFeeAmount ?? 0).toFixed(2) }} late fee
+                    </span>
                     <span class="text-xs font-medium text-amber-700">${{ session.amountDue.toFixed(2) }} due</span>
                     <svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />

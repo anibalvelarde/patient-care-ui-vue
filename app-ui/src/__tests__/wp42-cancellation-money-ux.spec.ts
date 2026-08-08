@@ -204,18 +204,22 @@ describe('SiteFormModal — noShowFeePct (WP-42)', () => {
     await wrapper.find('input[type="date"]').setValue('2026-01-01');
   }
 
-  it('create mode: SYSADMIN sends the default 30 on POST', async () => {
+  // WP-49 (BR1): the platform default moved 30 -> 100 (a PERCENT of the booked amount, so
+  // 100 = the full session price). The create form seeds the new default; edit mode still
+  // shows whatever the site actually stores, which is why the edit-mode cases above keep
+  // asserting 30 against an explicitly-seeded fixture.
+  it('create mode: SYSADMIN sends the default 100 on POST', async () => {
     const wrapper = await openForm(null, 'SYSADMIN', { isSystemAdmin: true });
-    expect((wrapper.find('[data-testid="site-noshow-fee-input"]').element as HTMLInputElement).value).toBe('30');
+    expect((wrapper.find('[data-testid="site-noshow-fee-input"]').element as HTMLInputElement).value).toBe('100');
     await fillRequiredCreateFields(wrapper);
     await wrapper.find('form').trigger('submit');
     await vi.waitFor(() => expect(sitesClientMocks.createSite).toHaveBeenCalled());
-    expect(sitesClientMocks.createSite.mock.calls[0][0]).toMatchObject({ noShowFeePct: 30 });
+    expect(sitesClientMocks.createSite.mock.calls[0][0]).toMatchObject({ noShowFeePct: 100 });
   });
 
-  it('create mode: non-SYSADMIN omits the field on POST (API defaults 30; sending non-30 would 403)', async () => {
+  it('create mode: non-SYSADMIN omits the field on POST (API defaults 100; sending non-default would 403)', async () => {
     const wrapper = await openForm(null, 'MGR');
-    expect(wrapper.find('[data-testid="site-noshow-fee-readonly"]').text()).toContain('30.00%');
+    expect(wrapper.find('[data-testid="site-noshow-fee-readonly"]').text()).toContain('100.00%');
     await fillRequiredCreateFields(wrapper);
     await wrapper.find('form').trigger('submit');
     await vi.waitFor(() => expect(sitesClientMocks.createSite).toHaveBeenCalled());

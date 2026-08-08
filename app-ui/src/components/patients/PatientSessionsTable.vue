@@ -21,13 +21,14 @@
 
     <template v-else-if="result">
       <!-- Column headers (desktop) -->
-      <div class="hidden md:grid grid-cols-[6rem_7rem_1fr_1fr_4.5rem_4.5rem_6.5rem_1.75rem_1rem] gap-2 px-4 py-2 bg-slate-100/70 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+      <div class="hidden md:grid grid-cols-[6rem_7rem_1fr_1fr_4.5rem_4.5rem_4.5rem_6.5rem_1.75rem_1rem] gap-2 px-4 py-2 bg-slate-100/70 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
         <span>Date</span>
         <span>Status</span>
         <span>Specialty</span>
         <span>Therapist</span>
         <span class="text-right">Amount</span>
         <span class="text-right">Discount</span>
+        <span class="text-right">Late Fee</span>
         <span class="text-right">Paid / Owed</span>
         <span></span>
         <span></span>
@@ -42,7 +43,7 @@
           class="block px-4 py-2 hover:bg-blue-50/60 transition-colors group"
         >
           <!-- Desktop grid row -->
-          <div class="hidden md:grid grid-cols-[6rem_7rem_1fr_1fr_4.5rem_4.5rem_6.5rem_1.75rem_1rem] gap-2 items-center text-xs">
+          <div class="hidden md:grid grid-cols-[6rem_7rem_1fr_1fr_4.5rem_4.5rem_4.5rem_6.5rem_1.75rem_1rem] gap-2 items-center text-xs">
             <span class="text-slate-500">{{ formatDate(session.sessionDate) }}</span>
             <span>
               <StatusBadge :status-id="session.appointmentStatusId" :status-name="session.statusName" />
@@ -52,6 +53,19 @@
             <span class="text-right text-slate-600">{{ formatCurrency(session.amount) }}</span>
             <span class="text-right" :class="session.discount > 0 ? 'text-green-600' : 'text-slate-400'">
               {{ session.discount > 0 ? '-' + formatCurrency(session.discount) : '—' }}
+            </span>
+            <!-- WP-49 (BR3): the late chargeback is already inside amountDue — this column
+                 EXPLAINS that number rather than adding to it. A waived fee shows as 0.00 in
+                 muted type, deliberately distinct from "—" (never charged): the difference
+                 between "forgiven" and "never applied" is exactly what a caretaker asks about. -->
+            <span class="text-right" data-testid="session-late-fee-cell">
+              <span v-if="(session.lateFeeAmount ?? 0) > 0" class="text-amber-600 font-medium" title="Late payment chargeback (30%)">
+                {{ formatCurrency(session.lateFeeAmount ?? 0) }}
+              </span>
+              <span v-else-if="session.lateFeeAmount === 0" class="text-slate-400" title="A late fee was applied and later waived">
+                waived
+              </span>
+              <span v-else class="text-slate-400">—</span>
             </span>
             <!-- Paid off → green check; otherwise the outstanding balance in red -->
             <span class="text-right">
@@ -103,7 +117,7 @@
               <StatusBadge :status-id="session.appointmentStatusId" :status-name="session.statusName" />
             </div>
             <div class="text-slate-400">
-              {{ formatCurrency(session.amount) }}<template v-if="session.discount > 0"> · -{{ formatCurrency(session.discount) }} discount</template>
+              {{ formatCurrency(session.amount) }}<template v-if="session.discount > 0"> · -{{ formatCurrency(session.discount) }} discount</template><template v-if="(session.lateFeeAmount ?? 0) > 0"> · +{{ formatCurrency(session.lateFeeAmount ?? 0) }} late fee</template>
             </div>
           </div>
         </router-link>

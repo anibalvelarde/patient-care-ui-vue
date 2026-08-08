@@ -40,6 +40,16 @@ export interface Appointment {
     // WP-40: where the server derived the amount from — "durationPrice" | "defaultAmount";
     // set on the create response only (null on list/read paths).
     amountSource?: string | null;
+    // WP-49 (BR3): the late chargeback currently in force. null/absent = never applied;
+    // 0 = applied and then waived (the original is preserved in the Notes marker).
+    // Included in amountDue.
+    lateFeeAmount?: number | null;
+    lateFeeAppliedOn?: string | null;
+    feeWaivedOn?: string | null;
+    // WP-49 (ruling 4): true when the session carries a late fee (even a waived one) or a
+    // no-show fee marker. Gates the read-only discount input — on a fee-bearing session,
+    // editing the discount needs Sessions.Fee.Manage as well as Sessions.Discount.Edit.
+    carriesFee?: boolean;
     // WP-31 (U1): audit block for the Session Details ⓘ popover. Optional — tolerates an older API.
     audit?: AuditInfo;
 }
