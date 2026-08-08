@@ -155,7 +155,23 @@ export default defineComponent({
     };
 
     const onBookingSaved = () => loadAppointments();
-    const onStatusUpdated = () => loadAppointments();
+
+    // WP-49: re-point the OPEN Actions panel at the refreshed row after a reload.
+    //
+    // Most panel actions (cancel, complete, no-show) close the panel on their way out, so a
+    // stale `selectedAppointment` never showed. Waiving a fee is the first action that leaves
+    // the panel open — and without this the panel kept rendering the pre-waive object: the fee
+    // still listed, the Waive Fee button still offered, the money unchanged. The write had
+    // succeeded, but the screen said otherwise, which reads as "nothing happened".
+    const onStatusUpdated = async () => {
+      const openSessionId = selectedAppointment.value?.sessionId;
+      await loadAppointments();
+      if (openSessionId === undefined) return;
+      // Missing from the refreshed set (e.g. filtered out by a status change) → leave the
+      // panel's last-known data rather than blanking it out mid-interaction.
+      const refreshed = appointments.value.find(a => a.sessionId === openSessionId);
+      if (refreshed) selectedAppointment.value = refreshed;
+    };
 
     onMounted(async () => {
       // WP-34C: the dashboard Cancelled/No-Show tile deep-links to the EXISTING filter tab

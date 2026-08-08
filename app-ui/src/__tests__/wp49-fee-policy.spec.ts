@@ -11,6 +11,7 @@ import { sanitizePrintNotes } from '../utils/sanitizePrintNotes';
 import ApplyLateFeesWizard from '../components/payments/ApplyLateFeesWizard.vue';
 import WaiveFeeModal from '../components/appointments/WaiveFeeModal.vue';
 import CaretakerStatementScreen from '../components/statements/CaretakerStatementScreen.vue';
+import ActionsPanel from '../components/appointments/ActionsPanel.vue';
 
 // ── mocks ────────────────────────────────────────────────────────────────────────────────
 
@@ -25,8 +26,19 @@ vi.mock('../services/SessionsHttpClient', () => ({
     previewLateFees: previewLateFeesMock,
     applyLateFees: applyLateFeesMock,
     waiveFee: waiveFeeMock,
+    getStatuses: vi.fn().mockResolvedValue([]),
   })),
 }));
+
+// ActionsPanel news these up too — an unmocked client constructor reaches HttpClientBase and
+// fails cryptically (testing-guide rule).
+vi.mock('../services/PatientsHttpClient', () => ({
+  PatientsHttpClient: vi.fn().mockImplementation(() => ({ getPatient: vi.fn().mockResolvedValue({}) })),
+}));
+vi.mock('../services/SitesHttpClient', () => ({
+  SitesHttpClient: vi.fn().mockImplementation(() => ({ getSite: vi.fn().mockResolvedValue({}) })),
+}));
+vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 // ── auth ─────────────────────────────────────────────────────────────────────────────────
 
@@ -319,6 +331,101 @@ describe('WP-49 — Waive Fee modal', () => {
     await flushPromises();
 
     expect(w.find('[data-testid="waive-fee-error"]').text()).toContain('would leave the caretaker with a credit');
+  });
+});
+
+// ── the Actions panel: fee visibility and post-waive feedback ────────────────────────────
+
+describe('WP-49 — Actions panel fee surfacing', () => {
+  // From run-002: after waiving, the modal closed but the panel behind it still showed the fee
+  // and still offered "Waive Fee", because it was rendering a stale appointment object. The
+  // write had succeeded and the screen said otherwise, which reads as "nothing happened".
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    waiveFeeMock.mockResolvedValue({
+      sessionId: 1, feeKind: 'Late', lateFeeWaived: 60, noShowFeeWaived: 0,
+      amountDueAfter: 200, grossProfitAfter: 120, waivedOn: '2026-08-08', waivedByUserId: 3,
+    });
+  });
+
+  const mountPanel = (appt: Appointment, role = 'MGR') =>
+    mount(ActionsPanel, {
+      props: { visible: true, appointment: appt },
+      global: { plugins: [authAs(role)], stubs: { teleport: true } },
+    });
+
+  it('shows a Fee tile in the Financials strip on a fee-bearing session', () => {
+    const w = mountPanel(appointment({ amount: 200, discount: 0, lateFeeAmount: 60, amountDue: 260 }));
+    const tile = w.find('[data-testid="financial-fee-tile"]');
+    expect(tile.exists()).toBe(true);
+    expect(tile.text()).toContain('$60.00');
+    expect(tile.text()).toContain('late');
+  });
+
+  it('leaves the ordinary strip alone when there is no fee', () => {
+    const w = mountPanel(appointment({ lateFeeAmount: null, lateFeeAppliedOn: null, carriesFee: false, notes: '' }));
+    expect(w.find('[data-testid="financial-fee-tile"]').exists()).toBe(false);
+  });
+
+  it('labels a combined fee with both kinds', () => {
+    const w = mountPanel(appointment({
+      amount: 85, discount: 0, lateFeeAmount: 25.5, amountDue: 110.5,
+      notes: '[NOSHOW-FEE 2026-07-01: was A:85.00]', appointmentStatusId: 5,
+    }));
+    const tile = w.find('[data-testid="financial-fee-tile"]');
+    expect(tile.text()).toContain('$110.50');   // 25.50 late + 85.00 no-show
+    expect(tile.text()).toContain('late + no-show');
+  });
+
+  it('keeps the tile visible once a fee is waived, marked "waived"', () => {
+    // Hiding it would make the waive look like it never happened.
+    const w = mountPanel(appointment({ lateFeeAmount: 0, feeWaivedOn: '2026-08-08', amountDue: 200, notes: '' }));
+    const tile = w.find('[data-testid="financial-fee-tile"]');
+    expect(tile.exists()).toBe(true);
+    expect(tile.text()).toContain('waived');
+  });
+
+  it('confirms in words what a waive removed', async () => {
+    const w = mountPanel(appointment({ amount: 200, discount: 0, lateFeeAmount: 60, amountDue: 260 }));
+
+    await w.find('[data-testid="waive-fee-btn"]').trigger('click');
+    await flushPromises();
+    await w.find('[data-testid="waive-fee-reason"]').setValue('goodwill');
+    await w.find('form').trigger('submit');
+    await flushPromises();
+
+    // The modal is gone…
+    expect(w.find('[data-testid="waive-fee-modal"]').exists()).toBe(false);
+    // …and the panel says what happened, in money, rather than just looking unchanged.
+    const confirmation = w.find('[data-testid="fees-waive-confirmation"]');
+    expect(confirmation.exists()).toBe(true);
+    expect(confirmation.text()).toContain('$60.00 removed');
+    expect(confirmation.text()).toContain('$200.00');
+    // and the parent is told to refresh
+    expect(w.emitted('updated')).toBeTruthy();
+  });
+
+  it('drops the confirmation when the panel moves to another session', async () => {
+    // Otherwise it would read as applying to whatever session is now on screen.
+    const w = mountPanel(appointment({ amount: 200, discount: 0, lateFeeAmount: 60, amountDue: 260 }));
+    await w.find('[data-testid="waive-fee-btn"]').trigger('click');
+    await flushPromises();
+    await w.find('[data-testid="waive-fee-reason"]').setValue('goodwill');
+    await w.find('form').trigger('submit');
+    await flushPromises();
+    expect(w.find('[data-testid="fees-waive-confirmation"]').exists()).toBe(true);
+
+    await w.setProps({ appointment: appointment({ sessionId: 999 }) });
+    await flushPromises();
+
+    expect(w.find('[data-testid="fees-waive-confirmation"]').exists()).toBe(false);
+  });
+
+  it('AM sees the fee but cannot waive it', () => {
+    const w = mountPanel(appointment({ amount: 200, discount: 0, lateFeeAmount: 60, amountDue: 260 }), 'AM');
+    expect(w.find('[data-testid="financial-fee-tile"]').exists()).toBe(true);
+    expect(w.find('[data-testid="waive-fee-btn"]').attributes('disabled')).toBeDefined();
   });
 });
 
