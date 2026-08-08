@@ -215,6 +215,7 @@
 
 <script lang="ts">
 import { defineComponent, type PropType } from 'vue';
+import { formatWireDate } from '../../utils/localDate';
 import type { AccountStatement } from '../../interfaces/Statement';
 
 export default defineComponent({
@@ -225,10 +226,9 @@ export default defineComponent({
   setup() {
     const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
 
-    const formatDate = (dateStr: string) => {
-      const d = new Date(dateStr);
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    };
+    // WP-49 fix: a date-only wire string must be parsed as LOCAL midnight. `new Date(str)`
+    // treats it as UTC, which in Panama (UTC-5) rendered every session a day early.
+    const formatDate = (dateStr: string) => formatWireDate(dateStr);
 
     const printStatement = () => {
       window.print();

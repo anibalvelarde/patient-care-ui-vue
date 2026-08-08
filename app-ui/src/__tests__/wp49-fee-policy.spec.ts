@@ -8,6 +8,7 @@ import type { Appointment } from '../interfaces/Appointment';
 import type { LateFeePreviewResult, LateFeePreviewItem, ApplyLateFeesResult } from '../interfaces/SessionFee';
 import type { AccountStatement, StatementCharge } from '../interfaces/Statement';
 import { sanitizePrintNotes } from '../utils/sanitizePrintNotes';
+import { parseWireDate, formatWireDate } from '../utils/localDate';
 import ApplyLateFeesWizard from '../components/payments/ApplyLateFeesWizard.vue';
 import WaiveFeeModal from '../components/appointments/WaiveFeeModal.vue';
 import CaretakerStatementScreen from '../components/statements/CaretakerStatementScreen.vue';
@@ -504,6 +505,56 @@ describe('WP-49 — caretaker statement itemizes the late fee', () => {
     const w = mountScreen(statement([charge({ lateFeeAmount: undefined })], { totalLateFees: undefined }));
     expect(w.find('[data-testid="statement-late-fee-cell"]').exists()).toBe(true);
     expect(w.find('[data-testid="statement-total-late-fees"]').exists()).toBe(false);
+  });
+});
+
+// ── the statement date off-by-one ────────────────────────────────────────────────────────
+
+describe('WP-49 — wire dates render on the right day', () => {
+  // From run-001 item 7: session 11042 is dated 2026-05-16 but the statement showed May 15.
+  // The API was innocent — it sends the plain string. `new Date('2026-05-16')` is specified to
+  // parse the date-only form as UTC midnight, which in Panama (UTC-5) is still the 15th.
+
+  it('parses a date-only wire string as LOCAL midnight, not UTC', () => {
+    const d = parseWireDate('2026-05-16');
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(4);      // May
+    expect(d.getDate()).toBe(16);      // the 16th, in every timezone
+  });
+
+  it('formats it as the same calendar day', () => {
+    expect(formatWireDate('2026-05-16')).toBe('May 16, 2026');
+    expect(formatWireDate('2026-01-01')).toBe('Jan 1, 2026');
+    expect(formatWireDate('2026-12-31')).toBe('Dec 31, 2026');
+  });
+
+  it('leaves a full timestamp to the normal parser — it is a real instant', () => {
+    // Payment dates arrive as timestamps; only the date-only form needs the special handling.
+    expect(Number.isNaN(parseWireDate('2026-05-16T14:30:00').getTime())).toBe(false);
+  });
+
+  it('renders empty input as a dash rather than "Invalid Date"', () => {
+    expect(formatWireDate(null)).toBe('—');
+    expect(formatWireDate(undefined)).toBe('—');
+    expect(formatWireDate('')).toBe('—');
+  });
+
+  it('shows the real session date on the caretaker statement', () => {
+    const w = mount(CaretakerStatementScreen, {
+      props: { statement: {
+        caretakerId: 1, caretakerName: 'C', statementDate: '2026-08-08',
+        periodStart: '2026-01-01', periodEnd: '2026-12-31', patients: [], payments: [],
+        charges: [{ sessionId: 11042, sessionDate: '2026-05-16', patientName: 'VERGARA',
+          therapistName: 'S', therapyType: 'EEG', amount: 175, discountAmount: 0, netCharge: 175,
+          onSiteChargeAmount: null, lateFeeAmount: 37.5, amountPaid: 50, amountDue: 162.5,
+          isPastDue: true, paymentsApplied: [] }],
+        summary: { totalCharges: 175, totalDiscounts: 0, totalNetCharges: 175, totalLateFees: 37.5,
+          totalPayments: 50, outstandingBalance: 162.5, pastDueAmount: 162.5, pastDueSessionCount: 1 },
+      } as unknown as AccountStatement },
+      global: { plugins: [authAs('MGR')] },
+    });
+    expect(w.text()).toContain('May 16, 2026');
+    expect(w.text()).not.toContain('May 15, 2026');
   });
 });
 
