@@ -48,6 +48,7 @@
               <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Amount</th>
               <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Discount</th>
               <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Net</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Late Fee</th>
               <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Paid</th>
               <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Due</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
@@ -62,6 +63,15 @@
               <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-900 text-right">{{ formatCurrency(charge.amount) }}</td>
               <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-900 text-right">{{ formatCurrency(charge.discountAmount) }}</td>
               <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-900 text-right font-medium">{{ formatCurrency(charge.netCharge) }}</td>
+              <!-- WP-49 (BR3): itemized so "Due" is explainable. Without this column the balance
+                   is simply larger than Net − Paid with nothing on the statement saying why. -->
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-right" data-testid="statement-late-fee-cell">
+                <span v-if="(charge.lateFeeAmount ?? 0) > 0" class="text-amber-600 font-medium" title="Late payment chargeback (30%)">
+                  {{ formatCurrency(charge.lateFeeAmount ?? 0) }}
+                </span>
+                <span v-else-if="charge.lateFeeAmount === 0" class="text-slate-400" title="A late fee was applied and later waived">waived</span>
+                <span v-else class="text-slate-400">&mdash;</span>
+              </td>
               <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-900 text-right">{{ formatCurrency(charge.amountPaid) }}</td>
               <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-medium" :class="charge.amountDue > 0 ? 'text-red-600' : 'text-slate-900'">
                 {{ formatCurrency(charge.amountDue) }}
@@ -88,7 +98,7 @@
               </td>
             </tr>
             <tr v-if="statement.charges.length === 0">
-              <td colspan="10" class="px-4 py-8 text-center text-sm text-slate-400">
+              <td colspan="11" class="px-4 py-8 text-center text-sm text-slate-400">
                 No charges in this period.
               </td>
             </tr>
@@ -153,6 +163,16 @@
         <div>
           <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Net Charges</p>
           <p class="text-lg font-semibold text-slate-900 mt-1">{{ formatCurrency(statement.summary.totalNetCharges) }}</p>
+        </div>
+        <!-- WP-49/WP-40: shown only when non-zero, so an ordinary statement is not cluttered
+             with two permanently-$0.00 tiles. -->
+        <div v-if="(statement.summary.totalOnSiteCharges ?? 0) > 0" data-testid="statement-total-onsite">
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total On-Site Charges</p>
+          <p class="text-lg font-semibold text-slate-900 mt-1">{{ formatCurrency(statement.summary.totalOnSiteCharges ?? 0) }}</p>
+        </div>
+        <div v-if="(statement.summary.totalLateFees ?? 0) > 0" data-testid="statement-total-late-fees">
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Late Fees</p>
+          <p class="text-lg font-semibold text-amber-600 mt-1">{{ formatCurrency(statement.summary.totalLateFees ?? 0) }}</p>
         </div>
         <div>
           <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Payments</p>

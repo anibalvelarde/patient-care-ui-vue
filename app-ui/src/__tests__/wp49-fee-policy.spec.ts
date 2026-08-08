@@ -6,9 +6,11 @@ import { useAuthStore } from '../stores/auth';
 import type { ClaimDto } from '../interfaces/Auth';
 import type { Appointment } from '../interfaces/Appointment';
 import type { LateFeePreviewResult, LateFeePreviewItem, ApplyLateFeesResult } from '../interfaces/SessionFee';
+import type { AccountStatement, StatementCharge } from '../interfaces/Statement';
 import { sanitizePrintNotes } from '../utils/sanitizePrintNotes';
 import ApplyLateFeesWizard from '../components/payments/ApplyLateFeesWizard.vue';
 import WaiveFeeModal from '../components/appointments/WaiveFeeModal.vue';
+import CaretakerStatementScreen from '../components/statements/CaretakerStatementScreen.vue';
 
 // ── mocks ────────────────────────────────────────────────────────────────────────────────
 
@@ -317,6 +319,84 @@ describe('WP-49 — Waive Fee modal', () => {
     await flushPromises();
 
     expect(w.find('[data-testid="waive-fee-error"]').text()).toContain('would leave the caretaker with a credit');
+  });
+});
+
+// ── the caretaker statement itemizes the fee ─────────────────────────────────────────────
+
+describe('WP-49 — caretaker statement itemizes the late fee', () => {
+  // Shipped broken in the first pass: the API gained lateFeeAmount and the summary totals, but
+  // the statement screen never rendered them — so the balance was simply larger than
+  // Net − Paid with nothing on the statement explaining why.
+
+  function charge(overrides: Partial<StatementCharge> = {}): StatementCharge {
+    return {
+      sessionId: 11042, sessionDate: '2026-05-16', patientName: 'VERGARA, HERNAN',
+      therapistName: 'Dra. Silvia', therapyType: 'EEG',
+      amount: 175, discountAmount: 0, netCharge: 175,
+      onSiteChargeAmount: null, lateFeeAmount: 37.5,
+      amountPaid: 50, amountDue: 162.5, isPastDue: true, paymentsApplied: [],
+      ...overrides,
+    };
+  }
+
+  function statement(charges: StatementCharge[], summary: Partial<AccountStatement['summary']> = {}) {
+    return {
+      caretakerId: 1, caretakerName: 'Test Caretaker', statementDate: '2026-08-08',
+      periodStart: '2026-01-01', periodEnd: '2026-12-31',
+      patients: [], charges, payments: [],
+      summary: {
+        totalCharges: 175, totalDiscounts: 0, totalNetCharges: 175,
+        totalOnSiteCharges: 0, totalLateFees: 37.5,
+        totalPayments: 50, outstandingBalance: 162.5,
+        pastDueAmount: 162.5, pastDueSessionCount: 1,
+        ...summary,
+      },
+    } as unknown as AccountStatement;
+  }
+
+  const mountScreen = (s: AccountStatement) =>
+    mount(CaretakerStatementScreen, { props: { statement: s }, global: { plugins: [authAs('MGR')] } });
+
+  it('shows the fee as its own column', () => {
+    const w = mountScreen(statement([charge()]));
+    expect(w.find('[data-testid="statement-late-fee-cell"]').text()).toContain('$37.50');
+  });
+
+  it('the row arithmetic closes: net + late fee − paid == due', () => {
+    // The property that makes the statement readable. If this drifts, a caretaker sees a
+    // balance they cannot reconcile from the columns in front of them.
+    const c = charge();
+    expect(c.netCharge + (c.onSiteChargeAmount ?? 0) + (c.lateFeeAmount ?? 0) - c.amountPaid)
+      .toBe(c.amountDue);
+  });
+
+  it('distinguishes a waived fee from one that was never charged', () => {
+    const w = mountScreen(statement([
+      charge({ sessionId: 1, lateFeeAmount: 0 }),
+      charge({ sessionId: 2, lateFeeAmount: null }),
+    ]));
+    const cells = w.findAll('[data-testid="statement-late-fee-cell"]');
+    expect(cells[0].text()).toContain('waived');
+    expect(cells[1].text()).not.toContain('waived');
+  });
+
+  it('surfaces a Total Late Fees tile when there are any', () => {
+    const w = mountScreen(statement([charge()]));
+    expect(w.find('[data-testid="statement-total-late-fees"]').text()).toContain('$37.50');
+  });
+
+  it('hides the late-fee and on-site tiles on an ordinary statement', () => {
+    // An ordinary caretaker should not be shown two permanently-$0.00 tiles.
+    const w = mountScreen(statement([charge({ lateFeeAmount: null })], { totalLateFees: 0, totalOnSiteCharges: 0 }));
+    expect(w.find('[data-testid="statement-total-late-fees"]').exists()).toBe(false);
+    expect(w.find('[data-testid="statement-total-onsite"]').exists()).toBe(false);
+  });
+
+  it('tolerates an older API that omits the fields entirely', () => {
+    const w = mountScreen(statement([charge({ lateFeeAmount: undefined })], { totalLateFees: undefined }));
+    expect(w.find('[data-testid="statement-late-fee-cell"]').exists()).toBe(true);
+    expect(w.find('[data-testid="statement-total-late-fees"]').exists()).toBe(false);
   });
 });
 
