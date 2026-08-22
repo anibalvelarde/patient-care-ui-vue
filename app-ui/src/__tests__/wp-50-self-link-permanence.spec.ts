@@ -8,8 +8,25 @@ import { shallowMount, flushPromises } from '@vue/test-utils';
 import manifest from '../generated/access-control-matrix.json';
 import { useAuthStore } from '../stores/auth';
 import type { ClaimDto } from '../interfaces/Auth';
+import type { Patient } from '../interfaces/Patient';
+import type { Caretaker } from '../interfaces/Caretaker';
 import PatientCaretakerPanel from '../components/patients/PatientCaretakerPanel.vue';
 import CaretakerPatientsList from '../components/caretakers/CaretakerPatientsList.vue';
+
+// Complete objects — the panel props are typed as the full Patient/Caretaker interfaces, so the
+// `: Patient` / `: Caretaker` annotations force every required field (and catch future drift under
+// `vue-tsc`). The panels render their list rows from the mocked clients, not from these props.
+const fullPatient: Patient = {
+  patientId: 42, userId: 1, patientName: 'Adult, Self',
+  medicalRecordNumber: 'L26-0001', cedula: '8-000-0000', dateOfBirth: '1980-01-01T00:00:00',
+  email: null, phoneNumber: null, gender: 'Female', isActive: true,
+  hasCompletedDiscovery: false, createdTimestamp: '2026-08-22T00:00:00', caretakers: [],
+};
+const fullCaretaker: Caretaker = {
+  caretakerId: 10, userId: 1, caretakerName: 'Adult, Self',
+  email: null, phoneNumber: null, notes: '', createdTimestamp: '2026-08-22T00:00:00',
+  lastUpdated: '2026-08-22T00:00:00', isActive: true, patients: [],
+};
 
 const { getPatientCaretakersMock, getCaretakerPatientsMock } = vi.hoisted(() => ({
   getPatientCaretakersMock: vi.fn(),
@@ -57,7 +74,7 @@ describe('WP-50 — Self link has no Remove on the patient panel', () => {
       { caretakerId: 11, caretakerName: 'Madre, Rosa', relationshipToPatient: 'Mother', isPrimaryCaretaker: false },
     ]);
     const wrapper = shallowMount(PatientCaretakerPanel, {
-      props: { patient: { patientId: 42, patientName: 'Adult, Self' } },
+      props: { patient: fullPatient },
       global: { plugins: [authAs('FD')], stubs: { teleport: true } },
     });
     await flushPromises();
@@ -74,7 +91,7 @@ describe('WP-50 — Self link has no Unlink on the caretaker panel', () => {
       { patientId: 43, patientName: 'Nino, Otro', relationshipToPatient: 'Relative', isPrimaryCaretaker: false },
     ]);
     const wrapper = shallowMount(CaretakerPatientsList, {
-      props: { caretaker: { caretakerId: 10, caretakerName: 'Adult, Self' } },
+      props: { caretaker: fullCaretaker },
       global: { plugins: [authAs('FD')], stubs: { teleport: true } },
     });
     await flushPromises();
