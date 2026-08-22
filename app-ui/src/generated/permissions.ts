@@ -8,7 +8,7 @@
 //   app-ui/src/generated/access-control-matrix.json, then re-run
 //   tools/generate-ui-permissions.sh.
 //
-//   Access-control manifest semantic hash: 6314adb59131
+//   Access-control manifest semantic hash: d2711d0af267
 // </auto-generated>
 
 /**
@@ -20,6 +20,8 @@
  * Vitest no-drift test asserts this set equals the manifest's claims.
  */
 export const Permissions = {
+  AdminChangeLogPurge: 'Admin.ChangeLog.Purge',
+  AdminChangeLogView: 'Admin.ChangeLog.View',
   AdminLookupsAppointmentStatusManage: 'Admin.Lookups.AppointmentStatus.Manage',
   AdminLookupsAppointmentStatusView: 'Admin.Lookups.AppointmentStatus.View',
   AdminLookupsPaymentTypeManage: 'Admin.Lookups.PaymentType.Manage',
@@ -82,4 +84,4 @@ export const Permissions = {
 export type Permission = (typeof Permissions)[keyof typeof Permissions];
 
 /** Access-control manifest semantic hash this module was generated from (WP-17 anchor). */
-export const ACCESS_CONTROL_MANIFEST_HASH = '6314adb59131';
+export const ACCESS_CONTROL_MANIFEST_HASH = 'd2711d0af267';
