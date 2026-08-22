@@ -44,9 +44,10 @@
           </span>
         </div>
         <!-- WP-27 claim hygiene: gate on the claim the API enforces — link/unlink is
-             caretaker-side (Caretakers.LinkPatient), not Patients.LinkCaretaker -->
+             caretaker-side (Caretakers.LinkPatient), not Patients.LinkCaretaker.
+             WP-50: a "Self" link is permanent (the API 409s an unlink), so no Remove for it. -->
         <button
-          v-if="hasClaim('Permission', Permissions.CaretakersLinkPatient)"
+          v-if="hasClaim('Permission', Permissions.CaretakersLinkPatient) && (lc.relationshipToPatient || '').toLowerCase() !== 'self'"
           class="px-3 py-1 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
           @click="confirmRemove(lc)"
         >

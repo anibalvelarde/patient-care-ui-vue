@@ -58,12 +58,15 @@ Owner/Accounting account works (read-only for these actions).
 3. **Expect:** there is **no** "their own caretaker" button here (a caretaker is not their own
    *patient* — the mirror direction is intentionally out of scope for now).
 
-### TC-3 — Idempotency: can't do it twice
-1. Take a patient who is **already** their own caretaker (TC-1's patient, or Juliana / Daniel from
-   the seed data via a direct API call — see TC-A2).
-2. Attempt the self-caretaker action again (re-open the chooser from the patient page if offered).
-3. **Expect:** a friendly error surfaced on the chooser — *"…is already their own caretaker"* — and
-   **no** duplicate caretaker row / link is created. The success panel does **not** show.
+### TC-3 — Idempotency (the UI naturally prevents a repeat)
+The "This patient is their own caretaker" button only appears in the **post-create chooser** for a
+patient who has **no caretaker yet**. Once they are their own caretaker they *have* a caretaker, so
+the chooser/button is no longer offered — there is **no UI path to do it twice**. That's the intended
+behaviour (confirmed in testing).
+1. **Expect (UI):** after TC-1, there is no way to re-trigger the self-caretaker action for that
+   patient — so no error is needed or shown.
+2. The idempotency **guard still exists at the API** as a safety net (a second `POST /api/caretakers/self`
+   returns **409**) — exercised by **TC-A2**, not through the UI.
 
 ### TC-4 — Email is now optional (root-cause fix)
 1. **Add Patient** with **no email** → Save succeeds (previously blocked with "fill in all required
@@ -83,6 +86,18 @@ Owner/Accounting account works (read-only for these actions).
 2. Create/observe the chooser.
 3. **Expect:** the **"This patient is their own caretaker"** button is **not shown** (same gate as
    "Link an existing caretaker").
+
+### TC-7 — A `Self` link is permanent (no removal)  ← added from testing feedback
+1. Open a self-caretaker patient's **detail page → Caretakers panel**. **Expect:** the row shows
+   relationship **Self**, and there is **no "Remove"** button on it (a normal caretaker row still has one).
+2. Open that same person's **Caretaker detail → Patients list**. **Expect:** the self row shows
+   **Self** and has **no "Unlink"** button (a normal patient row still has one).
+3. (API) A direct `DELETE /api/caretakers/{caretakerId}/patients/{patientId}` against the self link
+   returns **409** ("A self-caretaker link cannot be removed.").
+
+> **Why permanent:** removing the self link would strand the caretaker identity minted on the
+> patient's own account and let a duplicate be created on a re-add. Correcting a genuine mis-tick is a
+> deliberate DB action, not an in-app one.
 
 ---
 
@@ -144,3 +159,17 @@ the patient's existing user; no second account).
 - The self-link is a single row, `RelationshipToPatient = "Self"`, primary — **no reverse row**.
 - Patients/caretakers can be saved **without an email**.
 - The action is gated to MGR/AM/FD/SYSADMIN and is idempotent.
+
+
+## Test Results:
+- when testing for [TC-3], I was not able to see the record for "self" in the search results.  The original behavior is taking care of the recursiveness.  I did not get to see a UI "friendly error" like the `TC-3` description indicated.
+
+## Observations:
+- ~~when adding a Caretaker and choosing to link existing patients, I think that any patients that have a `self` relationship are not elegible to appear on the search results.  Agree?~~
+  - This observation was a mistake. This behavior does not occur in the current application.
+- I noticed that the `self` relationship can be "removed" from either the patient or the caretaker's perspective.  Should that removal action be allowed?  I'm in the camp of "no removals" for `self` type relationships. Thoughts?
+  - **Resolved (2026-08-22): agreed — no removals for `self`, hard-blocked for everyone.** It was
+    also a real gap, not just a preference: unlinking a self link left an orphaned caretaker identity
+    and let a *duplicate* be minted on a re-add. Fix shipped on the WP-50 branches — the API `DELETE`
+    returns **409** for a `Self` link, and the Remove/Unlink button is hidden on both the patient and
+    caretaker views. See **TC-7**.
