@@ -67,6 +67,11 @@
                 <UsersPanel />
               </div>
 
+              <!-- Change Log (WP-54C, SYSADMIN-only) -->
+              <div v-if="activeSection === 'change-log'">
+                <ChangeLogPanel />
+              </div>
+
               <!-- About -->
               <div v-if="activeSection === 'about'">
                 <AboutPanel />
@@ -122,6 +127,7 @@ import SpecialtyPricesModal from '../components/admin/SpecialtyPricesModal.vue';
 import AboutPanel from '../components/admin/AboutPanel.vue';
 import PatientMergePanel from '../components/admin/PatientMergePanel.vue';
 import UsersPanel from '../components/admin/UsersPanel.vue';
+import ChangeLogPanel from '../components/admin/change-log/ChangeLogPanel.vue';
 import type { FieldDef } from '../components/admin/LookupFormModal.vue';
 import type { ColumnDef } from '../components/admin/LookupTableManager.vue';
 import { SitesHttpClient } from '../services/SitesHttpClient';
@@ -138,7 +144,7 @@ export default defineComponent({
     O2MobileNav, O2Sidebar, O2Header, O2Footer,
     SiteList, SiteFormModal,
     AdminAccordionNav, LookupTableManager, LookupFormModal, SpecialtyPricesModal,
-    AboutPanel, PatientMergePanel, UsersPanel,
+    AboutPanel, PatientMergePanel, UsersPanel, ChangeLogPanel,
   },
   setup() {
     // WP-39C: /admin admits every Admin.View holder (MGR/AM/OWN + SYSADMIN), so each section

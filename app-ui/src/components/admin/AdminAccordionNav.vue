@@ -109,7 +109,7 @@
     </div>
 
     <!-- Security group (WP-41C: Users rides Admin.Users.View — MGR/OWN read-only + SYSADMIN) -->
-    <div v-if="canViewUsers" data-testid="nav-group-security">
+    <div v-if="canViewUsers || canViewChangeLog" data-testid="nav-group-security">
       <button
         class="w-full px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between hover:bg-slate-100 transition-colors"
         @click="securityOpen = !securityOpen"
@@ -125,7 +125,7 @@
       </button>
       <div
         class="overflow-hidden transition-all duration-200"
-        :class="securityOpen ? 'max-h-20' : 'max-h-0'"
+        :class="securityOpen ? 'max-h-40' : 'max-h-0'"
       >
         <button
           class="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors border-b border-slate-50"
@@ -139,6 +139,21 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
           </svg>
           Users
+        </button>
+        <!-- WP-54C: Change Log — SYSADMIN-only (Admin.ChangeLog.View) -->
+        <button
+          v-if="canViewChangeLog"
+          class="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors border-b border-slate-50"
+          :class="activeSection === 'change-log'
+            ? 'bg-violet-50 text-violet-700 font-medium border-l-2 border-l-violet-600'
+            : 'text-slate-600 hover:bg-slate-50'"
+          data-testid="nav-change-log"
+          @click="$emit('select', 'change-log')"
+        >
+          <svg class="w-4 h-4" :class="activeSection === 'change-log' ? 'text-violet-500' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          </svg>
+          Change Log
         </button>
       </div>
     </div>
@@ -205,6 +220,8 @@ export default defineComponent({
     // WP-41C: section entry rides Admin.Users.View (MGR/OWN + SYSADMIN wildcard); write
     // actions inside UsersPanel ride Admin.Users.Manage separately.
     const canViewUsers = computed(() => hasClaim('Permission', Permissions.AdminUsersView));
+    // WP-54C: Change Log is SYSADMIN-only (the wildcard satisfies Admin.ChangeLog.View).
+    const canViewChangeLog = computed(() => hasClaim('Permission', Permissions.AdminChangeLogView));
 
     const refDataItems = [
       {
@@ -235,7 +252,7 @@ export default defineComponent({
 
     return {
       configOpen, refdataOpen, dataMaintOpen, securityOpen, aboutOpen,
-      visibleRefDataItems, canViewSites, canViewUsers, hasClaim, isSystemAdmin, Permissions,
+      visibleRefDataItems, canViewSites, canViewUsers, canViewChangeLog, hasClaim, isSystemAdmin, Permissions,
     };
   },
 });
