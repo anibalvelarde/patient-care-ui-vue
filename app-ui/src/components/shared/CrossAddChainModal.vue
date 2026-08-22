@@ -37,6 +37,16 @@
             >
               Create a new {{ otherNoun }}
             </button>
+            <!-- WP-50C: adult patient who is their own caretaker — one call, no second account. -->
+            <button
+              v-if="addingCaretaker && canSelf"
+              data-testid="chain-self-caretaker"
+              class="w-full px-4 py-2.5 rounded-lg text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-left transition-colors disabled:opacity-50"
+              :disabled="saving"
+              @click="makeSelf"
+            >
+              This patient is their own caretaker
+            </button>
             <button
               data-testid="chain-later"
               class="w-full px-4 py-2 rounded-lg text-xs text-slate-500 hover:bg-slate-50 transition-colors"
@@ -45,6 +55,7 @@
               Later{{ addingCaretaker ? " — I'll link one from the patient's page" : '' }}
             </button>
           </div>
+          <p v-if="errorMsg" class="text-sm text-red-600 mt-3" data-testid="chain-chooser-error">{{ errorMsg }}</p>
         </div>
       </div>
 
@@ -193,6 +204,9 @@ export default defineComponent({
         canLink.value &&
         hasClaim('Permission', addingCaretaker.value ? Permissions.CaretakersEdit : Permissions.PatientsEdit)
     );
+    // WP-50C: the self-caretaker action nets to a caretaker↔patient link, and the API enforces
+    // Caretakers.LinkPatient on it — same gate as linking.
+    const canSelf = computed(() => hasClaim('Permission', Permissions.CaretakersLinkPatient));
 
     const linkToCtx = computed(() => (props.target ? { name: props.target.name } : null));
 
@@ -242,6 +256,25 @@ export default defineComponent({
       } catch (e: unknown) {
         // Stay on the link step — the form itself is the retry affordance.
         errorMsg.value = e instanceof Error ? e.message : `Failed to link ${otherNoun.value}.`;
+      } finally {
+        saving.value = false;
+      }
+    };
+
+    // WP-50C: "this patient is their own caretaker" — one atomic API call, no second account, no
+    // caretaker to pick or create. Only offered in the add-caretaker direction (a patient exists).
+    const makeSelf = async () => {
+      if (!props.target) return;
+      saving.value = true;
+      errorMsg.value = '';
+      try {
+        await caretakerClient.makeSelfCaretaker(props.target.id, true);
+        successMsg.value = `${props.target.name} is now their own caretaker`;
+        step.value = 'success';
+        emit('linked');
+      } catch (e: unknown) {
+        // Stay on the chooser; surface the reason (e.g. 409 already their own caretaker).
+        errorMsg.value = e instanceof Error ? e.message : 'Could not set the patient as their own caretaker.';
       } finally {
         saving.value = false;
       }
@@ -306,10 +339,12 @@ export default defineComponent({
       otherLabel,
       canLink,
       canCreate,
+      canSelf,
       linkToCtx,
       openLink,
       fetchLinkOptions,
       doLink,
+      makeSelf,
       onCreated,
       onCreateClosed,
       doPendingLink,

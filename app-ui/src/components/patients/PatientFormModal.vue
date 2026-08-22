@@ -164,11 +164,13 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Email *</label>
+            <!-- WP-50C: email is optional — the column is NULLable, 96% of rows are NULL, and only
+                 operator accounts (not patients) authenticate. Making it required is what forced the
+                 +alias workaround for self-caretakers. -->
+            <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
             <input
               v-model="form.email"
               type="email"
-              required
               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
@@ -460,7 +462,8 @@ export default defineComponent({
 
     const handleSubmit = () => {
       // WP-25 (F5): cedula/passport joins the required list at create (trimmed non-empty).
-      if (!form.firstName || !form.lastName || !form.dateOfBirth || !form.email || !form.phoneNumber || !form.gender
+      // WP-50C: email is NO LONGER required (optional/NULLable column).
+      if (!form.firstName || !form.lastName || !form.dateOfBirth || !form.phoneNumber || !form.gender
         || (!isEdit.value && !form.cedula.trim())) {
         setError('Please fill in all required fields.');
         return;
@@ -483,7 +486,7 @@ export default defineComponent({
             middleName: form.middleName || undefined,
             lastName: form.lastName,
             dateOfBirth: formatDobForApi(form.dateOfBirth),
-            email: form.email,
+            email: form.email || undefined, // WP-50C: blank → omit (server stores NULL)
             phoneNumber: form.phoneNumber,
             gender: form.gender,
             // WP-25 (F5): blank must never be sent — the API 400s it ("cannot be cleared";
@@ -516,7 +519,7 @@ export default defineComponent({
             middleName: form.middleName || undefined,
             lastName: form.lastName,
             dateOfBirth: formatDobForApi(form.dateOfBirth),
-            email: form.email,
+            email: form.email || undefined, // WP-50C: blank → omit (server stores NULL)
             phoneNumber: form.phoneNumber,
             gender: form.gender,
             cedula: form.cedula.trim(), // WP-25 (F5): required at create — guard above ensures non-blank

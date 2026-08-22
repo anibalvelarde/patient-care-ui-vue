@@ -37,7 +37,7 @@ export interface CaretakerCreateRequest {
   firstName: string
   middleName?: string
   lastName: string
-  email: string
+  email?: string | null // WP-50C: optional (NULLable column)
   phoneNumber: string
   notes?: string
   isActive: boolean
@@ -48,7 +48,7 @@ export interface CaretakerUpdateRequest {
   firstName?: string
   middleName?: string
   lastName?: string
-  email?: string
+  email?: string | null // WP-50C: nullable
   phoneNumber?: string
   notes?: string
   isActive: boolean

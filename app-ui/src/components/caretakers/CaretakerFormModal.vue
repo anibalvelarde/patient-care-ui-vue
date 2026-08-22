@@ -63,11 +63,11 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Email *</label>
+            <!-- WP-50C: email optional (NULLable column; only operator accounts authenticate). -->
+            <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
             <input
               v-model="form.email"
               type="email"
-              required
               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
@@ -246,7 +246,8 @@ export default defineComponent({
     );
 
     const handleSubmit = () => {
-      if (!form.firstName || !form.lastName || !form.email || !form.phoneNumber) {
+      // WP-50C: email is NO LONGER required (optional/NULLable column).
+      if (!form.firstName || !form.lastName || !form.phoneNumber) {
         setError('Please fill in all required fields.');
         return;
       }
@@ -257,7 +258,7 @@ export default defineComponent({
             firstName: form.firstName,
             middleName: form.middleName || undefined,
             lastName: form.lastName,
-            email: form.email,
+            email: form.email || undefined, // WP-50C: blank → omit (server stores NULL)
             phoneNumber: form.phoneNumber,
             notes: form.notes || undefined,
             isActive: form.isActive,
@@ -267,7 +268,7 @@ export default defineComponent({
             firstName: form.firstName,
             middleName: form.middleName || undefined,
             lastName: form.lastName,
-            email: form.email,
+            email: form.email || undefined, // WP-50C: blank → omit (server stores NULL)
             phoneNumber: form.phoneNumber,
             notes: form.notes || undefined,
             isActive: true,
