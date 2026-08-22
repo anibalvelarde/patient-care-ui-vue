@@ -50,7 +50,7 @@ export interface PatientCreateRequest {
   middleName?: string;
   lastName: string;
   dateOfBirth: string;
-  email: string;
+  email?: string | null; // WP-50C: optional (NULLable column)
   phoneNumber: string;
   gender: string;
   // WP-25 (F5): "Cedula | Passport" — required at create (free text, unique; duplicate → 409).
@@ -69,7 +69,7 @@ export interface PatientUpdateRequest {
   middleName?: string;
   lastName: string;
   dateOfBirth: string;
-  email: string;
+  email?: string | null; // WP-50C: optional (NULLable column)
   phoneNumber: string;
   gender: string;
   activeStatus: boolean;

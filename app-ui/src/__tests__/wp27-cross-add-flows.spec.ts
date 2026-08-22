@@ -58,6 +58,7 @@ const {
   lookupCaretakersMock,
   createCaretakerMock,
   linkPatientMock,
+  makeSelfCaretakerMock,
   lookupPatientsMock,
   createPatientMock,
   updatePatientMock,
@@ -65,6 +66,7 @@ const {
   lookupCaretakersMock: vi.fn(),
   createCaretakerMock: vi.fn(),
   linkPatientMock: vi.fn(),
+  makeSelfCaretakerMock: vi.fn(),
   lookupPatientsMock: vi.fn(),
   createPatientMock: vi.fn(),
   updatePatientMock: vi.fn().mockResolvedValue(undefined),
@@ -75,6 +77,7 @@ vi.mock('../services/CaretakersHttpClient', () => ({
     lookupCaretakers: lookupCaretakersMock,
     createCaretaker: createCaretakerMock,
     linkPatient: linkPatientMock,
+    makeSelfCaretaker: makeSelfCaretakerMock,
   })),
 }));
 
@@ -116,6 +119,7 @@ beforeEach(() => {
   createCaretakerMock.mockResolvedValue(caretaker({ caretakerId: 77 }));
   createPatientMock.mockResolvedValue(patient({ patientId: 99, patientName: 'Martínez, Diego', medicalRecordNumber: 'MRN-099' }));
   linkPatientMock.mockResolvedValue(undefined);
+  makeSelfCaretakerMock.mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -263,6 +267,47 @@ describe('CrossAddChainModal — chooser', () => {
     expect(wrapper.find('[data-testid="chain-link-existing"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="chain-create-new"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="chain-later"]').exists()).toBe(true);
+  });
+});
+
+// WP-50C: "this patient is their own caretaker" — one call, no second account. Only offered in the
+// add-caretaker direction (a patient exists), gated on Caretakers.LinkPatient.
+describe('CrossAddChainModal — self-caretaker (WP-50C)', () => {
+  it('F8: clicking it calls makeSelfCaretaker(patientId, true), shows success, emits linked', async () => {
+    const wrapper = await openChain(authAs('FD'), 'add-caretaker');
+
+    const btn = wrapper.find('[data-testid="chain-self-caretaker"]');
+    expect(btn.exists()).toBe(true);
+    await btn.trigger('click');
+    await flushPromises();
+
+    expect(makeSelfCaretakerMock).toHaveBeenCalledWith(42, true);
+    expect(linkPatientMock).not.toHaveBeenCalled();
+    expect(createCaretakerMock).not.toHaveBeenCalled();
+    expect(wrapper.find('[data-testid="chain-success"]').text()).toContain('their own caretaker');
+    expect(wrapper.emitted('linked')).toHaveLength(1);
+  });
+
+  it('is NOT offered in the add-patient direction (a patient is not their own patient)', async () => {
+    const wrapper = await openChain(authAs('MGR'), 'add-patient');
+    expect(wrapper.find('[data-testid="chain-self-caretaker"]').exists()).toBe(false);
+  });
+
+  it('surfaces a 409 (already their own caretaker) on the chooser without navigating away', async () => {
+    makeSelfCaretakerMock.mockRejectedValueOnce(new Error('Patient 42 is already their own caretaker.'));
+    const wrapper = await openChain(authAs('FD'), 'add-caretaker');
+
+    await wrapper.find('[data-testid="chain-self-caretaker"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="chain-chooser-error"]').text()).toContain('already their own caretaker');
+    expect(wrapper.find('[data-testid="chain-success"]').exists()).toBe(false);
+    expect(wrapper.emitted('linked')).toBeUndefined();
+  });
+
+  it('OWN (read-only) does not see the self-caretaker button', async () => {
+    const wrapper = await openChain(authAs('OWN'), 'add-caretaker');
+    expect(wrapper.find('[data-testid="chain-self-caretaker"]').exists()).toBe(false);
   });
 });
 

@@ -40,6 +40,13 @@ export class CaretakersHttpClient extends HttpClientBase {
     await this.post(`/api/caretakers/${caretakerId}/patients`, { patientId, isPrimary, relationship });
   }
 
+  // WP-50C: make an existing patient their own caretaker. The API attaches a caretaker role to the
+  // patient's EXISTING SystemUser (no new user, no email) and self-links (RelationshipToPatient=
+  // "Self"). 409 if already self-linked. There is no caretakerId yet, so this cannot reuse linkPatient.
+  async makeSelfCaretaker(patientId: number, isPrimary = true): Promise<void> {
+    await this.post('/api/caretakers/self', { patientId, isPrimary });
+  }
+
   async unlinkPatient(caretakerId: number, patientId: number): Promise<void> {
     await this.delete(`/api/caretakers/${caretakerId}/patients/${patientId}`);
   }
