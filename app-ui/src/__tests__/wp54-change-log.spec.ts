@@ -169,4 +169,16 @@ describe('WP-54C ChangeLogPanel', () => {
 
     expect(wrapper.text()).toContain('Boom');
   });
+
+  it('a failed page fetch surfaces the error banner (Bugbot: paging was unguarded)', async () => {
+    listMock.mockResolvedValue({ ...structuredClone(sampleList), totalCount: 60 }); // 3 pages → Next enabled
+    const wrapper = mountPanel();
+    await flushPromises();
+
+    listMock.mockRejectedValueOnce(new Error('Page boom'));
+    await wrapper.find('[data-testid="changelog-next"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Page boom');
+  });
 });

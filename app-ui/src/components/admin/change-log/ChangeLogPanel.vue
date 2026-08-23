@@ -98,7 +98,7 @@
 
         <div class="pt-2 no-print">
           <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3">Detail</h3>
-          <ChangeLogTable :paged="list" :loading="loading" @page="onPage" @filter-correlation="onFilterCorrelation" />
+          <ChangeLogTable :paged="list" :loading="listLoading" @page="onPage" @filter-correlation="onFilterCorrelation" />
         </div>
       </template>
 
@@ -139,7 +139,8 @@ export default defineComponent({
     const list = ref<PagedResult<ChangeLogEntry> | null>(null);
     const entityTypes = ref<ChangeLogEntityTypeInfo[]>([]);
     const userFilter = ref<LookupOption | null>(null);
-    const loading = ref(false);
+    const loading = ref(false);       // full-panel (initial load + filter change → spinner)
+    const listLoading = ref(false);   // list-only (paging / correlation → keep table, disable Prev/Next)
     const generatedAt = ref<Date>(new Date());
     const tzName = observerTimeZoneName();
 
@@ -166,7 +167,9 @@ export default defineComponent({
 
     async function fetchUsers(q: string): Promise<LookupOption[]> {
       const options: LookupOption[] = [];
-      if ('system'.includes(q.toLowerCase())) {
+      // Prefix match ("sys" → System), NOT a substring-of-"system" match (which would inject
+      // System for unrelated queries like "y" or "tem").
+      if ('system'.startsWith(q.trim().toLowerCase())) {
         options.push({ id: 0, name: 'System', detail: 'imports · no request user' });
       }
       const result = await usersClient.getUsers({ search: q, pageSize: 10 });
@@ -193,6 +196,23 @@ export default defineComponent({
         setFromException(e, 'Failed to load the change log.');
       } finally {
         loading.value = false;
+      }
+    }
+
+    // List-only reload (paging / correlation): keeps the table visible, disables Prev/Next while
+    // in flight (prevents overlapping rapid clicks) and surfaces a failure in the error banner.
+    async function reloadListGuarded(): Promise<void> {
+      if (listLoading.value) {
+        return;
+      }
+      listLoading.value = true;
+      clearError();
+      try {
+        await reloadList();
+      } catch (e) {
+        setFromException(e, 'Failed to load the change log.');
+      } finally {
+        listLoading.value = false;
       }
     }
 
@@ -233,7 +253,7 @@ export default defineComponent({
     function onFilterCorrelation(correlationId: string): void {
       query.correlationId = correlationId;
       query.page = 1;
-      reloadList();
+      reloadListGuarded();
     }
 
     async function onChangeGroup(groupBy: ChangeLogGroupBy): Promise<void> {
@@ -251,7 +271,7 @@ export default defineComponent({
 
     function onPage(page: number): void {
       query.page = page;
-      reloadList();
+      reloadListGuarded();
     }
 
     function clearFilters(): void {
@@ -280,7 +300,7 @@ export default defineComponent({
 
     return {
       // state
-      summary, list, entityTypes, userFilter, loading, error, query,
+      summary, list, entityTypes, userFilter, loading, listLoading, error, query,
       actionOptions, hasActiveFilters, generatedAtLabel, tzName,
       // helpers
       chipClass, fetchUsers,
