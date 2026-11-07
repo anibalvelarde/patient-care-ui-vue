@@ -82,6 +82,9 @@ import { defineComponent, computed, type PropType } from 'vue';
 import AppointmentsTable from './AppointmentsTable.vue';
 import type { Appointment } from '../../interfaces/Appointment';
 import { useClaims, Permissions } from '../../composables/useClaims';
+import {
+  SessionStatus, SessionStatusName, SESSION_STATUS_LABEL, APPOINTMENT_FILTER_NOT_HELD, isNotHeld,
+} from '../../constants/sessionStatus';
 
 export default defineComponent({
   name: 'AppointmentsList',
@@ -97,18 +100,19 @@ export default defineComponent({
     const { hasClaim } = useClaims();
     const filterTabs = [
       { label: 'All', value: 'all' },
-      { label: 'Proposed', value: 'Proposed' },
-      { label: 'Confirmed', value: 'Confirmed' },
-      { label: 'Checked In', value: 'CheckedIn' },
-      { label: 'In Therapy', value: 'InTherapy' },
-      { label: 'Completed', value: 'Completed' },
-      { label: 'Cancelled', value: 'cancelled' },
+      // Status tabs filter on the wire statusName (lookup-driven); the NOT_HELD tab is id-based.
+      { label: SESSION_STATUS_LABEL.Proposed, value: SessionStatusName.Proposed },
+      { label: SESSION_STATUS_LABEL.Confirmed, value: SessionStatusName.Confirmed },
+      { label: SESSION_STATUS_LABEL.CheckedIn, value: SessionStatusName.CheckedIn },
+      { label: SESSION_STATUS_LABEL.InTherapy, value: SessionStatusName.InTherapy },
+      { label: SESSION_STATUS_LABEL.Completed, value: SessionStatusName.Completed },
+      { label: SESSION_STATUS_LABEL.Cancelled, value: APPOINTMENT_FILTER_NOT_HELD },
     ];
 
     const filteredAppointments = computed(() => {
       if (props.activeFilter === 'all') return props.appointments;
-      if (props.activeFilter === 'cancelled') {
-        return props.appointments.filter(a => a.appointmentStatusId === 3 || a.appointmentStatusId === 5);
+      if (props.activeFilter === APPOINTMENT_FILTER_NOT_HELD) {
+        return props.appointments.filter(a => isNotHeld(a.appointmentStatusId));
       }
       return props.appointments.filter(a => a.statusName === props.activeFilter);
     });
@@ -119,28 +123,28 @@ export default defineComponent({
         {
           label: 'Proposed',
           sublabel: 'Awaiting confirmation',
-          count: all.filter(a => a.appointmentStatusId === 1).length,
+          count: all.filter(a => a.appointmentStatusId === SessionStatus.Proposed).length,
           bgColor: 'bg-amber-100',
           textColor: 'text-amber-700',
         },
         {
           label: 'Confirmed',
           sublabel: 'Ready for visit',
-          count: all.filter(a => a.appointmentStatusId === 2).length,
+          count: all.filter(a => a.appointmentStatusId === SessionStatus.Confirmed).length,
           bgColor: 'bg-green-100',
           textColor: 'text-green-700',
         },
         {
           label: 'In Progress',
           sublabel: 'Checked in / In therapy',
-          count: all.filter(a => a.appointmentStatusId === 6 || a.appointmentStatusId === 7).length,
+          count: all.filter(a => a.appointmentStatusId === SessionStatus.CheckedIn || a.appointmentStatusId === SessionStatus.InTherapy).length,
           bgColor: 'bg-blue-100',
           textColor: 'text-blue-700',
         },
         {
           label: 'Completed',
           sublabel: 'Today',
-          count: all.filter(a => a.appointmentStatusId === 4).length,
+          count: all.filter(a => a.appointmentStatusId === SessionStatus.Completed).length,
           bgColor: 'bg-gray-100',
           textColor: 'text-gray-600',
         },

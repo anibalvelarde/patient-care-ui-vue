@@ -4,7 +4,7 @@
 //     and No-Show (5) rows — those have their own WP-34 tile. "Today's Appointments" total
 //     deliberately still includes them (known quirk, ruled out of scope in WP-34).
 //   - O2Appointments rows: a cancelled/no-show row shows its APPOINTMENT state chip
-//     ("Cancelled"/"No Show", statusHelpers palette) — never a "Pending" chip and never a
+//     ("Cancelled"/"No Show", constants/sessionStatus palette) — never a "Pending" chip and never a
 //     Pay button, even when a pre-WP-42 legacy row still carries an amount due.
 // Same id predicate as WP-34 (appointmentStatusId — statusName is admin-editable).
 import { describe, it, expect, vi, beforeEach } from 'vitest';

@@ -4,8 +4,10 @@
 // a cross-add chain (linkTo prop set), its `created` emit carries the caretaker↔patient link
 // fields captured in the form alongside the created record; outside a chain `link` is null.
 
+import type { CaretakerRelationshipValue } from '../constants/caretakerRelationships';
+
 export interface CrossAddLink {
-  relationship: string | null;
+  relationship: CaretakerRelationshipValue | null;
   isPrimary: boolean;
 }
 

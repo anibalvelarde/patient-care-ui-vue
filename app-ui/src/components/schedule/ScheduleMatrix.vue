@@ -111,7 +111,7 @@
 <script lang="ts">
 import { defineComponent, computed, ref, watch, type PropType } from 'vue';
 import type { ScheduleMatrixResponse, TherapistScheduleRow, ScheduleSlot } from '../../interfaces/ScheduleMatrix';
-import { getStatusBadgeClass } from '../../utils/statusHelpers';
+import { getStatusBadgeClass, SESSION_STATUS_LABEL } from '../../constants/sessionStatus';
 
 export default defineComponent({
   name: 'ScheduleMatrix',
@@ -193,13 +193,13 @@ export default defineComponent({
     };
 
     const legendItems = [
-      { label: 'Proposed', bgClass: 'bg-amber-200' },
-      { label: 'Confirmed', bgClass: 'bg-green-200' },
-      { label: 'Cancelled', bgClass: 'bg-slate-200' },
-      { label: 'Completed', bgClass: 'bg-gray-200' },
-      { label: 'No Show', bgClass: 'bg-red-200' },
-      { label: 'Checked In', bgClass: 'bg-blue-200' },
-      { label: 'In Therapy', bgClass: 'bg-purple-200' },
+      { label: SESSION_STATUS_LABEL.Proposed, bgClass: 'bg-amber-200' },
+      { label: SESSION_STATUS_LABEL.Confirmed, bgClass: 'bg-green-200' },
+      { label: SESSION_STATUS_LABEL.Cancelled, bgClass: 'bg-slate-200' },
+      { label: SESSION_STATUS_LABEL.Completed, bgClass: 'bg-gray-200' },
+      { label: SESSION_STATUS_LABEL.NoShow, bgClass: 'bg-red-200' },
+      { label: SESSION_STATUS_LABEL.CheckedIn, bgClass: 'bg-blue-200' },
+      { label: SESSION_STATUS_LABEL.InTherapy, bgClass: 'bg-purple-200' },
     ];
 
     return { hours, days, activeDay, isToday, formatHour, getSlot, getDaySessionCount, getSlotClass, onSlotClick, legendItems };

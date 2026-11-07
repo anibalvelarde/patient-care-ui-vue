@@ -255,10 +255,7 @@
                 <div>
                   <label class="block text-xs font-medium text-slate-600 mb-1">Method</label>
                   <select v-model="confirmForm.method" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-                    <option value="Phone">Phone</option>
-                    <option value="Email">Email</option>
-                    <option value="Text">Text</option>
-                    <option value="InPerson">In Person</option>
+                    <option v-for="m in confirmationMethods" :key="m" :value="m">{{ confirmationMethodLabel[m] }}</option>
                   </select>
                 </div>
                 <div>
@@ -270,7 +267,7 @@
                 <label class="block text-xs font-medium text-slate-600 mb-1">Result</label>
                 <div class="grid grid-cols-4 gap-2">
                   <button
-                    v-for="result in ['Confirmed', 'NoAnswer', 'LeftMessage', 'Declined']"
+                    v-for="result in confirmationResults"
                     :key="result"
                     :data-testid="`confirm-result-${result.toLowerCase()}`"
                     @click="confirmForm.result = result"
@@ -281,13 +278,13 @@
                         : 'border-slate-200 text-slate-600 hover:bg-slate-50',
                     ]"
                   >
-                    {{ result === 'NoAnswer' ? 'No Answer' : result === 'LeftMessage' ? 'Left Message' : result }}
+                    {{ confirmationResultLabel[result] }}
                   </button>
                 </div>
               </div>
               <!-- WP-42: Declined routes to Cancelled and zeroes the session's money -->
               <div
-                v-if="confirmForm.result === 'Declined' && appointment.amount > 0"
+                v-if="confirmForm.result === ConfirmationResult.Declined && appointment.amount > 0"
                 data-testid="declined-money-note"
                 class="bg-amber-50 border border-amber-200 rounded-lg p-2.5"
               >
@@ -474,8 +471,13 @@ import { SitesHttpClient } from '../../services/SitesHttpClient';
 import type { Appointment } from '../../interfaces/Appointment';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import { isSenadisExpired } from '../../utils/senadis';
-
-const TERMINAL_STATUSES = [3, 4, 5]; // Cancelled, Completed, NoShow
+import { SessionStatus, SESSION_STATUS_LABEL, isTerminalStatus as isTerminalStatusId } from '../../constants/sessionStatus';
+import {
+  ConfirmationResult, ConfirmationMethod,
+  type ConfirmationMethodValue, type ConfirmationResultValue,
+  ALL_CONFIRMATION_RESULTS, CONFIRMATION_RESULT_LABEL,
+  ALL_CONFIRMATION_METHODS, CONFIRMATION_METHOD_LABEL,
+} from '../../constants/confirmationValues';
 
 export default defineComponent({
   name: 'ActionsPanel',
@@ -492,7 +494,9 @@ export default defineComponent({
     const actionInProgress = ref(false);
     const actionError = ref('');
     const cancelReason = ref('');
-    const confirmForm = ref({ method: 'Phone', result: '', notes: '' });
+    const confirmForm = ref<{ method: ConfirmationMethodValue; result: ConfirmationResultValue | ''; notes: string }>({
+      method: ConfirmationMethod.Phone, result: '', notes: '',
+    });
     const correctionConfirmed = ref(false);
     const editingFinancials = ref(false);
     // WP-40: no providerAmount here — the fee is server-derived, never hand-entered.
@@ -592,17 +596,17 @@ export default defineComponent({
 
     const isTerminalStatus = computed(() => {
       const id = props.appointment?.appointmentStatusId;
-      return id !== undefined && TERMINAL_STATUSES.includes(id);
+      return id !== undefined && isTerminalStatusId(id);
     });
 
-    const showConfirmSection = computed(() => props.appointment?.appointmentStatusId === 1);
+    const showConfirmSection = computed(() => props.appointment?.appointmentStatusId === SessionStatus.Proposed);
     const showCancelSection = computed(() => {
       const id = props.appointment?.appointmentStatusId;
-      return id !== undefined && id !== 3 && id !== 4 && id !== 5;
+      return id !== undefined && !isTerminalStatusId(id);
     });
 
     const isCompletedDiscovery = computed(() =>
-      props.appointment?.isDiscovery === true && props.appointment?.appointmentStatusId === 4
+      props.appointment?.isDiscovery === true && props.appointment?.appointmentStatusId === SessionStatus.Completed
     );
 
     const createPlanFromDiscovery = () => {
@@ -630,12 +634,12 @@ export default defineComponent({
     const availableActions = computed(() => {
       const currentId = props.appointment?.appointmentStatusId;
       const actions = [
-        { statusId: 1, label: 'Proposed', class: 'border-amber-200 text-amber-700 hover:bg-amber-50' },
-        { statusId: 2, label: 'Confirmed', class: 'border-green-200 text-green-700 hover:bg-green-50' },
-        { statusId: 6, label: 'Checked In', class: 'border-blue-200 text-blue-700 hover:bg-blue-50' },
-        { statusId: 7, label: 'In Therapy', class: 'border-purple-200 text-purple-700 hover:bg-purple-50' },
-        { statusId: 4, label: 'Completed', class: 'border-gray-200 text-gray-700 hover:bg-gray-50' },
-        { statusId: 5, label: 'No Show', class: 'border-red-200 text-red-700 hover:bg-red-50' },
+        { statusId: SessionStatus.Proposed, label: SESSION_STATUS_LABEL.Proposed, class: 'border-amber-200 text-amber-700 hover:bg-amber-50' },
+        { statusId: SessionStatus.Confirmed, label: SESSION_STATUS_LABEL.Confirmed, class: 'border-green-200 text-green-700 hover:bg-green-50' },
+        { statusId: SessionStatus.CheckedIn, label: SESSION_STATUS_LABEL.CheckedIn, class: 'border-blue-200 text-blue-700 hover:bg-blue-50' },
+        { statusId: SessionStatus.InTherapy, label: SESSION_STATUS_LABEL.InTherapy, class: 'border-purple-200 text-purple-700 hover:bg-purple-50' },
+        { statusId: SessionStatus.Completed, label: SESSION_STATUS_LABEL.Completed, class: 'border-gray-200 text-gray-700 hover:bg-gray-50' },
+        { statusId: SessionStatus.NoShow, label: SESSION_STATUS_LABEL.NoShow, class: 'border-red-200 text-red-700 hover:bg-red-50' },
       ];
       return actions.filter(a => a.statusId !== currentId);
     });
@@ -689,7 +693,7 @@ export default defineComponent({
       if (val) {
         actionError.value = '';
         cancelReason.value = '';
-        confirmForm.value = { method: 'Phone', result: '', notes: '' };
+        confirmForm.value = { method: ConfirmationMethod.Phone, result: '', notes: '' };
         correctionConfirmed.value = false;
         editingFinancials.value = false;
         noShowConfirmPending.value = false;
@@ -723,15 +727,15 @@ export default defineComponent({
       try {
         const id = props.appointment.sessionId;
         switch (statusId) {
-          case 1: // Can't directly set to Proposed via endpoint — use confirm with special handling
-          case 2: await client.confirmSession(id, { confirmationMethod: 'InPerson', confirmationResult: 'Confirmed' }); break;
-          case 4: await client.completeSession(id); break;
-          case 5:
+          case SessionStatus.Proposed: // Can't directly set to Proposed via endpoint — use confirm with special handling
+          case SessionStatus.Confirmed: await client.confirmSession(id, { confirmationMethod: ConfirmationMethod.InPerson, confirmationResult: ConfirmationResult.Confirmed }); break;
+          case SessionStatus.Completed: await client.completeSession(id); break;
+          case SessionStatus.NoShow:
             // WP-42: no immediate transition — show the fee confirm step first.
             await requestNoShow();
             return;
-          case 6: await client.checkInSession(id); break;
-          case 7: await client.startTherapy(id); break;
+          case SessionStatus.CheckedIn: await client.checkInSession(id); break;
+          case SessionStatus.InTherapy: await client.startTherapy(id); break;
         }
         emit('updated');
         emit('close');
@@ -799,6 +803,9 @@ export default defineComponent({
     };
 
     return {
+      ConfirmationResult,
+      confirmationMethods: ALL_CONFIRMATION_METHODS, confirmationMethodLabel: CONFIRMATION_METHOD_LABEL,
+      confirmationResults: ALL_CONFIRMATION_RESULTS, confirmationResultLabel: CONFIRMATION_RESULT_LABEL,
       confirmForm, cancelReason, actionInProgress, actionError,
       correctionConfirmed, editingFinancials, financialForm, isTerminalStatus,
       canEditDiscount, editSenadisActive, editSenadisFloor,

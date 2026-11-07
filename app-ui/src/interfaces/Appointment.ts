@@ -1,5 +1,6 @@
 // interfaces/Appointment.ts
 import type { AuditInfo } from './Audit';
+import type { ConfirmationMethodValue, ConfirmationResultValue } from '../constants/confirmationValues';
 
 export interface Appointment {
     sessionId: number;
@@ -95,9 +96,11 @@ export interface SessionEventUpdateRequest {
     specialtyTypeId?: number | null;
 }
 
+// WP-56C: the request the UI builds is typed to the allowed values; ConfirmationRecord (server
+// data, may hold legacy values) stays a plain string.
 export interface ConfirmationRequest {
-    confirmationMethod: string;
-    confirmationResult: string;
+    confirmationMethod: ConfirmationMethodValue;
+    confirmationResult: ConfirmationResultValue;
     notes?: string;
 }
 

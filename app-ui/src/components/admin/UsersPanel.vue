@@ -211,13 +211,14 @@ import UserCreateModal from './UserCreateModal.vue';
 import UserEditModal from './UserEditModal.vue';
 import UserResetPasswordModal from './UserResetPasswordModal.vue';
 import type { AdminUserSummary, OperatorRole } from '../../interfaces/AdminUsers';
+import { isIdentityRoleName } from '../../constants/roles';
 
 export const SEARCH_DEBOUNCE_MS = 300;
 export const PAGE_SIZE = 25;
 
 // G1/G4: identity roles are workflow-managed and never assignable here — filter them out of
-// the role picker no matter what the lookup returns (matches the API's RoleTaxonomy partition).
-const IDENTITY_ROLE_NAMES = ['patient', 'therapist', 'caretaker'];
+// the role picker no matter what the lookup returns (matches the API's RoleTaxonomy partition;
+// home: constants/roles.ts).
 
 export default defineComponent({
   name: 'UsersPanel',
@@ -280,7 +281,7 @@ export default defineComponent({
       try {
         const items = await lookupClient.getAll('role-types');
         roleOptions.value = items
-          .filter((item) => !IDENTITY_ROLE_NAMES.includes(item.name.trim().toLowerCase()))
+          .filter((item) => !isIdentityRoleName(item.name))
           .map((item) => ({ roleTypeId: item.id, name: item.name }));
       } catch (e: unknown) {
         rolesError.value = e instanceof Error ? e.message : 'Failed to load role options.';

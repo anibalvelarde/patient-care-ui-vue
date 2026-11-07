@@ -3,6 +3,7 @@ import { HttpClientBase } from './HttpClientBase';
 import type { Caretaker, CaretakerCreateRequest, CaretakerUpdateRequest, CaretakerPatientSummary, CaretakerLookupItem } from '../interfaces/Caretaker';
 import type { PagedResult } from '../interfaces/SessionHistory';
 import type { ListQuery } from './PatientsHttpClient';
+import type { CaretakerRelationshipValue } from '../constants/caretakerRelationships';
 
 export class CaretakersHttpClient extends HttpClientBase {
   // WP-30 (U2): paged-by-default (BREAKING pair of WP-30B — was a bare array).
@@ -36,7 +37,7 @@ export class CaretakersHttpClient extends HttpClientBase {
     return this.get<CaretakerPatientSummary[]>(`/api/caretakers/${caretakerId}/patients`);
   }
 
-  async linkPatient(caretakerId: number, patientId: number, isPrimary: boolean, relationship: string | null): Promise<void> {
+  async linkPatient(caretakerId: number, patientId: number, isPrimary: boolean, relationship: CaretakerRelationshipValue | null): Promise<void> {
     await this.post(`/api/caretakers/${caretakerId}/patients`, { patientId, isPrimary, relationship });
   }
 

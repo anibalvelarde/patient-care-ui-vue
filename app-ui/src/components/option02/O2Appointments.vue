@@ -133,7 +133,7 @@
               :data-testid="`appt-status-chip-${appt.sessionId}`"
               :class="['inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium', getStatusBadgeClass(appt.appointmentStatusId)]"
             >
-              {{ appt.appointmentStatusId === 3 ? 'Cancelled' : 'No Show' }}
+              {{ appt.appointmentStatusId === SessionStatus.Cancelled ? SESSION_STATUS_LABEL.Cancelled : SESSION_STATUS_LABEL.NoShow }}
             </span>
             <button
               v-else-if="appt.amountDue > 0 && !appt.isPaidOff"
@@ -186,7 +186,7 @@
 import { defineComponent, ref, watch, computed, onMounted, nextTick } from 'vue';
 import { Appointment } from '../../interfaces/Appointment';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { getStatusBadgeClass } from '../../utils/statusHelpers';
+import { getStatusBadgeClass, isNotHeld, SessionStatus, SESSION_STATUS_LABEL } from '../../constants/sessionStatus';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import { SessionsHttpClient } from '../../services/SessionsHttpClient';
 import { library } from '@fortawesome/fontawesome-svg-core';
@@ -291,10 +291,11 @@ export default defineComponent({
     );
 
     // WP-42C cherry-pick: same id predicate as the WP-34 tile (statusName is admin-editable).
-    const isCancelledOrNoShow = (a: Appointment) =>
-      a.appointmentStatusId === 3 || a.appointmentStatusId === 5;
+    const isCancelledOrNoShow = (a: Appointment) => isNotHeld(a.appointmentStatusId);
 
     return {
+      SessionStatus,
+      SESSION_STATUS_LABEL,
       allAppointments,
       amAppointments,
       pmAppointments,

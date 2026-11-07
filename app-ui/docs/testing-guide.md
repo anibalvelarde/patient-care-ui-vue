@@ -233,6 +233,23 @@ const Host = defineComponent({ setup: () => useIdleLogoff(), template: '<div/>' 
   by design, only the buttons/another tab reset it then).
 - `0` minutes = disabled: the composable never arms, so no warning/logout no matter how far you advance.
 
+## API-mirrored constants — the vendored lockstep fixture (WP-56)
+
+Domain values the API also owns (session status ids/names, caretaker relationships, genders,
+confirmation results/methods, durations, identity roles) live in **`src/constants/*.ts`** as
+`as const` maps + derived union types — **never** re-typed as literals in components, and **no TS
+`enum`s** (WP-56 G1). `__tests__/wp56-constants-lockstep.spec.ts` asserts each home equals
+**`__tests__/fixtures/api-constants.json`**, a hand-vendored copy of the API's constant classes
+(each key names its source `.cs` file). CI only has this repo, so the spec can't read the API
+directly — the fixture is the handshake.
+
+- **API value changed?** Update the fixture **and** the matching `src/constants/*.ts` in the same
+  PR (bump `_vendoredFrom`). Changing only one side fails the spec — that's the point.
+- **New API-mirrored domain?** Add a fixture key + a `toEqual` assertion; compare lists with
+  order (`[...X]`), sets sorted.
+- UI-only groupings (e.g. `NOT_HELD_STATUSES`, `TERMINAL_STATUSES`, the `'cancelled'` filter
+  token) aren't in the fixture — pin them with plain value assertions in the same spec.
+
 ## Known gotchas (append as discovered)
 
 | Date | Gotcha | Spec that documents it |
