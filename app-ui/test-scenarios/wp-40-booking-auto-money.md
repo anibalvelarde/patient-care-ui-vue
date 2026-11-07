@@ -7,8 +7,9 @@ hash `f82cab8c9efd`).
 ## 1. FD books touching ZERO money fields (BK-1 + BK-2)
 
 1. Log in as **Front Desk** → Appointments → Book Appointment.
-2. **Duration is now a dropdown**: exactly 30 / 40 / 45 / 60 / 90 / 120 (default 60) — no
-   free typing.
+2. **Duration is now a dropdown**: exactly 30 / 45 / 60 / 90 / 120 (default 60) — no
+   free typing. *(40 removed 2026-11-07 — WP-55 G5 / WP-56 G5 hotfix; see
+   `wp-56-booking-drop-40-min.md`.)*
 3. Pick a non-SENADIS patient, a specialty with a price row (e.g. TC), a therapist, 60 min.
    - **Amount** shows as a read-only derived figure (the price-sheet row for TC @ 60) —
      there is no amount input anywhere.
@@ -35,7 +36,8 @@ hash `f82cab8c9efd`).
 2. Pick **Eval-Neuro** (deliberately unpriced): red message
    **"No price configured for Eval-Neuro at {duration} min — ask a manager to set it in
    Admin."** and the Book button stays disabled. This is correct behavior, not a bug.
-3. Pick **Ent-TC @ 40 min**: books at the real 40-minute price ($35) — no badge.
+3. ~~Pick **Ent-TC @ 40 min**: books at the real 40-minute price ($35) — no badge.~~
+   *Superseded 2026-11-07: 40 is no longer a bookable duration (WP-55 G5).*
 
 ## 4. Provider amount preview (MGR/AM only)
 

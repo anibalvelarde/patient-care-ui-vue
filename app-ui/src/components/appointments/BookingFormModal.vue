@@ -201,8 +201,10 @@ import { isSenadisExpired, formatSenadisExpiry } from '../../utils/senadis';
 import LookupSelect, { type LookupOption } from '../shared/LookupSelect.vue';
 
 // WP-40 (BK-1): the fixed bookable duration set — mirrors the API's validation
-// ({30,40,45,60,90,120}; 40 added by the 2026-07-27 addendum for interview services).
-export const BOOKABLE_DURATIONS = [30, 40, 45, 60, 90, 120];
+// (SpecialtyPricing.AllowedDurations = {30,45,60,90,120}). 40 was removed by WP-55 G5
+// (reversing the 2026-07-27 addendum) and the WP-55B API 400s it (WP-56 G5 hotfix).
+// WP-56C moves this into src/constants/durations.ts.
+export const BOOKABLE_DURATIONS = [30, 45, 60, 90, 120];
 
 export default defineComponent({
   name: 'BookingFormModal',

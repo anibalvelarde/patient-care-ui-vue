@@ -1,5 +1,6 @@
 // WP-40 (BK-1/BK-2/BK-3) — booking auto-money:
-//   BK-1 — duration is a fixed select {30,40,45,60,90,120} (40 per the 2026-07-27 addendum).
+//   BK-1 — duration is a fixed select {30,45,60,90,120}. 40 was REMOVED by WP-55 G5 (reversing the
+//          2026-07-27 addendum); the WP-55B API 400s it, so the UI must never offer it (WP-56 G5 hotfix).
 //   BK-2 — Amount/Discount/ProviderAmt are DERIVED read-only displays: amount from the WP-39
 //          price sheet (duration row → defaultAmount → G4 block), discount = exact-20% while
 //          SENADIS is active at the session date else 0, provider from the therapist fee model.
@@ -185,11 +186,11 @@ async function openBookingModal(pinia: Pinia) {
 }
 
 describe('BookingFormModal — BK-1 fixed duration select', () => {
-  it('offers exactly 30/40/45/60/90/120 and defaults to 60', async () => {
+  it('offers exactly 30/45/60/90/120 — never 40 — and defaults to 60', async () => {
     const wrapper = await openBookingModal(authAs('MGR'));
 
     const options = wrapper.find('[data-testid="duration-select"]').findAll('option');
-    expect(options.map(o => Number(o.attributes('value')))).toEqual([30, 40, 45, 60, 90, 120]);
+    expect(options.map(o => Number(o.attributes('value')))).toEqual([30, 45, 60, 90, 120]);
     expect((wrapper.vm as unknown as BookingVm).form.duration).toBe(60);
   });
 });
@@ -209,7 +210,7 @@ describe('BookingFormModal — BK-2 derived read-only money', () => {
     await flushPromises();
     expect(vm.derivedAmount).toBe(25);         // 30-min row
 
-    vm.form.duration = 40;                     // no 40-min row → defaultAmount fallback + badge
+    vm.form.duration = 45;                     // no 45-min row → defaultAmount fallback + badge
     await flushPromises();
     expect(vm.derivedAmount).toBe(40);
     expect(vm.amountSource).toBe('defaultAmount');
