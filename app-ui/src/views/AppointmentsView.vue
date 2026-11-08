@@ -63,6 +63,7 @@
 </template>
 
 <script lang="ts">
+import { clinicToday } from '../utils/localDate';
 import { defineComponent, ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import O2MobileNav from '../components/option02/O2MobileNav.vue';
@@ -86,7 +87,7 @@ export default defineComponent({
     const loading = ref(false);
     const error = ref('');
     const activeFilter = ref('all');
-    const selectedDate = ref(new Date().toISOString().split('T')[0]);
+    const selectedDate = ref(clinicToday()); // WP-60: Panama day, not UTC
 
     const bookingModalVisible = ref(false);
     const isWalkIn = ref(false);
@@ -122,7 +123,7 @@ export default defineComponent({
     };
 
     const setToday = () => {
-      selectedDate.value = new Date().toISOString().split('T')[0];
+      selectedDate.value = clinicToday();
       loadAppointments();
     };
 

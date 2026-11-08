@@ -315,6 +315,8 @@ function parseName(patientName: string) {
 
 function formatDobForInput(dob: string): string {
   if (!dob) return '';
+  // WP-60: a date-only/business date — take the yyyy-MM-dd part as-is (no UTC round-trip).
+  if (/^\d{4}-\d{2}-\d{2}/.test(dob)) return dob.slice(0, 10);
   const d = new Date(dob);
   if (isNaN(d.getTime())) return dob;
   const yyyy = String(d.getFullYear()).padStart(4, '0');

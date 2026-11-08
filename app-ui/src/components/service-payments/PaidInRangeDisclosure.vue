@@ -46,6 +46,7 @@
 </template>
 
 <script lang="ts">
+import { formatDateOnly } from '../../utils/localDate';
 import { defineComponent, ref, computed, watch, type PropType } from 'vue';
 import type { PaidByPaymentRef, PaidInRangeSummary } from '../../interfaces/ServicePayment';
 import { formatCurrency } from '../../utils/formatCurrency';
@@ -77,7 +78,7 @@ export default defineComponent({
       return text;
     });
 
-    const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const formatDate = (dateStr: string) => formatDateOnly(dateStr); // WP-60 (F-9): date-only
 
     // Compact "REF ($amt)" list; a blank reference falls back to the payment id as "#88".
     const formatPaymentRefs = (refs: PaidByPaymentRef[]) =>

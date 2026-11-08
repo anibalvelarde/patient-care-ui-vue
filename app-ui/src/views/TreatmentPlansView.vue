@@ -135,6 +135,7 @@
 </template>
 
 <script lang="ts">
+import { formatDateOnly } from '../utils/localDate';
 import { defineComponent, ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import O2MobileNav from '../components/option02/O2MobileNav.vue';
@@ -233,8 +234,7 @@ export default defineComponent({
 
     const formatDiscoveryDate = (dateStr: string) => {
       if (!dateStr) return '';
-      const d = new Date(dateStr);
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return formatDateOnly(dateStr); // WP-60 (F-9): date-only — never a day early
     };
 
     const openCreate = () => {

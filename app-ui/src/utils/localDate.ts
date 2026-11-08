@@ -38,3 +38,52 @@ export function formatWireDate(
   const d = parseWireDate(value);
   return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString('en-US', options);
 }
+
+// ── WP-60: the clinic's calendar ─────────────────────────────────────────────
+
+/** The clinic's time zone. Panama is UTC-5 all year (no DST). */
+export const CLINIC_TIME_ZONE = 'America/Panama';
+
+/**
+ * WP-60 (F-19): "today" as the CLINIC's calendar day, `yyyy-MM-dd`.
+ *
+ * `new Date().toISOString()` is the UTC date, so from 7 PM Panama time it is already tomorrow —
+ * Appointments opened on the next day and Record Payment dated money a day late. This reads the
+ * date in America/Panama explicitly, so it's right whatever zone the device clock is set to.
+ */
+export function clinicToday(now: Date = new Date()): string {
+  // en-CA formats as yyyy-MM-dd.
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: CLINIC_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(now);
+}
+
+/** WP-60: calendar arithmetic on `yyyy-MM-dd` (no UTC round-trip, so no day shifts). */
+export function addDaysYmd(ymd: string, days: number): string {
+  const d = parseWireDate(ymd);
+  d.setDate(d.getDate() + days);
+  return toLocalYmd(d);
+}
+
+/**
+ * WP-60 (Q-3, owner ruling): the Monday of the Mon–Sat schedule week a date belongs to. A SUNDAY
+ * belongs to the COMING week (the next day). Matches the API's ScheduleMatrixService.GetMonday.
+ */
+export function mondayOf(ymd: string): string {
+  const dow = parseWireDate(ymd).getDay(); // 0 = Sunday
+  return dow === 0 ? addDaysYmd(ymd, 1) : addDaysYmd(ymd, -(dow - 1));
+}
+
+/**
+ * WP-60 (F-9): display a DATE-ONLY value (session/discovery date, DOB, payment date, …).
+ * Only the `yyyy-MM-dd` part is used, so neither `"2026-11-08"` (which `new Date` reads as UTC
+ * midnight → Nov 7 in Panama) nor a `…T00:00:00Z` form can show the previous day.
+ */
+export function formatDateOnly(
+  value: string | null | undefined,
+  options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' },
+): string {
+  if (!value) return '—';
+  const ymd = value.slice(0, 10);
+  return DATE_ONLY.test(ymd) ? formatWireDate(ymd, options) : value;
+}

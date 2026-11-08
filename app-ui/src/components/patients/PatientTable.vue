@@ -204,6 +204,7 @@
 </template>
 
 <script lang="ts">
+import { formatDateOnly } from '../../utils/localDate';
 import { defineComponent, ref, computed, type PropType } from 'vue';
 import type { Patient } from '../../interfaces/Patient';
 import { formatAge } from '../../utils/age';
@@ -276,9 +277,8 @@ export default defineComponent({
 
     const formatDate = (dateStr: string) => {
       if (!dateStr) return '';
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+      // WP-60: DOB is date-only — date part only, so it can never shift a day.
+      return formatDateOnly(dateStr, { month: '2-digit', day: '2-digit', year: 'numeric' });
     };
 
     const primaryCaretakerName = (patient: Patient): string => {

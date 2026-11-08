@@ -57,6 +57,7 @@
 </template>
 
 <script lang="ts">
+import { formatDateOnly } from '../../utils/localDate';
 import { defineComponent, type PropType } from 'vue';
 import type { PaymentRecord } from '../../interfaces/Payment';
 import { useClaims, Permissions } from '../../composables/useClaims';
@@ -72,8 +73,7 @@ export default defineComponent({
     const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
 
     const formatDate = (dateStr: string) => {
-      const d = new Date(dateStr);
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return formatDateOnly(dateStr); // WP-60: paymentDate is a business date — date part only
     };
 
     const statusLabel = (payment: PaymentRecord) => {

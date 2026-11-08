@@ -246,6 +246,7 @@
 </template>
 
 <script lang="ts">
+import { formatDateOnly } from '../../utils/localDate';
 import { defineComponent, ref, computed, watch } from 'vue';
 import LookupSelect, { type LookupOption } from '../shared/LookupSelect.vue';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
@@ -395,8 +396,7 @@ export default defineComponent({
 
     const formatDate = (iso: string | null) => {
       if (!iso) return '—';
-      const d = new Date(iso);
-      return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
+      return formatDateOnly(iso, {}); // WP-60: DOB is date-only — never a day early
     };
 
     return {

@@ -191,7 +191,7 @@ import { SessionsHttpClient } from '../../services/SessionsHttpClient';
 import type { LateFeePreviewItem, ApplyLateFeesResult } from '../../interfaces/SessionFee';
 import { useClaims } from '../../composables/useClaims';
 import { Permissions } from '../../generated/permissions';
-import { toLocalYmd } from '../../utils/localDate';
+import { clinicToday } from '../../utils/localDate';
 import { formatCurrency } from '../../utils/formatCurrency';
 
 export default defineComponent({
@@ -201,7 +201,7 @@ export default defineComponent({
     const client = new SessionsHttpClient();
     const { hasClaim } = useClaims();
 
-    const asOf = ref(toLocalYmd(new Date()));
+    const asOf = ref(clinicToday());
     const preview = ref<LateFeePreviewItem[]>([]);
     const selected = reactive<Record<number, boolean>>({});
     const loaded = ref(false);
