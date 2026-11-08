@@ -674,9 +674,7 @@ export default defineComponent({
           sessionTime: props.appointment.sessionTime + (props.appointment.sessionTime.length === 5 ? ':00' : ''),
           therapyType: props.appointment.therapyTypes || 'N/A',
           amount: financialForm.value.amount,
-          amountPaid: props.appointment.amountPaid,
           discount: financialForm.value.discount,
-          isPaidOff: props.appointment.isPaidOff,
           notes: props.appointment.notes,
           appointmentStatusId: props.appointment.appointmentStatusId,
         });
@@ -752,17 +750,19 @@ export default defineComponent({
       if (!props.appointment) return;
       noShowFeeMessage.value = NOSHOW_GENERIC_MESSAGE;
       noShowConfirmPending.value = true;
-      const amount = props.appointment.amount;
+      // WP-58 (owner ruling Q-1): the fee is on the NET the patient would have paid
+      // (amount − discount), e.g. $50 with the $10 SENADIS discount → base $40.
+      const net = Math.max(props.appointment.amount - (props.appointment.discount ?? 0), 0);
       const siteId = props.appointment.siteId;
       if (siteId) {
         try {
           const site = await sitesClient.getSite(siteId);
           const pct = site.noShowFeePct;
           if (typeof pct === 'number') {
-            // Mirrors the API's round(pct% × gross, 2); display-only.
-            const fee = Math.round(pct * amount) / 100;
+            // Mirrors the API's round(pct% × net, 2); display-only.
+            const fee = Math.round(pct * net) / 100;
             noShowFeeMessage.value =
-              `A no-show fee of ${pct}% of $${amount.toFixed(2)} (= $${fee.toFixed(2)}) will be charged.`;
+              `A no-show fee of ${pct}% of $${net.toFixed(2)} (= $${fee.toFixed(2)}) will be charged.`;
           }
         } catch {
           // Keep the generic line — the API applies the authoritative fee regardless.
