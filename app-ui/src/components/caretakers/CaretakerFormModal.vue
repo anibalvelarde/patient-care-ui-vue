@@ -104,10 +104,7 @@
                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option :value="null">None</option>
-                <option value="Father">Father</option>
-                <option value="Mother">Mother</option>
-                <option value="Relative">Relative</option>
-                <option value="HiredHelp">Hired Help</option>
+                <option v-for="opt in relationshipOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
             </div>
             <label class="flex items-center space-x-2 cursor-pointer">
@@ -176,6 +173,7 @@ import type { Caretaker } from '../../interfaces/Caretaker';
 import { CaretakersHttpClient } from '../../services/CaretakersHttpClient';
 import { useModalForm } from '../../composables/useModalForm';
 import FormErrorBanner from '../shared/FormErrorBanner.vue';
+import { RELATIONSHIP_DROPDOWN_OPTIONS, type CaretakerRelationshipValue } from '../../constants/caretakerRelationships';
 
 function parseName(caretakerName: string) {
   const [last, rest] = caretakerName.split(', ');
@@ -210,7 +208,7 @@ export default defineComponent({
     const isEdit = ref(false);
 
     // WP-27 (F8): link fields shown only when opened as a chain's create-new step (linkTo set).
-    const linkRelationship = ref<string | null>(null);
+    const linkRelationship = ref<CaretakerRelationshipValue | null>(null);
     const linkIsPrimary = ref(true);
 
     watch(form, () => clearError(), { deep: true });
@@ -285,7 +283,7 @@ export default defineComponent({
       });
     };
 
-    return { form, isEdit, saving, error, hasError, linkRelationship, linkIsPrimary, handleSubmit };
+    return { form, isEdit, saving, error, hasError, linkRelationship, linkIsPrimary, handleSubmit, relationshipOptions: RELATIONSHIP_DROPDOWN_OPTIONS };
   },
 });
 </script>

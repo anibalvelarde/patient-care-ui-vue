@@ -47,7 +47,7 @@
              caretaker-side (Caretakers.LinkPatient), not Patients.LinkCaretaker.
              WP-50: a "Self" link is permanent (the API 409s an unlink), so no Remove for it. -->
         <button
-          v-if="hasClaim('Permission', Permissions.CaretakersLinkPatient) && (lc.relationshipToPatient || '').toLowerCase() !== 'self'"
+          v-if="hasClaim('Permission', Permissions.CaretakersLinkPatient) && !isSelfRelationship(lc.relationshipToPatient)"
           class="px-3 py-1 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
           @click="confirmRemove(lc)"
         >
@@ -133,6 +133,7 @@ import { CaretakersHttpClient } from '../../services/CaretakersHttpClient';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import CaretakerLinkForm, { type LookupOption } from '../shared/CaretakerLinkForm.vue';
+import { isSelfRelationship, type CaretakerRelationshipValue } from '../../constants/caretakerRelationships';
 
 export default defineComponent({
   name: 'PatientCaretakerPanel',
@@ -186,7 +187,7 @@ export default defineComponent({
       }
     };
 
-    const doAdd = async (payload: { id: number; relationship: string | null; isPrimary: boolean }) => {
+    const doAdd = async (payload: { id: number; relationship: CaretakerRelationshipValue | null; isPrimary: boolean }) => {
       saving.value = true;
       errorMsg.value = '';
       try {
@@ -209,6 +210,7 @@ export default defineComponent({
     onMounted(loadData);
 
     return {
+      isSelfRelationship,
       linkedCaretakers,
       linkedCaretakerIds,
       fetchCaretakerOptions,

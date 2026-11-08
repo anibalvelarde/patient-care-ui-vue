@@ -193,9 +193,7 @@
               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="" disabled>Select gender</option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Other">Other</option>
+              <option v-for="g in genders" :key="g" :value="g">{{ g }}</option>
             </select>
           </div>
 
@@ -234,10 +232,7 @@
                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option :value="null">None</option>
-                <option value="Father">Father</option>
-                <option value="Mother">Mother</option>
-                <option value="Relative">Relative</option>
-                <option value="HiredHelp">Hired Help</option>
+                <option v-for="opt in relationshipOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
             </div>
             <label class="flex items-center space-x-2 cursor-pointer">
@@ -309,6 +304,8 @@ import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import { formatAge } from '../../utils/age';
 import { isSenadisExpired, formatSenadisExpiry, todayDateOnly } from '../../utils/senadis';
 import { useClaims, Permissions } from '../../composables/useClaims';
+import { RELATIONSHIP_DROPDOWN_OPTIONS, type CaretakerRelationshipValue } from '../../constants/caretakerRelationships';
+import { ALL_GENDERS } from '../../constants/genders';
 
 function parseName(patientName: string) {
   const [last, rest] = patientName.split(', ');
@@ -376,7 +373,7 @@ export default defineComponent({
     const isEdit = ref(false);
 
     // WP-27 (F9): link fields shown only when opened as a chain's create-new step (linkTo set).
-    const linkRelationship = ref<string | null>(null);
+    const linkRelationship = ref<CaretakerRelationshipValue | null>(null);
     const linkIsPrimary = ref(true);
 
     // WP-25 (F5): whether the patient being edited already had a cedula/passport stored when the
@@ -543,7 +540,7 @@ export default defineComponent({
       });
     };
 
-    return { form, isEdit, saving, error, hasError, canEditSenadis, canEditRequiresDiscovery, age, hadCedulaOnFile, showLegacyCedulaNag, senadisExpired, formatSenadisExpiry, linkRelationship, linkIsPrimary, handleSubmit };
+    return { form, isEdit, saving, error, hasError, canEditSenadis, canEditRequiresDiscovery, age, hadCedulaOnFile, showLegacyCedulaNag, senadisExpired, formatSenadisExpiry, linkRelationship, linkIsPrimary, handleSubmit, relationshipOptions: RELATIONSHIP_DROPDOWN_OPTIONS, genders: ALL_GENDERS };
   },
 });
 </script>

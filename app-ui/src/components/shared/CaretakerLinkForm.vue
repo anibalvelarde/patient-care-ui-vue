@@ -19,10 +19,7 @@
         class="w-full rounded-lg border border-slate-300 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       >
         <option :value="null">None</option>
-        <option value="Father">Father</option>
-        <option value="Mother">Mother</option>
-        <option value="Relative">Relative</option>
-        <option value="HiredHelp">Hired Help</option>
+        <option v-for="opt in relationshipOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
       </select>
     </div>
     <div class="flex items-center space-x-2">
@@ -63,6 +60,7 @@
 // State resets by unmount — parents render it under v-if.
 import { defineComponent, ref, computed, type PropType } from 'vue';
 import LookupSelect, { type LookupOption } from './LookupSelect.vue';
+import { RELATIONSHIP_DROPDOWN_OPTIONS, type CaretakerRelationshipValue } from '../../constants/caretakerRelationships';
 
 export type { LookupOption };
 
@@ -79,7 +77,7 @@ export default defineComponent({
   emits: ['submit', 'cancel'],
   setup(props, { emit }) {
     const selected = ref<LookupOption | null>(null);
-    const relationship = ref<string | null>(null);
+    const relationship = ref<CaretakerRelationshipValue | null>(null);
     const isPrimary = ref(true);
     const primaryInputId = computed(() => `link-primary-${props.entityLabel.toLowerCase()}`);
 
@@ -93,7 +91,7 @@ export default defineComponent({
       });
     };
 
-    return { selected, relationship, isPrimary, primaryInputId, onSubmit };
+    return { selected, relationship, isPrimary, primaryInputId, onSubmit, relationshipOptions: RELATIONSHIP_DROPDOWN_OPTIONS };
   },
 });
 </script>

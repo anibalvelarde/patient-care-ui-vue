@@ -138,12 +138,12 @@
         </div>
 
         <!-- Plan progress (Active + Completed plans) -->
-        <PlanProgressCard v-if="plan.planStatus === 'Active' || plan.planStatus === 'Completed'" :plan-id="plan.id" />
+        <PlanProgressCard v-if="plan.planStatus === PlanStatus.Active || plan.planStatus === PlanStatus.Completed" :plan-id="plan.id" />
 
         <!-- Card footer -->
         <div class="mt-3 pt-3 border-t border-slate-100 flex justify-end space-x-2">
           <button
-            v-if="plan.planStatus === 'Draft' && hasClaim('Permission', Permissions.TreatmentPlansEdit)"
+            v-if="plan.planStatus === PlanStatus.Draft && hasClaim('Permission', Permissions.TreatmentPlansEdit)"
             class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
             @click="$emit('edit', plan)"
           >
@@ -153,7 +153,7 @@
             Edit
           </button>
           <button
-            v-if="plan.planStatus === 'Draft' && hasClaim('Permission', Permissions.TreatmentPlansBook)"
+            v-if="plan.planStatus === PlanStatus.Draft && hasClaim('Permission', Permissions.TreatmentPlansBook)"
             :disabled="hasLineCountMismatch(plan)"
             :title="hasLineCountMismatch(plan) ? `Line count (${plan.lines.length}) must match sessions per week (${plan.weeklyFrequency})` : ''"
             :class="[
@@ -170,7 +170,7 @@
             Activate
           </button>
           <button
-            v-if="plan.planStatus === 'Active' && hasClaim('Permission', Permissions.TreatmentPlansBook)"
+            v-if="plan.planStatus === PlanStatus.Active && hasClaim('Permission', Permissions.TreatmentPlansBook)"
             class="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-violet-600 hover:bg-violet-700 transition-colors"
             @click="$emit('schedule', plan)"
           >
@@ -180,7 +180,7 @@
             Schedule Sessions
           </button>
           <button
-            v-if="plan.planStatus === 'Active' && hasClaim('Permission', Permissions.TreatmentPlansBook)"
+            v-if="plan.planStatus === PlanStatus.Active && hasClaim('Permission', Permissions.TreatmentPlansBook)"
             class="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-gray-500 hover:bg-gray-600 transition-colors"
             @click="$emit('complete', plan)"
           >
@@ -190,7 +190,7 @@
             Complete
           </button>
           <button
-            v-if="(plan.planStatus === 'Draft' || plan.planStatus === 'Active') && hasClaim('Permission', Permissions.TreatmentPlansBook)"
+            v-if="(plan.planStatus === PlanStatus.Draft || plan.planStatus === PlanStatus.Active) && hasClaim('Permission', Permissions.TreatmentPlansBook)"
             class="px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 transition-colors"
             @click="$emit('cancel', plan)"
           >
@@ -207,7 +207,8 @@
 
 <script lang="ts">
 import { defineComponent, ref, computed, type PropType } from 'vue';
-import type { TreatmentPlan, PlanStatus } from '../../interfaces/TreatmentPlan';
+import type { TreatmentPlan, PlanStatus as PlanStatusType } from '../../interfaces/TreatmentPlan';
+import { PlanStatus, PLAN_STATUS_TABS } from '../../constants/planStatus';
 import { planStatusBadgeClass, DAY_OF_WEEK_LABELS } from '../../interfaces/TreatmentPlan';
 import PlanProgressCard from './PlanProgressCard.vue';
 import { useClaims, Permissions } from '../../composables/useClaims';
@@ -225,16 +226,16 @@ export default defineComponent({
   emits: ['create', 'edit', 'activate', 'complete', 'cancel', 'schedule'],
   setup(props) {
     const { hasClaim } = useClaims();
-    const tabs = ['All', 'Draft', 'Active', 'Completed', 'Cancelled'];
+    const tabs = PLAN_STATUS_TABS;
     const activeTab = ref(props.initialTab);
 
-    const draftCount = computed(() => props.plans.filter(p => p.planStatus === 'Draft').length);
-    const activeCount = computed(() => props.plans.filter(p => p.planStatus === 'Active').length);
-    const completedCount = computed(() => props.plans.filter(p => p.planStatus === 'Completed').length);
+    const draftCount = computed(() => props.plans.filter(p => p.planStatus === PlanStatus.Draft).length);
+    const activeCount = computed(() => props.plans.filter(p => p.planStatus === PlanStatus.Active).length);
+    const completedCount = computed(() => props.plans.filter(p => p.planStatus === PlanStatus.Completed).length);
 
     const filteredPlans = computed(() => {
       if (activeTab.value === 'All') return props.plans;
-      return props.plans.filter(p => p.planStatus === activeTab.value as PlanStatus);
+      return props.plans.filter(p => p.planStatus === activeTab.value as PlanStatusType);
     });
 
     const hasLineCountMismatch = (plan: TreatmentPlan) => {
@@ -248,6 +249,7 @@ export default defineComponent({
     };
 
     return {
+      PlanStatus,
       tabs,
       activeTab,
       draftCount,

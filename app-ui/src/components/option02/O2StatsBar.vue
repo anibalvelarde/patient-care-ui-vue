@@ -150,6 +150,7 @@ import { ServicePaymentsHttpClient } from '../../services/ServicePaymentsHttpCli
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import { pastDueReceivable } from '../../utils/delinquencyRange';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { SessionStatus, isNotHeld, APPOINTMENT_FILTER_NOT_HELD } from '../../constants/sessionStatus';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -217,21 +218,19 @@ export default defineComponent({
     const stats = computed<StatTile[]>(() => {
       const total = props.appointments.length;
       // WP-42C cherry-pick (owner 2026-07-28): the payment buckets are status-AWARE —
-      // cancelled/no-show sessions (ids 3/5, same predicate as the WP-34 tile) can never be
+      // cancelled/no-show sessions (isNotHeld, same predicate as the WP-34 tile) can never be
       // "pending payment" or "paid off"; they have their own tile. "Today's Appointments"
       // deliberately still counts them (known quirk, ruled out of scope in WP-34).
-      const payable = props.appointments.filter(
-        (a) => a.appointmentStatusId !== 3 && a.appointmentStatusId !== 5
-      );
+      const payable = props.appointments.filter((a) => !isNotHeld(a.appointmentStatusId));
       const paid = payable.filter((a) => a.isPaidOff).length;
       const pastDue = payable.filter((a) => a.isPastDue).length;
       const pending = payable.length - paid - pastDue;
       // WP-34C (G3 ruling): combined Cancelled + No-Show tile, keyed on appointmentStatusId
-      // (3 = Cancelled, 5 = NoShow — FK ids from the AppointmentStatus lookup seed; ids are
-      // the robust representation, statusName strings are admin-editable lookup values).
+      // (FK ids from the AppointmentStatus lookup seed; ids are the robust representation,
+      // statusName strings are admin-editable lookup values).
       // Same id predicate as the AppointmentsList "Cancelled" filter tab.
-      const cancelled = props.appointments.filter((a) => a.appointmentStatusId === 3).length;
-      const noShow = props.appointments.filter((a) => a.appointmentStatusId === 5).length;
+      const cancelled = props.appointments.filter((a) => a.appointmentStatusId === SessionStatus.Cancelled).length;
+      const noShow = props.appointments.filter((a) => a.appointmentStatusId === SessionStatus.NoShow).length;
 
       const tiles: StatTile[] = [
         {
@@ -281,7 +280,7 @@ export default defineComponent({
           iconBg: 'bg-slate-100',
           iconColor: 'text-slate-500',
           borderClass: 'border-gray-200',
-          to: { path: '/appointments', query: { filter: 'cancelled' } },
+          to: { path: '/appointments', query: { filter: APPOINTMENT_FILTER_NOT_HELD } },
           testId: 'stat-cancelled-noshow',
         },
       ];

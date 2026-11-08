@@ -72,6 +72,7 @@ import { defineComponent, type PropType } from 'vue';
 import StatusBadge from './StatusBadge.vue';
 import type { Appointment } from '../../interfaces/Appointment';
 import { useClaims, Permissions } from '../../composables/useClaims';
+import { SessionStatus } from '../../constants/sessionStatus';
 
 interface ActionInfo {
   label: string;
@@ -90,13 +91,13 @@ export default defineComponent({
     const { hasClaim } = useClaims();
     const nextAction = (appt: Appointment): ActionInfo | null => {
       switch (appt.appointmentStatusId) {
-        case 1: // Proposed
+        case SessionStatus.Proposed:
           return { label: 'Confirm', action: 'confirm', class: 'bg-green-50 text-green-700 hover:bg-green-100' };
-        case 2: // Confirmed
+        case SessionStatus.Confirmed:
           return { label: 'Check In', action: 'checkin', class: 'bg-blue-50 text-blue-700 hover:bg-blue-100' };
-        case 6: // CheckedIn
+        case SessionStatus.CheckedIn:
           return { label: 'Start', action: 'start-therapy', class: 'bg-purple-50 text-purple-700 hover:bg-purple-100' };
-        case 7: // InTherapy
+        case SessionStatus.InTherapy:
           return { label: 'Complete', action: 'complete', class: 'bg-gray-50 text-gray-700 hover:bg-gray-100' };
         default:
           return null; // Completed, Cancelled, NoShow — no next action

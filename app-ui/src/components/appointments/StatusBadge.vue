@@ -12,7 +12,7 @@
 
 <script lang="ts">
 import { defineComponent, computed } from 'vue';
-import { getStatusBadgeClass, getStatusLabel, getStatusDotColor } from '../../utils/statusHelpers';
+import { getStatusBadgeClass, getStatusLabel, getStatusDotColor } from '../../constants/sessionStatus';
 
 export default defineComponent({
   name: 'StatusBadge',

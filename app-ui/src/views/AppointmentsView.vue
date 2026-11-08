@@ -74,6 +74,7 @@ import BookingFormModal from '../components/appointments/BookingFormModal.vue';
 import ActionsPanel from '../components/appointments/ActionsPanel.vue';
 import { SessionsHttpClient } from '../services/SessionsHttpClient';
 import type { Appointment } from '../interfaces/Appointment';
+import { ConfirmationMethod, ConfirmationResult } from '../constants/confirmationValues';
 
 export default defineComponent({
   name: 'AppointmentsView',
@@ -140,8 +141,8 @@ export default defineComponent({
         switch (action) {
           case 'confirm':
             await client.confirmSession(appt.sessionId, {
-              confirmationMethod: 'InPerson',
-              confirmationResult: 'Confirmed',
+              confirmationMethod: ConfirmationMethod.InPerson,
+              confirmationResult: ConfirmationResult.Confirmed,
             });
             break;
           case 'checkin': await client.checkInSession(appt.sessionId); break;

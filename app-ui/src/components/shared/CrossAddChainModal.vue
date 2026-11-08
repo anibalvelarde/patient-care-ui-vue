@@ -164,6 +164,7 @@ import { useClaims, Permissions } from '../../composables/useClaims';
 import type { Caretaker } from '../../interfaces/Caretaker';
 import type { Patient } from '../../interfaces/Patient';
 import type { CreatedForChain } from '../../interfaces/CrossAdd';
+import type { CaretakerRelationshipValue } from '../../constants/caretakerRelationships';
 
 type ChainStep = 'chooser' | 'link' | 'create' | 'success' | 'link-failed';
 
@@ -192,7 +193,7 @@ export default defineComponent({
     const errorMsg = ref('');
     const successMsg = ref('');
     const createdName = ref('');
-    const pendingLink = ref<{ id: number; relationship: string | null; isPrimary: boolean } | null>(null);
+    const pendingLink = ref<{ id: number; relationship: CaretakerRelationshipValue | null; isPrimary: boolean } | null>(null);
 
     const addingCaretaker = computed(() => props.mode === 'add-caretaker');
     const otherNoun = computed(() => (addingCaretaker.value ? 'caretaker' : 'patient'));
@@ -237,7 +238,7 @@ export default defineComponent({
             detail: p.medicalRecordNumber ? `MRN ${p.medicalRecordNumber}` : null,
           }));
 
-    const link = async (otherId: number, isPrimary: boolean, relationship: string | null) => {
+    const link = async (otherId: number, isPrimary: boolean, relationship: CaretakerRelationshipValue | null) => {
       if (!props.target) return;
       // Both directions call the caretaker-side endpoint — orient the ids by mode.
       const caretakerId = addingCaretaker.value ? otherId : props.target.id;
@@ -245,7 +246,7 @@ export default defineComponent({
       await caretakerClient.linkPatient(caretakerId, patientId, isPrimary, relationship);
     };
 
-    const doLink = async (payload: { id: number; name: string; relationship: string | null; isPrimary: boolean }) => {
+    const doLink = async (payload: { id: number; name: string; relationship: CaretakerRelationshipValue | null; isPrimary: boolean }) => {
       saving.value = true;
       errorMsg.value = '';
       try {

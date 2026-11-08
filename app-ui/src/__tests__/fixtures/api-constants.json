@@ -1,0 +1,39 @@
+{
+  "_comment": "WP-56C lockstep fixture — VENDORED copy of the API's constant homes (patient-care-api, WP-55B). When an API value changes, update this file AND the matching src/constants/*.ts in the same PR; wp56-constants-lockstep.spec.ts fails if they disagree. Source files are listed per key.",
+  "_vendoredFrom": "patient-care-api main @ f146686 (WP-55B, PR #131), vendored 2026-11-07",
+  "sessionStatus": {
+    "_source": "src/Core/Services/SessionStatus.cs",
+    "idToName": {
+      "1": "Proposed",
+      "2": "Confirmed",
+      "3": "Cancelled",
+      "4": "Completed",
+      "5": "NoShow",
+      "6": "CheckedIn",
+      "7": "InTherapy"
+    },
+    "confirmedStatuses": [2, 4, 6, 7],
+    "activeStatuses": [1, 2, 6, 7]
+  },
+  "caretakerRelationships": {
+    "_source": "src/Core/BusinessObjects/Patients/CaretakerRelationships.cs",
+    "all": ["Father", "Mother", "Relative", "HiredHelp", "Legal-Guardian", "Self"]
+  },
+  "genders": {
+    "_source": "src/Core/BusinessObjects/Patients/Genders.cs",
+    "all": ["Male", "Female", "Other"]
+  },
+  "confirmationValues": {
+    "_source": "src/Core/BusinessObjects/Sessions/ConfirmationValues.cs",
+    "allResults": ["Confirmed", "NoAnswer", "LeftMessage", "Declined"],
+    "allMethods": ["Phone", "Email", "Text", "InPerson"]
+  },
+  "durations": {
+    "_source": "src/Core/Services/SpecialtyPricing.cs (AllowedDurations)",
+    "allowed": [30, 45, 60, 90, 120]
+  },
+  "roles": {
+    "_source": "src/Core/Authorization/RoleTaxonomy.cs (IdentityRoleNames, compared OrdinalIgnoreCase)",
+    "identityRoleNames": ["Patient", "Therapist", "Caretaker"]
+  }
+}

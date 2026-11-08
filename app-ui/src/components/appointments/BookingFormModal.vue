@@ -199,12 +199,9 @@ import { TIME_MIN, TIME_MAX, TIME_STEP } from '../../utils/timeSlots';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import { isSenadisExpired, formatSenadisExpiry } from '../../utils/senadis';
 import LookupSelect, { type LookupOption } from '../shared/LookupSelect.vue';
-
-// WP-40 (BK-1): the fixed bookable duration set — mirrors the API's validation
-// (SpecialtyPricing.AllowedDurations = {30,45,60,90,120}). 40 was removed by WP-55 G5
-// (reversing the 2026-07-27 addendum) and the WP-55B API 400s it (WP-56 G5 hotfix).
-// WP-56C moves this into src/constants/durations.ts.
-export const BOOKABLE_DURATIONS = [30, 45, 60, 90, 120];
+// WP-40 (BK-1): the fixed bookable duration set — the API 400s anything else (home: constants/durations).
+import { BOOKABLE_DURATIONS } from '../../constants/durations';
+import { SessionStatus } from '../../constants/sessionStatus';
 
 export default defineComponent({
   name: 'BookingFormModal',
@@ -506,7 +503,7 @@ export default defineComponent({
           providerAmount: derivedProviderAmount.value,
           isPaidOff: false,
           notes: form.value.notes,
-          appointmentStatusId: props.isWalkIn ? 6 : 1, // CheckedIn for walk-in, Proposed for booking
+          appointmentStatusId: props.isWalkIn ? SessionStatus.CheckedIn : SessionStatus.Proposed,
           specialtyTypeId: form.value.specialtyTypeId,
           isOnSiteVisit: onSiteVisit.value,
           siteId: onSiteVisit.value ? onSiteSiteId.value : undefined,

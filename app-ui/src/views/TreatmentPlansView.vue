@@ -149,6 +149,7 @@ import { TreatmentPlansHttpClient } from '../services/TreatmentPlansHttpClient';
 import { SessionsHttpClient } from '../services/SessionsHttpClient';
 import type { TreatmentPlan, DiscoverySessionSummary, ActivePlanSummary } from '../interfaces/TreatmentPlan';
 import { useClaims, Permissions } from '../composables/useClaims';
+import { PlanStatus, PLAN_STATUS_TABS } from '../constants/planStatus';
 
 export default defineComponent({
   name: 'TreatmentPlansView',
@@ -169,8 +170,7 @@ export default defineComponent({
 
     const initialTab = computed(() => {
       const tab = route.query.tab as string | undefined;
-      const validTabs = ['All', 'Draft', 'Active', 'Completed', 'Cancelled'];
-      return tab && validTabs.includes(tab) ? tab : 'All';
+      return tab && PLAN_STATUS_TABS.includes(tab) ? tab : 'All';
     });
 
     const patientName = ref('');
@@ -291,7 +291,7 @@ export default defineComponent({
     const goToSchedulePlan = (summary: ActivePlanSummary) => {
       router.push({
         path: '/treatment-plans',
-        query: { patientId: String(summary.patientId), tab: 'Active' },
+        query: { patientId: String(summary.patientId), tab: PlanStatus.Active },
       });
     };
 

@@ -225,7 +225,7 @@
               Cancel
             </button>
             <button
-              v-if="isEditing && plan && plan.planStatus === 'Draft' && hasClaim('Permission', Permissions.TreatmentPlansBook)"
+              v-if="isEditing && plan && plan.planStatus === PlanStatus.Draft && hasClaim('Permission', Permissions.TreatmentPlansBook)"
               @click="handleActivate"
               :disabled="saving || lineCountMismatch"
               :title="lineCountMismatch ? 'Line count must match sessions per week before activating' : ''"
@@ -252,7 +252,7 @@
               {{ saving ? 'Saving...' : 'Save as Draft' }}
             </button>
             <button
-              v-if="isEditing && plan && plan.planStatus === 'Draft' && hasClaim('Permission', Permissions.TreatmentPlansEdit)"
+              v-if="isEditing && plan && plan.planStatus === PlanStatus.Draft && hasClaim('Permission', Permissions.TreatmentPlansEdit)"
               @click="handleSave"
               :disabled="saving"
               :class="[
@@ -283,6 +283,7 @@ import type { LookupItem } from '../../interfaces/Lookups';
 import type { Therapist } from '../../interfaces/Therapist';
 import { TIME_MIN, TIME_MAX, TIME_STEP } from '../../utils/timeSlots';
 import { useClaims, Permissions } from '../../composables/useClaims';
+import { PlanStatus } from '../../constants/planStatus';
 
 interface FormLine {
   specialtyTypeId: number;
@@ -502,6 +503,7 @@ export default defineComponent({
     };
 
     return {
+      PlanStatus,
       form,
       lines,
       isEditing,

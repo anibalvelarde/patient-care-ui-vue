@@ -51,6 +51,7 @@
 import { defineComponent, ref, computed, onMounted } from 'vue';
 import type { PlanProgressSummary } from '../../interfaces/TreatmentPlan';
 import { TreatmentPlansHttpClient } from '../../services/TreatmentPlansHttpClient';
+import { getPlanProgressStatusClass } from '../../constants/sessionStatus';
 
 export default defineComponent({
   name: 'PlanProgressCard',
@@ -74,15 +75,8 @@ export default defineComponent({
       return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     };
 
-    const statusBadgeClass = (statusId: number) => {
-      switch (statusId) {
-        case 1: return 'text-blue-600'; // Proposed
-        case 2: return 'text-emerald-600'; // Confirmed
-        case 3: return 'text-red-500'; // Cancelled
-        case 4: return 'text-gray-600'; // Completed
-        default: return 'text-slate-500';
-      }
-    };
+    // Session-status text colour for the progress list — its own palette, homed in constants/sessionStatus.
+    const statusBadgeClass = getPlanProgressStatusClass;
 
     onMounted(async () => {
       try {

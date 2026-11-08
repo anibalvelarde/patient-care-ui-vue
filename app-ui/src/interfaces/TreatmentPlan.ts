@@ -1,6 +1,9 @@
 // interfaces/TreatmentPlan.ts
 
-export type PlanStatus = 'Draft' | 'Active' | 'Completed' | 'Cancelled';
+import { PlanStatus as PlanStatusValues, type PlanStatusValue } from '../constants/planStatus';
+
+/** Plan status union — derived from the constant home (constants/planStatus.ts, WP-56C). */
+export type PlanStatus = PlanStatusValue;
 
 export interface TreatmentPlanLine {
   id: number;
@@ -78,10 +81,10 @@ export function isDiscoverySpecialty(abbreviation: string): boolean {
 
 export function planStatusBadgeClass(status: PlanStatus): string {
   switch (status) {
-    case 'Draft': return 'bg-slate-100 text-slate-600';
-    case 'Active': return 'bg-emerald-100 text-emerald-700';
-    case 'Completed': return 'bg-gray-100 text-gray-600';
-    case 'Cancelled': return 'bg-red-100 text-red-700';
+    case PlanStatusValues.Draft: return 'bg-slate-100 text-slate-600';
+    case PlanStatusValues.Active: return 'bg-emerald-100 text-emerald-700';
+    case PlanStatusValues.Completed: return 'bg-gray-100 text-gray-600';
+    case PlanStatusValues.Cancelled: return 'bg-red-100 text-red-700';
   }
 }
 

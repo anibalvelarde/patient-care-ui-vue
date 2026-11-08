@@ -181,13 +181,12 @@ import { LookupHttpClient } from '../../services/LookupHttpClient';
 import { useModalForm } from '../../composables/useModalForm';
 import FormErrorBanner from '../shared/FormErrorBanner.vue';
 import AuditPopover from '../shared/AuditPopover.vue';
+import { PRICED_DURATIONS as DURATIONS } from '../../constants/durations';
 
 // WP-39 (G5): per-specialty price-sheet modal. Shows the current-effective price per duration
 // (30/45/60/90/120), lets a Specialties.Prices.Edit holder APPEND effective-dated rows (default
 // today; future dates allowed — temporal ruling), and exposes the read-only history per duration.
 // History is never mutated: a correction is a new row effective today (or the intended date).
-
-const DURATIONS = [30, 45, 60, 90, 120] as const;
 
 function todayISO(): string {
   const d = new Date();
