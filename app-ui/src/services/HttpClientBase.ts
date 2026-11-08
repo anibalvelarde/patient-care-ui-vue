@@ -1,5 +1,6 @@
 // services/HttpClientBase.ts
 import { authBridge } from './authBridge';
+import { ApiError } from './ApiError';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
@@ -83,15 +84,16 @@ export abstract class HttpClientBase {
     if (!response.ok) {
       if (response.status === 401 && includeAuth) {
         authBridge.notifyUnauthorized();
-        throw new Error("Your session has expired. Please sign in again.");
+        throw new ApiError("Your session has expired. Please sign in again.", 401);
       }
       if (response.status === 403) {
         const { code, message } = await this.readProblem(response);
         authBridge.notifyForbidden(code);
-        throw new Error(message || "You do not have permission to perform this action.");
+        throw new ApiError(message || "You do not have permission to perform this action.", 403, code);
       }
       const message = await this.extractErrorMessage(response, opts.fallback ?? "An unexpected error occurred.");
-      throw new Error(message);
+      // WP-59: keep the status (a 409 double-booking must be distinguishable from a 400).
+      throw new ApiError(message, response.status);
     }
 
     const text = await response.text();

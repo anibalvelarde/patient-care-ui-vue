@@ -156,7 +156,12 @@
 
         <!-- Footer -->
         <div class="px-6 py-4 border-t border-slate-200 space-y-3">
-          <div v-if="saveError" class="bg-red-50 border border-red-200 rounded-lg p-3">
+          <div v-if="saveError && saveConflict" data-testid="booking-conflict" class="bg-red-50 border border-red-200 rounded-lg p-3">
+            <p class="text-sm font-semibold text-red-800">This time is already taken</p>
+            <p class="text-sm text-red-700">{{ saveError }}</p>
+            <p class="text-xs text-red-600 mt-1">Change the time, duration or therapist, then save again.</p>
+          </div>
+          <div v-else-if="saveError" class="bg-red-50 border border-red-200 rounded-lg p-3">
             <p class="text-sm text-red-700">{{ saveError }}</p>
           </div>
           <div class="flex items-center justify-end space-x-3">
@@ -186,6 +191,7 @@
 <script lang="ts">
 import { defineComponent, ref, computed, watch } from 'vue';
 import { SessionsHttpClient } from '../../services/SessionsHttpClient';
+import { isConflict } from '../../services/ApiError';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import { TherapistsHttpClient } from '../../services/TherapistsHttpClient';
 import { LookupHttpClient } from '../../services/LookupHttpClient';
@@ -226,6 +232,8 @@ export default defineComponent({
     const specialtyTypes = ref<LookupItem[]>([]);
     const saving = ref(false);
     const saveError = ref('');
+    // WP-59: the API answered 409 (double-booking) — shown with its own heading.
+    const saveConflict = ref(false);
     const caretakerWarning = ref(false);
     const needsDiscovery = ref(false);
     const senadisPatient = ref(false);
@@ -512,13 +520,14 @@ export default defineComponent({
         emit('saved');
         emit('close');
       } catch (e: unknown) {
+        saveConflict.value = isConflict(e);
         saveError.value = e instanceof Error ? e.message : 'Failed to save appointment.';
       } finally {
         saving.value = false;
       }
     };
 
-    return { form, selectedPatient, fetchPatientOptions, filteredTherapists, filteredSpecialties, saving, saveError, caretakerWarning, needsDiscovery, senadisPatient, senadisExpiry, senadisActive, senadisExpired, formatSenadisExpiry, isValid, handleSubmit, timeMin: TIME_MIN, timeMax: TIME_MAX, timeStep: TIME_STEP, hasClaim, Permissions, bookableDurations: BOOKABLE_DURATIONS, selectedSpecialty, derivedAmount, derivedDiscount, derivedProviderAmount, amountSource, missingPrice, onSiteVisit, onSiteSiteId, sites, onSiteTripCharge };
+    return { form, selectedPatient, fetchPatientOptions, filteredTherapists, filteredSpecialties, saving, saveError, saveConflict, caretakerWarning, needsDiscovery, senadisPatient, senadisExpiry, senadisActive, senadisExpired, formatSenadisExpiry, isValid, handleSubmit, timeMin: TIME_MIN, timeMax: TIME_MAX, timeStep: TIME_STEP, hasClaim, Permissions, bookableDurations: BOOKABLE_DURATIONS, selectedSpecialty, derivedAmount, derivedDiscount, derivedProviderAmount, amountSource, missingPrice, onSiteVisit, onSiteSiteId, sites, onSiteTripCharge };
   },
 });
 </script>

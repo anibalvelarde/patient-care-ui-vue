@@ -62,7 +62,8 @@
         </div>
 
         <!-- Error -->
-        <div v-if="errorMsg" class="px-5 py-2 bg-red-50 border-t border-red-200">
+        <div v-if="errorMsg" data-testid="reassign-error" class="px-5 py-2 bg-red-50 border-t border-red-200">
+          <p v-if="conflict" class="text-xs font-semibold text-red-800">This time is already taken</p>
           <p class="text-xs text-red-700">{{ errorMsg }}</p>
         </div>
       </div>
@@ -74,6 +75,7 @@
 import { defineComponent, ref, computed, watch, type PropType } from 'vue';
 import type { Appointment } from '../../interfaces/Appointment';
 import type { Therapist } from '../../interfaces/Therapist';
+import { isConflict } from '../../services/ApiError';
 import { TherapistsHttpClient } from '../../services/TherapistsHttpClient';
 import { SessionsHttpClient } from '../../services/SessionsHttpClient';
 
@@ -92,6 +94,8 @@ export default defineComponent({
     const selectedTherapistId = ref(0);
     const saving = ref(false);
     const errorMsg = ref('');
+    // WP-59: the API answered 409 (the new therapist is already booked then).
+    const conflict = ref(false);
     const loading = ref(false);
 
     const eligibleTherapists = computed(() => {
@@ -140,6 +144,7 @@ export default defineComponent({
         emit('saved');
         emit('close');
       } catch (e: unknown) {
+        conflict.value = isConflict(e);
         errorMsg.value = e instanceof Error ? e.message : 'Failed to reassign therapist.';
       } finally {
         saving.value = false;
@@ -160,6 +165,7 @@ export default defineComponent({
       canSave,
       saving,
       errorMsg,
+      conflict,
       loading,
       handleSave,
     };
