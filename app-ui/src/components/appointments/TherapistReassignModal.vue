@@ -130,9 +130,8 @@ export default defineComponent({
           sessionTime: props.session.sessionTime,
           therapyType: props.session.therapyTypes || 'N/A',
           amount: props.session.amount,
-          amountPaid: props.session.amountPaid,
           discount: props.session.discount,
-          isPaidOff: props.session.isPaidOff,
+          // WP-58 (F-18): amountPaid / isPaidOff deliberately not sent — server-derived only.
           notes: props.session.notes || '',
           appointmentStatusId: props.session.appointmentStatusId,
           siteId: props.session.siteId,

@@ -416,6 +416,9 @@ describe('ActionsPanel — BK-3 discount edit gating', () => {
     expect(payload.discount).toBe(15);
     expect(payload).not.toHaveProperty('duration');
     expect(payload).not.toHaveProperty('providerAmount');
+    // WP-58 (F-18): the panel's loaded amountPaid/isPaidOff can be stale — never sent back.
+    expect(payload).not.toHaveProperty('amountPaid');
+    expect(payload).not.toHaveProperty('isPaidOff');
   });
 
   it('no active SENADIS (unflagged patient): no floor hint for the editable discount', async () => {

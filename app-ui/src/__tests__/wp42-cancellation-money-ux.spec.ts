@@ -304,6 +304,16 @@ describe('ActionsPanel — no-show fee confirm step (WP-42)', () => {
       .toBe('A no-show fee of 12.5% of $85.00 (= $10.63) will be charged.');
   });
 
+  it('WP-58 (Q-1): the fee is on the NET — SENADIS $50 with $10 off → 100% of $40.00 (= $40.00)', async () => {
+    sitesClientMocks.getSite.mockResolvedValue(site({ noShowFeePct: 100 }));
+    const wrapper = await openPanel(appointment({ amount: 50, discount: 10, amountDue: 40 }));
+    await wrapper.find('[data-testid="status-action-5"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="noshow-fee-line"]').text())
+      .toBe('A no-show fee of 100% of $40.00 (= $40.00) will be charged.');
+  });
+
   it('falls back to the generic line when the site is unreachable', async () => {
     sitesClientMocks.getSite.mockRejectedValueOnce(new Error('network'));
     const wrapper = await openPanel(appointment());

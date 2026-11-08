@@ -84,11 +84,12 @@ export interface SessionEventUpdateRequest {
     // the old hardcoded 60 silently overwrote legacy durations. Only send a value when the
     // user deliberately changes it (validated server-side against {30,40,45,60,90,120}).
     duration?: number;
-    amount: number;
-    amountPaid: number;
+    // WP-58 (F-17): the API treats an omitted amount as "keep stored"; the edit surfaces still send it.
+    amount?: number;
+    // WP-58 (F-18): amountPaid / isPaidOff are NOT part of this request. They are derived from the
+    // payment ledger server-side; echoing the loaded values erased payments recorded meanwhile.
     // Changing discount requires the Sessions.Discount.Edit claim (403 otherwise, BK-3).
     discount: number;
-    isPaidOff: boolean;
     notes: string;
     appointmentStatusId?: number;
     therapistId?: number;
