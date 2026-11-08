@@ -15,8 +15,9 @@ Check all three places a relationship is picked by hand:
 
 1. **Caretakers** → open a caretaker → **Link patient**.
 2. **Patients** → open a patient → Caretakers panel → **Add caretaker**.
-3. A cross-add chain: from a patient's Add-caretaker flow choose **create new caretaker**
-   (the relationship select inside the new-caretaker form).
+3. The cross-add chain after creating a patient: **Patients** → **Add Patient** → fill in and
+   **save** → in the follow-up prompt choose **Create a new caretaker** (the relationship select
+   inside that new-caretaker form). *(It is not reachable from the Add-caretaker flow in step 2.)*
 
 - **Expect (each):** options are exactly **None, Father, Mother, Relative, Hired Help, Legal
   Guardian**. **Self is NOT offered** (it's only created by the "their own caretaker" button).
