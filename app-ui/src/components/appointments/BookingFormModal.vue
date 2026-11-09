@@ -189,6 +189,7 @@
 </template>
 
 <script lang="ts">
+import { clinicToday } from '../../utils/localDate';
 import { defineComponent, ref, computed, watch } from 'vue';
 import { SessionsHttpClient } from '../../services/SessionsHttpClient';
 import { isConflict } from '../../services/ApiError';
@@ -244,7 +245,7 @@ export default defineComponent({
     const onSiteSiteId = ref(0);
     const sites = ref<Site[]>([]);
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = clinicToday(); // WP-60: Panama day, not UTC
     const nowTime = new Date().toTimeString().slice(0, 5);
 
     // WP-40 (BK-2): no money fields in the form — Amount/Discount/ProviderAmt are derived.

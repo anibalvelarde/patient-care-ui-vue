@@ -175,7 +175,7 @@ import { defineComponent, ref, reactive, computed, onMounted, type PropType } fr
 import { ServicePaymentsHttpClient } from '../../services/ServicePaymentsHttpClient';
 import type { PaymentTypeInfo } from '../../interfaces/Payment';
 import type { PaidInRangeSummary, ServicePaymentRecord, UnpaidProviderSessionSummary } from '../../interfaces/ServicePayment';
-import { toLocalYmd } from '../../utils/localDate';
+import { clinicToday, formatDateOnly } from '../../utils/localDate';
 import { formatCurrency } from '../../utils/formatCurrency';
 import PaidInRangeDisclosure from './PaidInRangeDisclosure.vue';
 
@@ -196,9 +196,9 @@ export default defineComponent({
     const client = new ServicePaymentsHttpClient();
 
     const selectedTherapistId = ref<number | null>(null);
-    const fromDate = ref(toLocalYmd(new Date()));
-    const toDate = ref(toLocalYmd(new Date()));
-    const paymentDate = ref(toLocalYmd(new Date()));
+    const fromDate = ref(clinicToday());
+    const toDate = ref(clinicToday());
+    const paymentDate = ref(clinicToday());
     const paymentTypeId = ref<number | null>(null);
     const referenceNumber = ref('');
     const notes = ref('');
@@ -217,7 +217,7 @@ export default defineComponent({
     const selectedTotal = computed(() => selectedSessions.value.reduce((sum, s) => sum + s.remainingProviderAmount, 0));
     const canSubmit = computed(() => !!selectedTherapistId.value && !!paymentTypeId.value && selectedTotal.value > 0);
 
-    const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const formatDate = (dateStr: string) => formatDateOnly(dateStr); // WP-60 (F-9): date-only
 
     const selectAll = (value: boolean) => {
       sessions.value.forEach((s) => { selected[s.sessionId] = value; });

@@ -76,6 +76,7 @@
 </template>
 
 <script lang="ts">
+import { formatDateOnly } from '../../utils/localDate';
 import { defineComponent, type PropType } from 'vue';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -99,9 +100,7 @@ export default defineComponent({
   setup() {
     const formatDate = (dateStr: string) => {
       if (!dateStr) return '--';
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      return formatDateOnly(dateStr, { month: 'short', year: 'numeric' }); // WP-60: date-only
     };
 
     return { formatDate };

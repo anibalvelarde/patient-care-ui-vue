@@ -230,6 +230,7 @@
 </template>
 
 <script lang="ts">
+import { clinicToday } from '../../utils/localDate';
 import { defineComponent, ref, reactive, computed, watch, type PropType } from 'vue';
 import type { PaymentRecord, PaymentTypeInfo, UnpaidSessionSummary, SessionAllocationItem } from '../../interfaces/Payment';
 import { PaymentsHttpClient } from '../../services/PaymentsHttpClient';
@@ -266,7 +267,7 @@ export default defineComponent({
     const form = reactive({
       caretakerId: 0,
       amount: 0,
-      paymentDate: new Date().toISOString().split('T')[0],
+      paymentDate: clinicToday(), // WP-60: money is dated in Panama, not UTC
       paymentTypeId: 0,
       checkNumber: '',
     });
@@ -410,7 +411,8 @@ export default defineComponent({
       return submit(async () => {
         const requestData = {
           amount: form.amount,
-          paymentDate: new Date(form.paymentDate).toISOString(),
+          // WP-60: send the business date as-is (no UTC instant with a Z).
+          paymentDate: form.paymentDate,
           caretakerId: form.caretakerId,
           paymentTypeId: form.paymentTypeId,
           checkNumber: form.checkNumber || null,
@@ -461,7 +463,7 @@ export default defineComponent({
             loadPreselectedCaretaker(props.preSelectedCaretakerId);
           }
           form.amount = 0;
-          form.paymentDate = new Date().toISOString().split('T')[0];
+          form.paymentDate = clinicToday();
           form.paymentTypeId = 0;
           form.checkNumber = '';
         }

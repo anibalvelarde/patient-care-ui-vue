@@ -141,7 +141,7 @@ import { ServicePaymentsHttpClient } from '../../services/ServicePaymentsHttpCli
 import type { ServicePaymentRecord } from '../../interfaces/ServicePayment';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { toLocalYmd } from '../../utils/localDate';
+import { toLocalYmd, clinicToday } from '../../utils/localDate';
 
 interface TherapistOption {
   therapistId: number
@@ -214,7 +214,7 @@ export default defineComponent({
       try {
         await client.reverseServicePayment(reverseTarget.value.servicePaymentId, {
           reason: reverseReason.value.trim(),
-          paymentDate: toLocalYmd(new Date()),   // stamp the reversal with the user's local "today"
+          paymentDate: clinicToday(),   // stamp the reversal with the clinic's "today" (WP-60)
         });
         reverseTarget.value = null;
         await load();

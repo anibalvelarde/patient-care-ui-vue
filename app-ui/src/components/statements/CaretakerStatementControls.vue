@@ -51,6 +51,7 @@
 </template>
 
 <script lang="ts">
+import { clinicToday, addDaysYmd } from '../../utils/localDate';
 import { defineComponent, ref, type PropType } from 'vue';
 import LookupSelect, { type LookupOption } from '../shared/LookupSelect.vue';
 
@@ -67,13 +68,10 @@ export default defineComponent({
     const selectedCaretaker = ref<LookupOption | null>(null);
 
     // Default: 90 days ago to today
-    const today = new Date();
-    const ninetyDaysAgo = new Date(today);
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-    const toIso = (d: Date) => d.toISOString().split('T')[0];
-    const fromDate = ref(toIso(ninetyDaysAgo));
-    const toDate = ref(toIso(today));
+    // WP-60: Panama calendar days, not UTC dates.
+    const toDate = ref(clinicToday());
+    const fromDate = ref(addDaysYmd(toDate.value, -90));
 
     const onGenerate = () => {
       if (selectedCaretaker.value) {

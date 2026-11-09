@@ -306,6 +306,7 @@
 </template>
 
 <script lang="ts">
+import { clinicToday, mondayOf, addDaysYmd } from '../../utils/localDate';
 import { defineComponent, ref, computed, watch, type PropType } from 'vue';
 import type { TreatmentPlan, BulkScheduleResult, LineOverride, SuggestedAlternative } from '../../interfaces/TreatmentPlan';
 import { TIME_MIN, TIME_MAX, TIME_STEP } from '../../utils/timeSlots';
@@ -496,12 +497,11 @@ export default defineComponent({
       return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     };
 
+    // WP-60: the next Monday after the clinic's today (a Sunday's next Monday is tomorrow).
     const getNextMonday = () => {
-      const d = new Date();
-      const day = d.getDay();
-      const diff = day === 0 ? 1 : 8 - day;
-      d.setDate(d.getDate() + diff);
-      return d.toISOString().split('T')[0];
+      const today = clinicToday();
+      const monday = mondayOf(today);
+      return monday > today ? monday : addDaysYmd(monday, 7);
     };
 
     const initForm = () => {

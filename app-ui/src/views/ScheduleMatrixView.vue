@@ -95,6 +95,7 @@
 </template>
 
 <script lang="ts">
+import { clinicToday, addDaysYmd } from '../utils/localDate';
 import { defineComponent, ref, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import O2MobileNav from '../components/option02/O2MobileNav.vue';
@@ -119,7 +120,7 @@ export default defineComponent({
     const sessionsClient = new SessionsHttpClient();
     const sitesClient = new SitesHttpClient();
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = clinicToday(); // WP-60: Panama day, not UTC
     const initialDate = (route.query.date as string) || today;
     const initialSiteId = route.query.siteId ? Number(route.query.siteId) : 0;
     const selectedDate = ref(initialDate);
@@ -158,19 +159,15 @@ export default defineComponent({
     };
 
     const prevWeek = () => {
-      const d = new Date(selectedDate.value);
-      d.setDate(d.getDate() - 7);
-      selectedDate.value = d.toISOString().split('T')[0];
+      selectedDate.value = addDaysYmd(selectedDate.value, -7);
     };
 
     const nextWeek = () => {
-      const d = new Date(selectedDate.value);
-      d.setDate(d.getDate() + 7);
-      selectedDate.value = d.toISOString().split('T')[0];
+      selectedDate.value = addDaysYmd(selectedDate.value, 7);
     };
 
     const goToday = () => {
-      selectedDate.value = new Date().toISOString().split('T')[0];
+      selectedDate.value = clinicToday();
     };
 
     const onBook = () => {

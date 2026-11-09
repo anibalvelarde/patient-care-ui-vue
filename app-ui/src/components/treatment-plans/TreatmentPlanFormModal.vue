@@ -272,6 +272,7 @@
 </template>
 
 <script lang="ts">
+import { formatDateOnly } from '../../utils/localDate';
 import { defineComponent, ref, computed, watch, type PropType } from 'vue';
 import { TreatmentPlansHttpClient } from '../../services/TreatmentPlansHttpClient';
 import { LookupHttpClient } from '../../services/LookupHttpClient';
@@ -498,8 +499,7 @@ export default defineComponent({
 
     const formatDate = (dateStr: string) => {
       if (!dateStr) return '';
-      const d = new Date(dateStr);
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return formatDateOnly(dateStr); // WP-60 (F-9): date-only — never a day early
     };
 
     return {

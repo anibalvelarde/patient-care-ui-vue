@@ -109,6 +109,7 @@
 </template>
 
 <script lang="ts">
+import { clinicToday, toLocalYmd } from '../../utils/localDate';
 import { defineComponent, computed, ref, watch, type PropType } from 'vue';
 import type { ScheduleMatrixResponse, TherapistScheduleRow, ScheduleSlot } from '../../interfaces/ScheduleMatrix';
 import { getStatusBadgeClass, SESSION_STATUS_LABEL } from '../../constants/sessionStatus';
@@ -132,7 +133,7 @@ export default defineComponent({
       for (let i = 0; i < 6; i++) {
         const d = new Date(start);
         d.setDate(d.getDate() + i);
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = toLocalYmd(d);
         const monthDay = `${d.getMonth() + 1}/${d.getDate()}`;
         result.push({
           date: dateStr,
@@ -146,13 +147,13 @@ export default defineComponent({
     // Default active day: today if in range, else Monday
     watch(() => props.matrix, () => {
       if (!days.value.length) return;
-      const today = new Date().toISOString().split('T')[0];
+      const today = clinicToday();
       const todayInWeek = days.value.find(d => d.date === today);
       activeDay.value = todayInWeek ? today : days.value[0].date;
     }, { immediate: true });
 
     const isToday = (dateStr: string) => {
-      return dateStr === new Date().toISOString().split('T')[0];
+      return dateStr === clinicToday();
     };
 
     const formatHour = (hour: number) => {

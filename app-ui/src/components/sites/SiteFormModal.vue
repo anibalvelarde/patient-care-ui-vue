@@ -190,6 +190,8 @@ import FormErrorBanner from '../shared/FormErrorBanner.vue';
 
 function formatDateForInput(dateStr: string): string {
   if (!dateStr) return '';
+  // WP-60: a date-only/business date — take the yyyy-MM-dd part as-is (no UTC round-trip).
+  if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) return dateStr.slice(0, 10);
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
   const yyyy = String(d.getFullYear()).padStart(4, '0');
