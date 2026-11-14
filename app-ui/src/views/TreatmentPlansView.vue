@@ -151,6 +151,7 @@ import { SessionsHttpClient } from '../services/SessionsHttpClient';
 import type { TreatmentPlan, DiscoverySessionSummary, ActivePlanSummary } from '../interfaces/TreatmentPlan';
 import { useClaims, Permissions } from '../composables/useClaims';
 import { PlanStatus, PLAN_STATUS_TABS } from '../constants/planStatus';
+import { useNotificationsStore } from '../stores/notifications';
 
 export default defineComponent({
   name: 'TreatmentPlansView',
@@ -253,6 +254,9 @@ export default defineComponent({
         await loadPlans();
       } catch (e: unknown) {
         error.value = e instanceof Error ? e.message : 'Failed to activate plan.';
+        // WP-61: activation is refused when a line has no price — surface it as a toast too
+        // (the API's message names the specialty and duration).
+        useNotificationsStore().error(error.value, 10000);
       }
     };
 

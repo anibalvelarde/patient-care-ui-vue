@@ -7,7 +7,7 @@
 //     the flag is on AND (no expiry OR the booking's SESSION date <= expiry). Flagged-but-
 //     expired ⇒ no floor, no clamp-on-submit, badge instead. Boundary (session date == expiry)
 //     still floors. Changing the session date across the expiry flips the behavior.
-//   - SchedulePlanWizard's per-line clamp does the same against the schedule START date.
+//   - SchedulePlanWizard's read-only SENADIS estimate (WP-61; was a per-line clamp) does the same against the schedule START date.
 // Date determinism: fixtures use far-past (2020) / far-future (2099) expiries, and the
 // boundary/flip cases drive form.sessionDate/startDate explicitly — no fake clock needed.
 
@@ -392,8 +392,10 @@ function makePlan(patientId: number): TreatmentPlan {
     lines: [
       {
         id: 1,
+        specialtyTypeId: 6, // TL — default 65.00 in the lookup seed ⇒ SENADIS 20% = 13.00
         specialtyAbbreviation: 'TL',
-        duration: 60, // amount 65.00 ⇒ floor 13.00
+        specialtyName: 'Language Therapy',
+        duration: 60,
         preferredTherapistId: null,
         dayOfWeek: 1,
         preferredTime: '09:00',
@@ -407,7 +409,7 @@ type WizardVm = {
   senadisActive: boolean;
   senadisExpired: boolean;
   startDate: string;
-  lineEdits: Array<{ discountAmount: number; discountPct: number }>;
+  step: number;
 };
 
 async function openWizard(pinia: Pinia, patientId: number) {
@@ -420,45 +422,50 @@ async function openWizard(pinia: Pinia, patientId: number) {
   return wrapper;
 }
 
-describe('SchedulePlanWizard — WP-37 expiry-aware per-line clamp', () => {
-  it('unexpired (far-future expiry): lines still initialize to the 20% floor', async () => {
+// WP-61: the editable discount (and its clamp) is gone — step 2 shows a read-only SENADIS 20% while
+// SENADIS is active as of the schedule START date, and the expired badge otherwise.
+const senadisLine = (wrapper: ReturnType<typeof mount>) => wrapper.find('[data-testid="line-senadis-discount"]');
+
+describe('SchedulePlanWizard — WP-37 expiry-aware SENADIS estimate (WP-61: read-only)', () => {
+  it('unexpired (far-future expiry): the 20% shows on the line', async () => {
     const wrapper = await openWizard(authAs('MGR'), FUTURE_ID);
     const vm = wrapper.vm as unknown as WizardVm;
+    vm.step = 2;
+    await nextTick();
 
     expect(vm.senadisActive).toBe(true);
-    expect(vm.lineEdits[0].discountAmount).toBe(13);
-    expect(vm.lineEdits[0].discountPct).toBe(20);
+    expect(senadisLine(wrapper).text()).toContain('13.00');
   });
 
-  it('expired as of the schedule start date: no clamp, flag intact, badge state on', async () => {
+  it('expired as of the schedule start date: no discount, flag intact, badge on', async () => {
     const wrapper = await openWizard(authAs('MGR'), EXPIRED_ID);
     const vm = wrapper.vm as unknown as WizardVm;
+    vm.step = 2;
+    await nextTick();
 
     expect(vm.senadisPatient).toBe(true); // G3 — flag never auto-cleared
     expect(vm.senadisActive).toBe(false);
     expect(vm.senadisExpired).toBe(true);
-    expect(vm.lineEdits[0].discountAmount).toBe(0); // untouched
+    expect(senadisLine(wrapper).exists()).toBe(false);
+    expect(wrapper.find('[data-testid="senadis-expired-badge"]').exists()).toBe(true);
   });
 
-  it('moving the start date across the expiry flips the clamp both ways', async () => {
+  it('moving the start date across the expiry flips the estimate both ways', async () => {
     const wrapper = await openWizard(authAs('MGR'), WINDOW_ID); // expiry 2026-08-15
     const vm = wrapper.vm as unknown as WizardVm;
+    vm.step = 2;
 
-    vm.startDate = '2026-08-10'; // on/before expiry ⇒ clamp applies
+    vm.startDate = '2026-08-10'; // on/before expiry ⇒ active
     await nextTick();
-    expect(vm.senadisActive).toBe(true);
-    expect(vm.lineEdits[0].discountAmount).toBe(13);
+    expect(senadisLine(wrapper).text()).toContain('13.00');
 
-    vm.startDate = '2026-08-20'; // past expiry ⇒ min lifts; user may lower the discount
+    vm.startDate = '2026-08-20'; // past expiry ⇒ none
     await nextTick();
-    expect(vm.senadisActive).toBe(false);
-    vm.lineEdits[0].discountAmount = 0;
-    await nextTick();
-    expect(vm.lineEdits[0].discountAmount).toBe(0); // no re-clamp while expired
+    expect(senadisLine(wrapper).exists()).toBe(false);
 
-    vm.startDate = '2026-08-15'; // boundary ⇒ active again, watcher re-clamps
+    vm.startDate = '2026-08-15'; // boundary ⇒ active again
     await nextTick();
-    expect(vm.senadisActive).toBe(true);
-    expect(vm.lineEdits[0].discountAmount).toBe(13);
+    expect(senadisLine(wrapper).text()).toContain('13.00');
   });
 });
+

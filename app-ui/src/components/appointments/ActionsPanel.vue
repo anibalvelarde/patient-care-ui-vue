@@ -672,7 +672,8 @@ export default defineComponent({
         // providerAmount is no longer sent (server-derived, recomputed on money change).
         await client.updateSession(props.appointment.sessionId, {
           sessionTime: props.appointment.sessionTime + (props.appointment.sessionTime.length === 5 ? ':00' : ''),
-          therapyType: props.appointment.therapyTypes || 'N/A',
+          // WP-61: therapyType OMITTED — the API keeps the stored value (re-sending the read model's
+          // value, or 'N/A' when it was empty, could overwrite it).
           amount: financialForm.value.amount,
           discount: financialForm.value.discount,
           notes: props.appointment.notes,

@@ -143,7 +143,8 @@
         <!-- Card footer -->
         <div class="mt-3 pt-3 border-t border-slate-100 flex justify-end space-x-2">
           <button
-            v-if="plan.planStatus === PlanStatus.Draft && hasClaim('Permission', Permissions.TreatmentPlansEdit)"
+            v-if="plan.canEditLines && hasClaim('Permission', Permissions.TreatmentPlansEdit)"
+            data-testid="plan-edit-button"
             class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
             @click="$emit('edit', plan)"
           >

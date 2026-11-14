@@ -208,6 +208,7 @@ import { isSenadisExpired, formatSenadisExpiry } from '../../utils/senadis';
 import LookupSelect, { type LookupOption } from '../shared/LookupSelect.vue';
 // WP-40 (BK-1): the fixed bookable duration set — the API 400s anything else (home: constants/durations).
 import { BOOKABLE_DURATIONS } from '../../constants/durations';
+import { resolveLinePrice } from '../../utils/linePrice';
 import { SessionStatus } from '../../constants/sessionStatus';
 
 export default defineComponent({
@@ -334,18 +335,10 @@ export default defineComponent({
     // WP-40 (BK-2): client-side mirror of the WP-39 price resolution — duration row →
     // defaultAmount → none. UX preview only; the API re-derives authoritatively at the
     // session date (the lookup projection is current-effective as of today).
-    const priceRow = computed(() =>
-      (selectedSpecialty.value?.durationPrices ?? []).find(p => p.durationMinutes === form.value.duration) ?? null
-    );
-    const amountSource = computed<'durationPrice' | 'defaultAmount' | 'none'>(() => {
-      if (!selectedSpecialty.value) return 'none';
-      if (priceRow.value) return 'durationPrice';
-      if (selectedSpecialty.value.defaultAmount != null) return 'defaultAmount';
-      return 'none';
-    });
-    const derivedAmount = computed<number | null>(() =>
-      priceRow.value?.amount ?? selectedSpecialty.value?.defaultAmount ?? null
-    );
+    // WP-61: the shared resolver (utils/linePrice.ts) — same rule as the treatment-plan guard.
+    const linePrice = computed(() => resolveLinePrice(selectedSpecialty.value, form.value.duration));
+    const amountSource = computed(() => linePrice.value.source);
+    const derivedAmount = computed<number | null>(() => linePrice.value.amount);
     // G4: a selected specialty with no resolvable price blocks the booking.
     const missingPrice = computed(() =>
       form.value.specialtyTypeId > 0 && amountSource.value === 'none'
