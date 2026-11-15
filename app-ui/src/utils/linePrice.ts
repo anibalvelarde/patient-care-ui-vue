@@ -6,6 +6,7 @@
 // estimate). UX only — the API re-resolves authoritatively at each session's date.
 
 import type { LookupItem } from '../interfaces/Lookups';
+import { PRICED_DURATIONS } from '../constants/durations';
 
 export type PriceSource = 'durationPrice' | 'defaultAmount' | 'none';
 
@@ -25,4 +26,26 @@ export function resolveLinePrice(specialty: LookupItem | null | undefined, durat
 /** WP-61 owner ruling: the toast text when a plan line has no price (names specialty + duration). */
 export function missingPlanPriceMessage(specialtyName: string, durationMinutes: number): string {
   return `No price for ${specialtyName} at ${durationMinutes} min — add one in Admin › Specialty prices before continuing.`;
+}
+
+/** WP-64: one specialty whose price sheet leaves some priced durations with no price at all. */
+export interface PriceGap {
+  specialty: LookupItem;
+  missingDurations: number[];
+}
+
+/**
+ * WP-64 (owner request 2026-11-14): the price-sheet audit. A specialty with a default price has no
+ * gaps (every duration falls back to it). Without one, each priced duration that has no
+ * current-effective row is a gap — that specialty can't be booked or planned at it.
+ * Same rule as resolveLinePrice; sorted like the Specialty Types table (sortOrder, then name).
+ */
+export function findPriceGaps(specialties: LookupItem[], durations: readonly number[] = PRICED_DURATIONS): PriceGap[] {
+  return specialties
+    .map((specialty) => ({
+      specialty,
+      missingDurations: durations.filter((d) => resolveLinePrice(specialty, d).source === 'none'),
+    }))
+    .filter((g) => g.missingDurations.length > 0)
+    .sort((a, b) => a.specialty.sortOrder - b.specialty.sortOrder || a.specialty.name.localeCompare(b.specialty.name));
 }

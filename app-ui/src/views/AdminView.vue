@@ -38,7 +38,41 @@
               <!-- Lookup Tables (all share unified columns) -->
               <template v-for="section in lookupSections" :key="section.key">
                 <div v-if="activeSection === section.key">
+                  <!-- WP-64: Specialty Types gets a second tab — the price-sheet gap audit -->
+                  <div v-if="section.key === 'specialty-types'" class="flex space-x-1 mb-4 border-b border-slate-200" role="tablist">
+                    <button
+                      role="tab"
+                      data-testid="specialty-tab-list"
+                      :aria-selected="specialtyTab === 'list'"
+                      :class="tabClass(specialtyTab === 'list')"
+                      @click="specialtyTab = 'list'"
+                    >
+                      Specialties
+                    </button>
+                    <button
+                      role="tab"
+                      data-testid="specialty-tab-gaps"
+                      :aria-selected="specialtyTab === 'gaps'"
+                      :class="tabClass(specialtyTab === 'gaps')"
+                      @click="specialtyTab = 'gaps'"
+                    >
+                      Price gaps
+                      <span
+                        v-if="priceGapCount > 0"
+                        data-testid="price-gaps-badge"
+                        class="ml-1.5 inline-flex items-center justify-center min-w-[1.25rem] px-1.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700"
+                      >{{ priceGapCount }}</span>
+                    </button>
+                  </div>
+                  <SpecialtyPriceGapsPanel
+                    v-if="section.key === 'specialty-types' && specialtyTab === 'gaps'"
+                    :items="crudMap['specialty-types'].items.value"
+                    :loading="crudMap['specialty-types'].loading.value"
+                    :can-edit-prices="canEditPrices"
+                    @prices="openPrices"
+                  />
                   <LookupTableManager
+                    v-else
                     :title="section.title"
                     :subtitle="section.subtitle"
                     :add-button-label="section.addButtonLabel"
@@ -113,7 +147,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted } from 'vue';
+import { defineComponent, ref, computed, onMounted } from 'vue';
 import O2MobileNav from '../components/option02/O2MobileNav.vue';
 import O2Sidebar from '../components/option02/O2Sidebar.vue';
 import O2Header from '../components/option02/O2Header.vue';
@@ -124,6 +158,8 @@ import AdminAccordionNav from '../components/admin/AdminAccordionNav.vue';
 import LookupTableManager from '../components/admin/LookupTableManager.vue';
 import LookupFormModal from '../components/admin/LookupFormModal.vue';
 import SpecialtyPricesModal from '../components/admin/SpecialtyPricesModal.vue';
+import SpecialtyPriceGapsPanel from '../components/admin/SpecialtyPriceGapsPanel.vue';
+import { findPriceGaps } from '../utils/linePrice';
 import AboutPanel from '../components/admin/AboutPanel.vue';
 import PatientMergePanel from '../components/admin/PatientMergePanel.vue';
 import UsersPanel from '../components/admin/UsersPanel.vue';
@@ -143,7 +179,7 @@ export default defineComponent({
   components: {
     O2MobileNav, O2Sidebar, O2Header, O2Footer,
     SiteList, SiteFormModal,
-    AdminAccordionNav, LookupTableManager, LookupFormModal, SpecialtyPricesModal,
+    AdminAccordionNav, LookupTableManager, LookupFormModal, SpecialtyPricesModal, SpecialtyPriceGapsPanel,
     AboutPanel, PatientMergePanel, UsersPanel, ChangeLogPanel,
   },
   setup() {
@@ -357,8 +393,18 @@ export default defineComponent({
       crudMap['specialty-types'].loadItems();
     };
 
+    // ── WP-64: Specialty Types tabs (list | price gaps) ─────────────────
+    const specialtyTab = ref<'list' | 'gaps'>('list');
+    // Badge = specialties with at least one gap (each row on the Price gaps tab).
+    const priceGapCount = computed(() => findPriceGaps(crudMap['specialty-types'].items.value as LookupItem[]).length);
+    const tabClass = (active: boolean) => [
+      'px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors',
+      active ? 'border-violet-600 text-violet-700' : 'border-transparent text-slate-500 hover:text-slate-700',
+    ];
+
     return {
       activeSection,
+      specialtyTab, priceGapCount, tabClass,
       // Sites
       sites, siteLoading, siteError, siteModalVisible, editingSite,
       loadSites, openSiteAdd, openSiteEdit, onSiteSaved, canManageSites,
