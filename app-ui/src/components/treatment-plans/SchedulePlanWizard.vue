@@ -1,7 +1,7 @@
 <template>
   <teleport to="body">
     <div v-if="visible" class="fixed inset-0 z-50 flex justify-end">
-      <div class="absolute inset-0 bg-black/30" @click="handleClose"></div>
+      <div class="absolute inset-0 bg-black/30" data-testid="wizard-backdrop" @click="handleClose"></div>
       <div class="relative w-full max-w-3xl bg-white shadow-xl flex flex-col h-full">
         <!-- Header -->
         <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
@@ -285,6 +285,8 @@
         </div>
       </div>
     </div>
+    <!-- WP-64: unsaved-changes guard -->
+    <UnsavedChangesDialog :visible="confirmVisible" @keep="keepEditing" @discard="discard" />
   </teleport>
 </template>
 
@@ -306,6 +308,8 @@ import { LookupHttpClient } from '../../services/LookupHttpClient';
 import type { LookupItem } from '../../interfaces/Lookups';
 import { resolveLinePrice, missingPlanPriceMessage } from '../../utils/linePrice';
 import { useNotificationsStore } from '../../stores/notifications';
+import { useUnsavedChangesGuard } from '../../composables/useUnsavedChangesGuard';
+import UnsavedChangesDialog from '../shared/UnsavedChangesDialog.vue';
 
 interface LineEdit {
   lineId: number;
@@ -320,6 +324,7 @@ interface LineEdit {
 
 export default defineComponent({
   name: 'SchedulePlanWizard',
+  components: { UnsavedChangesDialog },
   props: {
     visible: { type: Boolean, default: false },
     plan: { type: Object as PropType<TreatmentPlan | null>, default: null },
@@ -564,7 +569,20 @@ export default defineComponent({
       }
     };
 
-    const handleClose = () => {
+    // ── WP-64: unsaved-changes guard ─────────────────────────────────────────────────────────
+    // Unsaved = still in steps 1–2 having changed anything (or moved on to step 2), or in step 3
+    // resolving conflicts. A finished schedule (step 3, no conflicts) is saved — closing is free.
+    const snapshot = ref('');
+    const currentState = () => JSON.stringify({ startDate: startDate.value, siteId: siteId.value, lines: lineEdits.value });
+    const isDirty = computed(() => {
+      if (!props.visible || snapshot.value === '') return false;
+      if (step.value === 3) return hasConflicts.value;
+      return step.value > 1 || currentState() !== snapshot.value;
+    });
+    const { confirmVisible, confirmLeave, keepEditing, discard } = useUnsavedChangesGuard(isDirty);
+
+    const handleClose = async () => {
+      if (!(await confirmLeave())) return;
       if (step.value === 3 && result.value) {
         emit('scheduled', result.value);
       }
@@ -572,8 +590,10 @@ export default defineComponent({
     };
 
     watch(() => props.visible, (val) => {
+      if (!val) { snapshot.value = ''; return; }
       if (val) {
         initForm();
+        snapshot.value = currentState();
         loadDropdowns();
         loadPrices(); // WP-61: real-price estimate + no-price block
         checkPatientFlags(); // WP-23: caretaker block; WP-37: SENADIS active/expired
@@ -581,6 +601,9 @@ export default defineComponent({
     });
 
     return {
+      confirmVisible,
+      keepEditing,
+      discard,
       step,
       startDate,
       siteId,

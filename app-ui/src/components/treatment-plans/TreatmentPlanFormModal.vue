@@ -1,7 +1,7 @@
 <template>
   <teleport to="body">
     <div v-if="visible" class="fixed inset-0 z-50 flex justify-end">
-      <div class="absolute inset-0 bg-black/30" @click="$emit('close')"></div>
+      <div class="absolute inset-0 bg-black/30" data-testid="plan-drawer-backdrop" @click="requestClose"></div>
       <div class="relative w-full max-w-2xl bg-white shadow-xl flex flex-col h-full">
         <!-- Header -->
         <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
@@ -16,7 +16,7 @@
               {{ plan.planStatus }}
             </span>
           </div>
-          <button @click="$emit('close')" class="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100">
+          <button data-testid="plan-drawer-x" @click="requestClose" class="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -235,7 +235,8 @@
           </div>
           <div class="flex items-center justify-end space-x-3">
             <button
-              @click="$emit('close')"
+              data-testid="plan-cancel"
+              @click="requestClose"
               class="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
             >
               Cancel
@@ -287,6 +288,8 @@
         </div>
       </div>
     </div>
+    <!-- WP-64: unsaved-changes guard -->
+    <UnsavedChangesDialog :visible="confirmVisible" @keep="keepEditing" @discard="discard" />
   </teleport>
 </template>
 
@@ -307,6 +310,8 @@ import { PlanStatus } from '../../constants/planStatus';
 import { BOOKABLE_DURATIONS } from '../../constants/durations';
 import { resolveLinePrice, missingPlanPriceMessage } from '../../utils/linePrice';
 import { useNotificationsStore } from '../../stores/notifications';
+import { useUnsavedChangesGuard } from '../../composables/useUnsavedChangesGuard';
+import UnsavedChangesDialog from '../shared/UnsavedChangesDialog.vue';
 
 interface FormLine {
   // WP-61: the stored line id (edit) — sent back so the API updates the line in place.
@@ -320,6 +325,7 @@ interface FormLine {
 
 export default defineComponent({
   name: 'TreatmentPlanFormModal',
+  components: { UnsavedChangesDialog },
   props: {
     visible: { type: Boolean, required: true },
     plan: { type: Object as PropType<TreatmentPlan | null>, default: null },
@@ -357,6 +363,16 @@ export default defineComponent({
 
     const treatmentSpecialties = ref<LookupItem[]>([]);
 
+    // ── WP-64: unsaved-changes guard — dirty = what's on screen differs from what was opened ──
+    const snapshot = ref('');
+    const currentState = () => JSON.stringify({ form: form.value, lines: lines.value });
+    const takeSnapshot = () => { snapshot.value = currentState(); };
+    const isDirty = computed(() => props.visible && snapshot.value !== '' && currentState() !== snapshot.value);
+    const { confirmVisible, confirmLeave, keepEditing, discard } = useUnsavedChangesGuard(isDirty);
+    const requestClose = async () => {
+      if (await confirmLeave()) emit('close');
+    };
+
     const lineCountMismatch = computed(() => {
       return lines.value.length !== form.value.weeklyFrequency;
     });
@@ -368,7 +384,9 @@ export default defineComponent({
         discoverySessions.value = await sessionsClient.getDiscoverySessions(props.patientId);
         // Auto-select if exactly one discovery session and none is pre-selected
         if (discoverySessions.value.length === 1 && form.value.discoverySessionId === 0) {
+          const wasClean = !isDirty.value;
           form.value.discoverySessionId = discoverySessions.value[0].sessionId;
+          if (wasClean) takeSnapshot(); // the app's own pick is not a user edit
         }
       } catch {
         discoverySessions.value = [];
@@ -449,8 +467,11 @@ export default defineComponent({
           populateFromPlan(props.plan);
         } else {
           resetForm();
-          loadDiscoverySessions();
         }
+        takeSnapshot();
+        if (!props.plan) loadDiscoverySessions();
+      } else {
+        snapshot.value = '';
       }
     });
 
@@ -585,6 +606,10 @@ export default defineComponent({
       planStatusBadgeClass,
       handleSave,
       handleActivate,
+      requestClose,
+      confirmVisible,
+      keepEditing,
+      discard,
       addLine,
       removeLine,
       formatDate,
