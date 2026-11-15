@@ -354,7 +354,9 @@ describe('CrossAddChainModal — link existing', () => {
     await wrapper.find('[data-testid="link-submit"]').trigger('click');
     await flushPromises();
 
-    expect(linkPatientMock).toHaveBeenCalledWith(9, 55, true, 'Relative');
+    // WP-62: an EXISTING patient may already have a primary, so the box starts unchecked here
+    // (the API still makes the link primary if the patient has none).
+    expect(linkPatientMock).toHaveBeenCalledWith(9, 55, false, 'Relative');
   });
 
   it('link failure keeps the form open with the error (retry affordance)', async () => {

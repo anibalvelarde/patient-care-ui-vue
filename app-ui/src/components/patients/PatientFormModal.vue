@@ -485,7 +485,9 @@ export default defineComponent({
             middleName: form.middleName || undefined,
             lastName: form.lastName,
             dateOfBirth: formatDobForApi(form.dateOfBirth),
-            email: form.email || undefined, // WP-50C: blank → omit (server stores NULL)
+            // WP-62: edit always sends the trimmed email — '' means CLEAR (stored NULL); omitting it
+            // left the old address in place (E2E F-5: clearing silently did nothing).
+            email: form.email.trim(),
             phoneNumber: form.phoneNumber,
             gender: form.gender,
             // WP-25 (F5): blank must never be sent — the API 400s it ("cannot be cleared";
@@ -518,7 +520,7 @@ export default defineComponent({
             middleName: form.middleName || undefined,
             lastName: form.lastName,
             dateOfBirth: formatDobForApi(form.dateOfBirth),
-            email: form.email || undefined, // WP-50C: blank → omit (server stores NULL)
+            email: form.email.trim() || undefined, // WP-50C/62: blank → omit (server stores NULL), trimmed
             phoneNumber: form.phoneNumber,
             gender: form.gender,
             cedula: form.cedula.trim(), // WP-25 (F5): required at create — guard above ensures non-blank

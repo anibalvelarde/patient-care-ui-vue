@@ -256,7 +256,9 @@ export default defineComponent({
             firstName: form.firstName,
             middleName: form.middleName || undefined,
             lastName: form.lastName,
-            email: form.email || undefined, // WP-50C: blank → omit (server stores NULL)
+            // WP-62: edit always sends the trimmed email — '' means CLEAR (stored NULL); omitting it
+            // left the old address in place (E2E F-5: clearing silently did nothing).
+            email: form.email.trim(),
             phoneNumber: form.phoneNumber,
             notes: form.notes || undefined,
             isActive: form.isActive,
@@ -266,7 +268,7 @@ export default defineComponent({
             firstName: form.firstName,
             middleName: form.middleName || undefined,
             lastName: form.lastName,
-            email: form.email || undefined, // WP-50C: blank → omit (server stores NULL)
+            email: form.email.trim() || undefined, // WP-50C/62: blank → omit (server stores NULL), trimmed
             phoneNumber: form.phoneNumber,
             notes: form.notes || undefined,
             isActive: true,

@@ -32,6 +32,8 @@
       />
       <label :for="primaryInputId" class="text-sm text-slate-700">Primary caretaker</label>
     </div>
+    <!-- WP-62: the API stores the first caretaker of a patient as primary whatever this box says. -->
+    <p class="text-xs text-slate-500 -mt-1" data-testid="link-primary-hint">The first caretaker is always primary.</p>
     <div class="flex items-center space-x-2">
       <button
         data-testid="link-submit"
@@ -73,12 +75,15 @@ export default defineComponent({
     excludeIds: { type: Array as PropType<number[]>, default: () => [] },
     saving: { type: Boolean, default: false },
     submitLabel: { type: String, default: 'Link' },
+    // WP-62: checked only when the parent knows the patient has no primary yet; unknown → unchecked
+    // (the API makes the first link primary anyway). Several primaries are allowed (ruling Q-4).
+    defaultPrimary: { type: Boolean, default: false },
   },
   emits: ['submit', 'cancel'],
   setup(props, { emit }) {
     const selected = ref<LookupOption | null>(null);
     const relationship = ref<CaretakerRelationshipValue | null>(null);
-    const isPrimary = ref(true);
+    const isPrimary = ref(props.defaultPrimary);
     const primaryInputId = computed(() => `link-primary-${props.entityLabel.toLowerCase()}`);
 
     const onSubmit = () => {
