@@ -79,7 +79,9 @@ export interface SessionEventRequest {
 // WP-40: typed PUT /api/sessions/{id} body (previously Record<string, unknown>).
 export interface SessionEventUpdateRequest {
     sessionTime: string;
-    therapyType: string;
+    // WP-61: OMIT to keep the stored therapy type — the API used to blank it when omitted; the edit
+    // surfaces used to re-send the read model's value or 'N/A', which could overwrite it.
+    therapyType?: string;
     // WP-40: OMIT to keep the stored duration — the session read model doesn't carry it, and
     // the old hardcoded 60 silently overwrote legacy durations. Only send a value when the
     // user deliberately changes it (validated server-side against {30,40,45,60,90,120}).
@@ -90,7 +92,8 @@ export interface SessionEventUpdateRequest {
     // payment ledger server-side; echoing the loaded values erased payments recorded meanwhile.
     // Changing discount requires the Sessions.Discount.Edit claim (403 otherwise, BK-3).
     discount: number;
-    notes: string;
+    // WP-61: omit to keep the stored notes; '' clears them.
+    notes?: string;
     appointmentStatusId?: number;
     therapistId?: number;
     siteId?: number | null;

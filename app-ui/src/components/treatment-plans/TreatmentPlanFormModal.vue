@@ -51,6 +51,11 @@
                 </option>
               </select>
             </div>
+            <!-- WP-61 (F-8): the plan is credited to the discovery session's therapist (server-set). -->
+            <p v-if="createdByName" data-testid="plan-created-by" class="text-xs text-slate-500 mt-2">
+              Created by: <span class="font-medium text-slate-700">{{ createdByName }}</span>
+              <span class="text-slate-400">(the discovery session's therapist)</span>
+            </p>
           </div>
 
           <!-- Section 2: Plan Details -->
@@ -192,15 +197,25 @@
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Duration (min)</label>
-                    <input
+                    <!-- WP-61 (F-7): only bookable durations. A stored legacy value outside the set is
+                         shown (marked) so it is visible and must be changed before saving. -->
+                    <select
                       v-model.number="line.duration"
-                      type="number"
-                      min="15"
-                      step="15"
+                      data-testid="line-duration-select"
                       class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                    />
+                    >
+                      <option v-if="!isBookable(line.duration)" :value="line.duration" disabled>
+                        {{ line.duration }} (not bookable)
+                      </option>
+                      <option v-for="d in bookableDurations" :key="d" :value="d">{{ d }}</option>
+                    </select>
                   </div>
                 </div>
+
+                <!-- WP-61: per-line price check (duration row → default → none) -->
+                <p v-if="lineProblem(line)" data-testid="line-missing-price" class="text-xs font-medium text-red-600">
+                  {{ lineProblem(line) }}
+                </p>
               </div>
             </div>
           </div>
@@ -211,7 +226,8 @@
           <div v-if="lineCountMismatch" class="bg-amber-50 border border-amber-200 rounded-lg p-3">
             <p class="text-sm text-amber-700">
               Line count ({{ lines.length }}) does not match sessions per week ({{ form.weeklyFrequency }}).
-              Plan will stay in Draft until this is resolved.
+              <template v-if="plan && plan.planStatus === PlanStatus.Active">An active plan needs one line per weekly session.</template>
+              <template v-else>Plan will stay in Draft until this is resolved.</template>
             </p>
           </div>
           <div v-if="saveError" class="bg-red-50 border border-red-200 rounded-lg p-3">
@@ -226,6 +242,7 @@
             </button>
             <button
               v-if="isEditing && plan && plan.planStatus === PlanStatus.Draft && hasClaim('Permission', Permissions.TreatmentPlansBook)"
+              data-testid="plan-activate"
               @click="handleActivate"
               :disabled="saving || lineCountMismatch"
               :title="lineCountMismatch ? 'Line count must match sessions per week before activating' : ''"
@@ -240,6 +257,7 @@
             </button>
             <button
               v-if="!isEditing && hasClaim('Permission', Permissions.TreatmentPlansBook)"
+              data-testid="plan-save-create"
               @click="handleSave"
               :disabled="saving"
               :class="[
@@ -252,7 +270,8 @@
               {{ saving ? 'Saving...' : 'Save as Draft' }}
             </button>
             <button
-              v-if="isEditing && plan && plan.planStatus === PlanStatus.Draft && hasClaim('Permission', Permissions.TreatmentPlansEdit)"
+              v-if="isEditing && plan && plan.canEditLines && hasClaim('Permission', Permissions.TreatmentPlansEdit)"
+              data-testid="plan-save-edit"
               @click="handleSave"
               :disabled="saving"
               :class="[
@@ -262,7 +281,7 @@
                   : 'bg-violet-600 text-white hover:bg-violet-700',
               ]"
             >
-              {{ saving ? 'Saving...' : 'Save as Draft' }}
+              {{ saving ? 'Saving...' : (plan && plan.planStatus === PlanStatus.Active ? 'Save Changes' : 'Save as Draft') }}
             </button>
           </div>
         </div>
@@ -285,8 +304,13 @@ import type { Therapist } from '../../interfaces/Therapist';
 import { TIME_MIN, TIME_MAX, TIME_STEP } from '../../utils/timeSlots';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import { PlanStatus } from '../../constants/planStatus';
+import { BOOKABLE_DURATIONS } from '../../constants/durations';
+import { resolveLinePrice, missingPlanPriceMessage } from '../../utils/linePrice';
+import { useNotificationsStore } from '../../stores/notifications';
 
 interface FormLine {
+  // WP-61: the stored line id (edit) — sent back so the API updates the line in place.
+  id: number | null;
   specialtyTypeId: number;
   preferredTherapistId: number | null;
   dayOfWeek: number | null;
@@ -306,6 +330,7 @@ export default defineComponent({
   emits: ['close', 'saved'],
   setup(props, { emit }) {
     const { hasClaim } = useClaims();
+    const notifications = useNotificationsStore();
     const plansClient = new TreatmentPlansHttpClient();
     const lookupClient = new LookupHttpClient();
     const therapistsClient = new TherapistsHttpClient();
@@ -353,6 +378,7 @@ export default defineComponent({
     };
 
     const emptyLine = (): FormLine => ({
+      id: null,
       specialtyTypeId: 0,
       preferredTherapistId: null,
       dayOfWeek: null,
@@ -403,6 +429,7 @@ export default defineComponent({
         notes: p.notes || '',
       };
       lines.value = p.lines.map(l => ({
+        id: l.id,
         specialtyTypeId: l.specialtyTypeId,
         preferredTherapistId: l.preferredTherapistId,
         dayOfWeek: l.dayOfWeek,
@@ -431,8 +458,43 @@ export default defineComponent({
     watch(form, () => { saveError.value = ''; }, { deep: true });
     watch(lines, () => { saveError.value = ''; }, { deep: true });
 
+    // ── WP-61 (F-7): every line must be schedulable — a bookable duration and a price ─────────
+    const bookableDurations = BOOKABLE_DURATIONS;
+    const isBookable = (minutes: number) => (BOOKABLE_DURATIONS as readonly number[]).includes(minutes);
+
+    /** Problem text for a line, or '' when it can be scheduled. Lines without a specialty yet are skipped. */
+    const lineProblem = (line: FormLine): string => {
+      if (line.specialtyTypeId <= 0) return '';
+      const specialty = specialtyTypes.value.find(s => s.id === line.specialtyTypeId);
+      if (!specialty) return '';
+      if (!isBookable(line.duration)) {
+        return `${line.duration} min is not bookable — pick ${BOOKABLE_DURATIONS.join(', ')}.`;
+      }
+      return resolveLinePrice(specialty, line.duration).source === 'none'
+        ? missingPlanPriceMessage(specialty.name, line.duration)
+        : '';
+    };
+
+    /**
+     * Owner ruling (2026-11-14): a line with no price (no duration row AND no default) blocks any
+     * further setup — a toast names it and the action stops. Returns true when blocked.
+     */
+    const blockOnLineProblems = (): boolean => {
+      const problems = [...new Set(lines.value.map(lineProblem).filter(Boolean))];
+      if (problems.length === 0) return false;
+      notifications.error(problems.join(' '), 10000);
+      return true;
+    };
+
+    // WP-61 (F-8): who the plan is credited to — the discovery session's therapist.
+    const createdByName = computed(() => {
+      if (props.plan) return props.plan.createdByTherapistName;
+      return discoverySessions.value.find(ds => ds.sessionId === form.value.discoverySessionId)?.therapistName ?? '';
+    });
+
     const buildRequest = (): TreatmentPlanRequest => {
       const lineRequests: TreatmentPlanLineRequest[] = lines.value.map((l, i) => ({
+        id: l.id,
         specialtyTypeId: l.specialtyTypeId,
         preferredTherapistId: l.preferredTherapistId,
         dayOfWeek: l.dayOfWeek,
@@ -444,7 +506,6 @@ export default defineComponent({
       return {
         patientId: props.patientId,
         discoverySessionId: form.value.discoverySessionId,
-        createdByTherapistId: props.plan?.createdByTherapistId || 1,
         resultsDocumentUrl: form.value.resultsDocumentUrl || null,
         weeklyFrequency: form.value.weeklyFrequency,
         durationWeeks: form.value.durationWeeks,
@@ -454,6 +515,7 @@ export default defineComponent({
     };
 
     const handleSave = async () => {
+      if (blockOnLineProblems()) return;
       saving.value = true;
       saveError.value = '';
       try {
@@ -474,6 +536,7 @@ export default defineComponent({
 
     const handleActivate = async () => {
       if (!props.plan) return;
+      if (blockOnLineProblems()) return;
       saving.value = true;
       saveError.value = '';
       try {
@@ -512,6 +575,10 @@ export default defineComponent({
       discoverySessions,
       discoverySessionsLoading,
       lineCountMismatch,
+      bookableDurations,
+      isBookable,
+      lineProblem,
+      createdByName,
       treatmentSpecialties,
       therapistsForLine,
       DAY_OF_WEEK_LABELS,

@@ -61,5 +61,8 @@ describe('TherapistReassignModal — PUT payload (WP-58 F-18)', () => {
     expect(payload).not.toHaveProperty('amountPaid');
     expect(payload).not.toHaveProperty('isPaidOff');
     expect(payload).not.toHaveProperty('duration');
+    // WP-61: therapyType is omitted (the API keeps the stored value) — it used to re-send the read
+    // model's value or 'N/A'.
+    expect(payload).not.toHaveProperty('therapyType');
   });
 });

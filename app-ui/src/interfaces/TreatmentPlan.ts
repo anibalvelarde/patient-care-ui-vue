@@ -30,6 +30,8 @@ export interface TreatmentPlan {
   createdByTherapistId: number;
   createdByTherapistName: string;
   planStatus: PlanStatus;
+  // WP-61: Draft, or Active with no sessions scheduled yet — gates the Edit action.
+  canEditLines: boolean;
   resultsDocumentUrl: string | null;
   weeklyFrequency: number;
   durationWeeks: number;
@@ -40,6 +42,8 @@ export interface TreatmentPlan {
 }
 
 export interface TreatmentPlanLineRequest {
+  // WP-61: PUT only — the stored line to update in place (its id survives); omit for a new line.
+  id?: number | null;
   specialtyTypeId: number;
   preferredTherapistId: number | null;
   dayOfWeek: number | null;
@@ -51,7 +55,7 @@ export interface TreatmentPlanLineRequest {
 export interface TreatmentPlanRequest {
   patientId: number;
   discoverySessionId: number;
-  createdByTherapistId: number;
+  // WP-61 (F-8): no createdByTherapistId — the API credits the discovery session's therapist.
   resultsDocumentUrl?: string | null;
   weeklyFrequency: number;
   durationWeeks: number;
@@ -63,6 +67,8 @@ export interface DiscoverySessionSummary {
   sessionId: number;
   sessionDate: string;
   specialtyAbbreviation: string;
+  // WP-61: the plan built from this discovery is credited to this therapist.
+  therapistId: number;
   therapistName: string;
 }
 
@@ -95,7 +101,8 @@ export interface LineOverride {
   therapistId: number | null;
   dayOfWeek: number | null;
   time: string | null;
-  discountAmount: number | null;
+  // WP-61: never sent — the API ignores it and derives the discount (SENADIS 20%) itself.
+  discountAmount?: number | null;
 }
 
 export interface BulkScheduleRequest {

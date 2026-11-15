@@ -132,11 +132,12 @@ export default defineComponent({
         await sessionsClient.updateSession(props.session.sessionId, {
           therapistId: selectedTherapistId.value,
           sessionTime: props.session.sessionTime,
-          therapyType: props.session.therapyTypes || 'N/A',
+          // WP-61: therapyType OMITTED — the API keeps the stored value.
           amount: props.session.amount,
           discount: props.session.discount,
           // WP-58 (F-18): amountPaid / isPaidOff deliberately not sent — server-derived only.
-          notes: props.session.notes || '',
+          // WP-61: omitted when the read model has none — '' would clear the stored notes.
+          notes: props.session.notes ?? undefined,
           appointmentStatusId: props.session.appointmentStatusId,
           siteId: props.session.siteId,
           specialtyTypeId: props.session.specialtyTypeId,

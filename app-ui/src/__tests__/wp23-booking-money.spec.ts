@@ -257,8 +257,10 @@ function makePlan(patientId: number): TreatmentPlan {
     lines: [
       {
         id: 1,
+        specialtyTypeId: 6, // TL — default 65.00 in the lookup seed ⇒ SENADIS 20% = 13.00
         specialtyAbbreviation: 'TL',
-        duration: 60, // amount 65.00 ⇒ floor 13.00
+        specialtyName: 'Language Therapy',
+        duration: 60,
         preferredTherapistId: null,
         dayOfWeek: 1,
         preferredTime: '09:00',
@@ -273,7 +275,7 @@ type WizardVm = {
   canProceedStep1: boolean;
   startDate: string;
   siteId: number;
-  lineEdits: Array<{ discountAmount: number; discountPct: number }>;
+  step: number;
 };
 
 async function openWizard(pinia: Pinia, patientId: number) {
@@ -299,22 +301,29 @@ describe('SchedulePlanWizard — WP-23', () => {
     expect(vm.canProceedStep1).toBe(false);
   });
 
-  it('F7: initializes each line discount to the 20% floor for SENADIS patients', async () => {
+  // WP-61: the step-2 discount is a read-only mirror of the API's derivation (exactly 20% while
+  // SENADIS is active), shown on the real price — no editable discount, nothing sent.
+  it('F7: shows the read-only SENADIS 20% on the real price for flagged patients', async () => {
     const wrapper = await openWizard(authAs('MGR'), FLAGGED_ID);
     const vm = wrapper.vm as unknown as WizardVm;
+    vm.step = 2;
+    await nextTick();
 
     expect(vm.senadisPatient).toBe(true);
     expect(vm.caretakerBlocked).toBe(false);
-    expect(vm.lineEdits[0].discountAmount).toBe(13); // 20% of the 65.00 line amount
-    expect(vm.lineEdits[0].discountPct).toBe(20);
+    expect(wrapper.find('[data-testid="line-amount"]').text()).toContain('65.00');
+    expect(wrapper.find('[data-testid="line-senadis-discount"]').text()).toContain('13.00'); // 20% of 65.00
+    expect(wrapper.find('input[type="number"]').exists()).toBe(false); // no editable discount
   });
 
-  it('leaves lines untouched for unflagged patients', async () => {
+  it('shows no SENADIS discount for unflagged patients', async () => {
     const wrapper = await openWizard(authAs('MGR'), UNFLAGGED_ID);
     const vm = wrapper.vm as unknown as WizardVm;
+    vm.step = 2;
+    await nextTick();
 
     expect(vm.senadisPatient).toBe(false);
-    expect(vm.lineEdits[0].discountAmount).toBe(0);
+    expect(wrapper.find('[data-testid="line-senadis-discount"]').exists()).toBe(false);
   });
 });
 

@@ -66,6 +66,12 @@
           <!-- Step 2: Review/Override Lines -->
           <div v-if="step === 2" class="space-y-4">
             <p class="text-sm text-slate-600">Review and adjust each treatment line before scheduling.</p>
+            <!-- WP-61 owner ruling: a line with no price blocks scheduling until one is added in Admin. -->
+            <div v-if="hasMissingPrices" data-testid="wizard-missing-price-block" class="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p class="text-sm font-medium text-red-700">
+                Scheduling blocked — a line has no price. Add one in Admin › Specialty prices, then reopen this wizard.
+              </p>
+            </div>
 
             <div
               v-for="(line, idx) in lineEdits"
@@ -113,48 +119,24 @@
                     class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm"
                   />
                 </div>
-                <div>
-                  <label class="block text-xs font-medium text-slate-500 mb-1">Discount</label>
-                  <div class="flex items-center space-x-2">
-                    <div class="relative flex-1">
-                      <span class="absolute left-2 top-1.5 text-xs text-slate-400">$</span>
-                      <!-- WP-23 (F7): min rides the per-line SENADIS floor; submit clamps, API floors.
-                           WP-37 (G2): only while active as of the schedule start date. -->
-                      <input
-                        type="number"
-                        step="0.01"
-                        :min="senadisActive ? lineFloor(line) : 0"
-                        v-model.number="line.discountAmount"
-                        @input="updateDiscountPct(line)"
-                        class="w-full pl-5 pr-2 py-1.5 border border-slate-200 rounded-lg text-sm"
-                      />
-                    </div>
-                    <span class="text-xs text-slate-400">=</span>
-                    <div class="relative flex-1">
-                      <input
-                        type="number"
-                        step="0.1"
-                        :min="senadisActive ? 20 : 0"
-                        max="100"
-                        v-model.number="line.discountPct"
-                        @input="updateDiscountAmt(line)"
-                        class="w-full pl-2 pr-5 py-1.5 border border-slate-200 rounded-lg text-sm"
-                      />
-                      <span class="absolute right-2 top-1.5 text-xs text-slate-400">%</span>
-                    </div>
-                  </div>
-                  <p class="text-xs text-slate-400 mt-1">
-                    Amount: ${{ lineAmount(line).toFixed(2) }}
-                    <template v-if="line.discountAmount > 0">
-                      &rarr; Net: ${{ (lineAmount(line) - line.discountAmount).toFixed(2) }}
-                    </template>
+                <!-- WP-61 (F-7): read-only estimate from the real price sheet (duration row → default).
+                     The editable discount is gone — the API ignored it and derives the discount itself
+                     (exactly 20% while SENADIS is active on the session date, else 0). -->
+                <div data-testid="line-estimate">
+                  <label class="block text-xs font-medium text-slate-500 mb-1">Estimate</label>
+                  <template v-if="lineAmount(line) !== null">
+                    <p class="text-sm text-slate-700" data-testid="line-amount">Amount: ${{ money(lineAmount(line)) }}</p>
+                    <p v-if="senadisActive" data-testid="line-senadis-discount" class="text-xs text-violet-600 mt-0.5">
+                      SENADIS 20%: &minus;${{ money(lineDiscount(line)) }} &rarr; Net ${{ money(lineNet(line)) }}
+                    </p>
+                    <p v-else-if="senadisExpired" data-testid="senadis-expired-badge" class="text-xs font-medium text-amber-600 mt-0.5">
+                      SENADIS expired {{ formatSenadisExpiry(senadisExpiry) }} — no SENADIS discount for this schedule.
+                    </p>
+                  </template>
+                  <p v-else data-testid="line-missing-price" class="text-xs font-medium text-red-600">
+                    {{ missingPriceText(line) }}
                   </p>
-                  <p v-if="senadisActive" class="text-xs text-violet-600 mt-0.5">
-                    SENADIS: min ${{ lineFloor(line).toFixed(2) }} (20%)
-                  </p>
-                  <p v-else-if="senadisExpired" data-testid="senadis-expired-badge" class="text-xs font-medium text-amber-600 mt-0.5">
-                    SENADIS expired {{ formatSenadisExpiry(senadisExpiry) }} — no discount floor for this schedule.
-                  </p>
+                  <p class="text-xs text-slate-400 mt-1">Estimate — final amounts in step 3.</p>
                 </div>
               </div>
             </div>
@@ -280,7 +262,8 @@
             </button>
             <button
               v-if="step === 2 && hasClaim('Permission', Permissions.TreatmentPlansBook)"
-              :disabled="submitting"
+              data-testid="wizard-schedule-button"
+              :disabled="submitting || hasMissingPrices"
               class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 transition-colors disabled:bg-violet-300"
               @click="submitSchedule"
             >
@@ -319,19 +302,21 @@ import type { Site } from '../../interfaces/Site';
 import type { Therapist } from '../../interfaces/Therapist';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import { isSenadisExpired, formatSenadisExpiry } from '../../utils/senadis';
+import { LookupHttpClient } from '../../services/LookupHttpClient';
+import type { LookupItem } from '../../interfaces/Lookups';
+import { resolveLinePrice, missingPlanPriceMessage } from '../../utils/linePrice';
+import { useNotificationsStore } from '../../stores/notifications';
 
 interface LineEdit {
   lineId: number;
+  specialtyTypeId: number;
   specialtyAbbreviation: string;
+  specialtyName: string;
   duration: number;
   therapistId: number;
   dayOfWeek: number;
   time: string;
-  discountAmount: number;
-  discountPct: number;
 }
-
-const HOURLY_RATE = 65;
 
 export default defineComponent({
   name: 'SchedulePlanWizard',
@@ -346,6 +331,11 @@ export default defineComponent({
     const sitesClient = new SitesHttpClient();
     const therapistsClient = new TherapistsHttpClient();
     const patientsClient = new PatientsHttpClient();
+    const lookupClient = new LookupHttpClient();
+    const notifications = useNotificationsStore();
+    // WP-61: the price sheet (current-effective) for the step-2 estimate + the no-price block.
+    const specialtyTypes = ref<LookupItem[]>([]);
+    const pricesLoaded = ref(false);
 
     const step = ref(1);
     const startDate = ref('');
@@ -422,25 +412,28 @@ export default defineComponent({
 
     const canProceedStep1 = computed(() => startDate.value !== '' && siteId.value > 0 && !caretakerBlocked.value);
 
-    const lineAmount = (line: LineEdit) => {
-      return Math.round(HOURLY_RATE * line.duration / 60 * 100) / 100;
-    };
+    // WP-61 (F-7): the real price — duration row → default → none (was a hardcoded $65/hour).
+    const lineAmount = (line: LineEdit): number | null =>
+      resolveLinePrice(specialtyTypes.value.find(st => st.id === line.specialtyTypeId), line.duration).amount;
 
-    // WP-23 (F7): per-line statutory floor — 20% of the line amount, 2dp.
-    const lineFloor = (line: LineEdit) => Math.round(0.20 * lineAmount(line) * 100) / 100;
-
-    // WP-23: one profile + caretaker fetch per wizard open; on failure fail open — the API
-    // enforces both rules server-side (caretaker 400, discount floored).
-    // WP-37: shared so the startDate watcher can re-clamp when the date moves back on/before
-    // the expiry (crossing past it just lifts the min — an already-entered discount is kept).
-    const applyLineFloors = () => {
-      for (const line of lineEdits.value) {
-        if (line.discountAmount < lineFloor(line)) {
-          line.discountAmount = lineFloor(line);
-          updateDiscountPct(line);
-        }
-      }
+    // WP-61: read-only mirror of the API's derivation — exactly 20% while SENADIS is active as of the
+    // schedule start date, else 0 (the API applies it per SESSION date).
+    const lineDiscount = (line: LineEdit): number => {
+      const amount = lineAmount(line);
+      return senadisActive.value && amount !== null ? Math.round(0.20 * amount * 100) / 100 : 0;
     };
+    const lineNet = (line: LineEdit): number | null => {
+      const amount = lineAmount(line);
+      return amount === null ? null : Math.round((amount - lineDiscount(line)) * 100) / 100;
+    };
+    const money = (n: number | null) => (n ?? 0).toFixed(2);
+
+    // Only judged once the price sheet has loaded (a failed load fails open — the API still blocks).
+    const missingLines = computed(() =>
+      pricesLoaded.value ? lineEdits.value.filter(le => lineAmount(le) === null) : []
+    );
+    const hasMissingPrices = computed(() => missingLines.value.length > 0);
+    const missingPriceText = (line: LineEdit) => missingPlanPriceMessage(line.specialtyName || line.specialtyAbbreviation, line.duration);
 
     const checkPatientFlags = async () => {
       caretakerBlocked.value = false;
@@ -455,28 +448,11 @@ export default defineComponent({
         caretakerBlocked.value = caretakers.length === 0;
         senadisPatient.value = patient.hasSenadisDiscount === true;
         senadisExpiry.value = patient.senadisExpirationDate ?? null;
-        if (senadisActive.value) {
-          applyLineFloors();
-        }
       } catch {
         // fail open (see above)
       }
     };
 
-    // WP-37 (G2): re-evaluate the clamp when the schedule start date changes.
-    watch(startDate, () => {
-      if (senadisActive.value) applyLineFloors();
-    });
-
-    const updateDiscountPct = (line: LineEdit) => {
-      const amt = lineAmount(line);
-      line.discountPct = amt > 0 ? Math.round(line.discountAmount / amt * 10000) / 100 : 0;
-    };
-
-    const updateDiscountAmt = (line: LineEdit) => {
-      const amt = lineAmount(line);
-      line.discountAmount = Math.round(amt * line.discountPct / 100 * 100) / 100;
-    };
 
     const sessionsByWeek = computed(() => {
       if (!result.value) return [];
@@ -516,13 +492,13 @@ export default defineComponent({
       if (props.plan) {
         lineEdits.value = props.plan.lines.map(l => ({
           lineId: l.id,
+          specialtyTypeId: l.specialtyTypeId,
           specialtyAbbreviation: l.specialtyAbbreviation,
+          specialtyName: l.specialtyName,
           duration: l.duration,
           therapistId: l.preferredTherapistId ?? 0,
           dayOfWeek: l.dayOfWeek ?? 0,
           time: l.preferredTime ?? '09:00',
-          discountAmount: 0,
-          discountPct: 0,
         }));
       }
     };
@@ -546,9 +522,23 @@ export default defineComponent({
       }
     };
 
+    // WP-61 owner ruling: a line with no price blocks scheduling — toast once on open, naming it.
+    const loadPrices = async () => {
+      pricesLoaded.value = false;
+      try {
+        specialtyTypes.value = await lookupClient.getAll('specialty-types');
+        pricesLoaded.value = true;
+        const problems = [...new Set(missingLines.value.map(missingPriceText))];
+        if (problems.length > 0) notifications.error(problems.join(' '), 10000);
+      } catch {
+        specialtyTypes.value = []; // fail open — the API re-checks prices at scheduling
+      }
+    };
+
     const submitSchedule = async () => {
       if (!props.plan) return;
       if (caretakerBlocked.value) return; // WP-23 (F10); the API would 400 anyway
+      if (hasMissingPrices.value) return; // WP-61; the API would report the conflicts anyway
       submitting.value = true;
       errorMsg.value = '';
 
@@ -557,11 +547,7 @@ export default defineComponent({
         therapistId: le.therapistId > 0 ? le.therapistId : null,
         dayOfWeek: le.dayOfWeek > 0 ? le.dayOfWeek : null,
         time: le.time || null,
-        // WP-23 (F7): last-line clamp to the SENADIS floor; the API floors server-side too.
-        // WP-37 (G2): no clamp when the SENADIS is expired as of the schedule start date.
-        discountAmount: senadisActive.value
-          ? Math.max(le.discountAmount, lineFloor(le))
-          : (le.discountAmount > 0 ? le.discountAmount : null),
+        // WP-61: no discountAmount — the API ignores it and derives the discount itself.
       }));
 
       try {
@@ -589,7 +575,8 @@ export default defineComponent({
       if (val) {
         initForm();
         loadDropdowns();
-        checkPatientFlags(); // WP-23: caretaker block + SENADIS floor
+        loadPrices(); // WP-61: real-price estimate + no-price block
+        checkPatientFlags(); // WP-23: caretaker block; WP-37: SENADIS active/expired
       }
     });
 
@@ -606,15 +593,17 @@ export default defineComponent({
       dayLabels,
       canProceedStep1,
       lineAmount,
-      lineFloor,
+      lineDiscount,
+      lineNet,
+      money,
+      hasMissingPrices,
+      missingPriceText,
       caretakerBlocked,
       senadisPatient,
       senadisExpiry,
       senadisActive,
       senadisExpired,
       formatSenadisExpiry,
-      updateDiscountPct,
-      updateDiscountAmt,
       sessionsByWeek,
       formatDate,
       submitSchedule,
