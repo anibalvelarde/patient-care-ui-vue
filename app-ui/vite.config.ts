@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
 import { execSync } from 'node:child_process'
@@ -19,8 +19,24 @@ const appVersion = process.env.VITE_APP_VERSION ?? 'dev'
 const appCommit = (process.env.VITE_APP_COMMIT ?? gitShortSha()).slice(0, 7)
 const appBuildTime = process.env.VITE_APP_BUILD_TIME ?? new Date().toISOString()
 
+// WP-65: publish the build's identity as /version.json so an open tab can tell a newer build
+// was deployed (useNewVersionCheck). Production builds only; served never-cached (S3 + nginx).
+function versionJson(): Plugin {
+  return {
+    name: 'neurocorp-version-json',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'version.json',
+        source: JSON.stringify({ version: appVersion, commit: appCommit, buildTime: appBuildTime }),
+      })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [vue(), versionJson()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

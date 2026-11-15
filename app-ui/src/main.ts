@@ -5,6 +5,7 @@ import router from './router';
 import { useAuthStore } from './stores/auth';
 import { useNotificationsStore } from './stores/notifications';
 import { authBridge } from './services/authBridge';
+import { installStaleChunkReload } from './utils/staleChunkReload';
 import './assets/styles.css';
 import './tailwind.css';
 
@@ -12,6 +13,8 @@ const app = createApp(App);
 const pinia = createPinia();
 app.use(pinia);
 app.use(router);
+// WP-65: a page the last deploy replaced loads fresh instead of failing.
+installStaleChunkReload(router);
 
 // Wire the low-level HTTP client (via authBridge) to the auth store + router. Done here, where
 // both are available, to keep HttpClientBase free of store/router imports (avoids an import cycle).
