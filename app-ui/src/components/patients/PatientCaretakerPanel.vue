@@ -22,6 +22,16 @@
       </button>
     </div>
 
+    <!-- WP-62 (ruling Q-4): a patient keeps at least one primary caretaker. Legacy patients
+         can be linked with none — say so, and let staff fix it with "Make primary". -->
+    <div
+      v-if="linkedCaretakers.length > 0 && primaryCount === 0"
+      class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm text-amber-800"
+      data-testid="no-primary-banner"
+    >
+      This patient has no primary caretaker. Use <strong>Make primary</strong> on one of them.
+    </div>
+
     <!-- Linked caretakers list -->
     <div v-if="linkedCaretakers.length > 0" class="divide-y divide-slate-100 mb-4">
       <div
@@ -45,17 +55,45 @@
         </div>
         <!-- WP-27 claim hygiene: gate on the claim the API enforces — link/unlink is
              caretaker-side (Caretakers.LinkPatient), not Patients.LinkCaretaker.
-             WP-50: a "Self" link is permanent (the API 409s an unlink), so no Remove for it. -->
-        <button
-          v-if="hasClaim('Permission', Permissions.CaretakersLinkPatient) && !isSelfRelationship(lc.relationshipToPatient)"
-          class="px-3 py-1 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
-          @click="confirmRemove(lc)"
-        >
-          Remove
-        </button>
+             WP-50: a "Self" link is permanent (the API 409s an unlink), so no Remove for it.
+             WP-62: the last primary can't be un-flagged or removed (the API 409s both). -->
+        <div v-if="canLink" class="flex items-center space-x-1">
+          <button
+            v-if="!lc.isPrimaryCaretaker"
+            data-testid="make-primary"
+            class="px-2 py-1 rounded-lg text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
+            :disabled="saving"
+            @click="setPrimary(lc, true)"
+          >
+            Make primary
+          </button>
+          <button
+            v-else
+            data-testid="remove-primary"
+            class="px-2 py-1 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            :disabled="saving || isLastPrimary(lc)"
+            :title="isLastPrimary(lc) ? lastPrimaryHint : ''"
+            @click="setPrimary(lc, false)"
+          >
+            Remove primary
+          </button>
+          <button
+            v-if="!isSelfRelationship(lc.relationshipToPatient)"
+            data-testid="remove-caretaker"
+            class="px-2 py-1 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            :disabled="isLastPrimary(lc)"
+            :title="isLastPrimary(lc) ? lastPrimaryHint : ''"
+            @click="confirmRemove(lc)"
+          >
+            Remove
+          </button>
+        </div>
       </div>
     </div>
     <p v-else class="text-sm text-slate-400 mb-4">No caretakers linked.</p>
+    <p v-if="hasLockedPrimary" class="text-xs text-slate-500 -mt-2 mb-4" data-testid="last-primary-hint">
+      {{ lastPrimaryHint }}
+    </p>
 
     <!-- Remove confirmation -->
     <div
@@ -84,6 +122,42 @@
 
     <!-- Add caretaker section -->
     <div class="border-t border-slate-200 pt-4">
+      <!-- WP-62 (owner correction after WP-50): adult patients already on file can become their own
+           caretaker here, not only in the post-create chooser. A dedicated action, never a picker
+           entry (WP-56 G4): the Self link reuses the patient's own login identity. -->
+      <div v-if="showSelfConfirm" class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3" data-testid="self-confirm">
+        <p class="text-sm text-blue-800">
+          Make <strong>{{ patient.patientName }}</strong> their own caretaker? This can't be undone in the app.
+        </p>
+        <label class="flex items-center space-x-2 mt-2 text-sm text-slate-700">
+          <input v-model="selfIsPrimary" type="checkbox" data-testid="self-primary-checkbox" class="rounded border-slate-300 text-blue-600" />
+          <span>Primary caretaker</span>
+        </label>
+        <div class="flex items-center space-x-2 mt-2">
+          <button
+            data-testid="self-confirm-yes"
+            class="px-3 py-1 rounded-lg text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
+            :disabled="saving"
+            @click="doMakeSelf"
+          >
+            Confirm
+          </button>
+          <button
+            class="px-3 py-1 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+            @click="showSelfConfirm = false"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+      <button
+        v-if="canLink && !hasSelfLink && !showSelfConfirm && !showAddForm"
+        data-testid="make-self-caretaker"
+        class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors mb-1"
+        @click="openSelfConfirm"
+      >
+        <span>This patient is their own caretaker</span>
+      </button>
       <button
         v-if="!showAddForm && hasClaim('Permission', Permissions.CaretakersLinkPatient)"
         class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors"
@@ -102,6 +176,7 @@
         :fetch-options="fetchCaretakerOptions"
         :exclude-ids="linkedCaretakerIds"
         :saving="saving"
+        :default-primary="primaryCount === 0"
         submit-label="Add"
         @submit="doAdd"
         @cancel="showAddForm = false"
@@ -134,6 +209,7 @@ import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import CaretakerLinkForm, { type LookupOption } from '../shared/CaretakerLinkForm.vue';
 import { isSelfRelationship, type CaretakerRelationshipValue } from '../../constants/caretakerRelationships';
+import { isConflict } from '../../services/ApiError';
 
 export default defineComponent({
   name: 'PatientCaretakerPanel',
@@ -152,6 +228,18 @@ export default defineComponent({
     const errorMsg = ref('');
     const removeTarget = ref<PatientCaretakerSummary | null>(null);
     const showAddForm = ref(false);
+
+    const canLink = computed(() => hasClaim('Permission', Permissions.CaretakersLinkPatient));
+
+    // WP-62 (ruling Q-4): at least one primary; several are fine.
+    const primaryCount = computed(() => linkedCaretakers.value.filter((lc) => lc.isPrimaryCaretaker).length);
+    const isLastPrimary = (lc: PatientCaretakerSummary) => lc.isPrimaryCaretaker && primaryCount.value === 1;
+    const hasLockedPrimary = computed(() => canLink.value && primaryCount.value === 1);
+    const lastPrimaryHint = 'The only primary caretaker can’t be removed — make another caretaker primary first.';
+    const hasSelfLink = computed(() => linkedCaretakers.value.some((lc) => isSelfRelationship(lc.relationshipToPatient)));
+
+    const showSelfConfirm = ref(false);
+    const selfIsPrimary = ref(true);
 
     // WP-30: the add form searches the lookup endpoint; already-linked caretakers are excluded.
     const linkedCaretakerIds = computed(() => linkedCaretakers.value.map((lc) => lc.caretakerId));
@@ -207,9 +295,60 @@ export default defineComponent({
       }
     };
 
+    const setPrimary = async (lc: PatientCaretakerSummary, isPrimary: boolean) => {
+      saving.value = true;
+      errorMsg.value = '';
+      try {
+        await caretakerClient.setPrimary(lc.caretakerId, props.patient.patientId, isPrimary);
+        await loadData();
+        emit('updated');
+      } catch (e: unknown) {
+        errorMsg.value = e instanceof Error ? e.message : 'Failed to update the primary caretaker.';
+      } finally {
+        saving.value = false;
+      }
+    };
+
+    const openSelfConfirm = () => {
+      selfIsPrimary.value = primaryCount.value === 0;
+      showSelfConfirm.value = true;
+    };
+
+    const doMakeSelf = async () => {
+      saving.value = true;
+      errorMsg.value = '';
+      try {
+        await caretakerClient.makeSelfCaretaker(props.patient.patientId, selfIsPrimary.value);
+        showSelfConfirm.value = false;
+        await loadData();
+        emit('updated');
+      } catch (e: unknown) {
+        if (isConflict(e)) {
+          errorMsg.value = 'This patient is already their own caretaker.';
+          showSelfConfirm.value = false;
+          await loadData();
+        } else {
+          errorMsg.value = e instanceof Error ? e.message : 'Failed to make the patient their own caretaker.';
+        }
+      } finally {
+        saving.value = false;
+      }
+    };
+
     onMounted(loadData);
 
     return {
+      canLink,
+      primaryCount,
+      isLastPrimary,
+      hasLockedPrimary,
+      lastPrimaryHint,
+      hasSelfLink,
+      showSelfConfirm,
+      selfIsPrimary,
+      setPrimary,
+      openSelfConfirm,
+      doMakeSelf,
       isSelfRelationship,
       linkedCaretakers,
       linkedCaretakerIds,

@@ -69,7 +69,7 @@ export interface PatientUpdateRequest {
   middleName?: string;
   lastName: string;
   dateOfBirth: string;
-  email?: string | null; // WP-50C: optional (NULLable column)
+  email?: string | null; // WP-62: omitted/null = unchanged, '' = clear, else trimmed + format-checked
   phoneNumber: string;
   gender: string;
   activeStatus: boolean;

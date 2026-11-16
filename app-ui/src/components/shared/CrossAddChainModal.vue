@@ -77,6 +77,7 @@
               :entity-label="otherLabel"
               :fetch-options="fetchLinkOptions"
               :saving="saving"
+              :default-primary="addingCaretaker"
               @submit="doLink"
               @cancel="step = 'chooser'"
             />

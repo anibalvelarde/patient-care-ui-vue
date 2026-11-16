@@ -48,6 +48,12 @@ export class CaretakersHttpClient extends HttpClientBase {
     await this.post('/api/caretakers/self', { patientId, isPrimary });
   }
 
+  // WP-62: flag / un-flag an existing link as primary. 409 when un-flagging the patient's last
+  // primary (a patient keeps at least one); 404 when there is no such link.
+  async setPrimary(caretakerId: number, patientId: number, isPrimary: boolean): Promise<void> {
+    await this.put(`/api/caretakers/${caretakerId}/patients/${patientId}`, { isPrimary });
+  }
+
   async unlinkPatient(caretakerId: number, patientId: number): Promise<void> {
     await this.delete(`/api/caretakers/${caretakerId}/patients/${patientId}`);
   }

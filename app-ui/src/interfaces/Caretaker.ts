@@ -48,7 +48,7 @@ export interface CaretakerUpdateRequest {
   firstName?: string
   middleName?: string
   lastName?: string
-  email?: string | null // WP-50C: nullable
+  email?: string | null // WP-62: omitted/null = unchanged, '' = clear, else trimmed + format-checked
   phoneNumber?: string
   notes?: string
   isActive: boolean
