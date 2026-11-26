@@ -1,10 +1,16 @@
 <template>
   <div class="min-h-screen bg-slate-50 font-sans">
-    <O2MobileNav class="print:hidden" />
+    <!-- O2MobileNav / O2Header render two root elements, so a class on the component itself is
+         dropped by Vue; wrap them so print:hidden actually applies (statements-print-chrome.spec). -->
+    <div class="print:hidden">
+      <O2MobileNav />
+    </div>
     <div class="flex flex-1">
       <O2Sidebar class="print:hidden" />
       <div class="flex-1 flex flex-col">
-        <O2Header class="print:hidden" />
+        <div class="print:hidden">
+          <O2Header />
+        </div>
         <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
           <div class="mb-6 print:hidden">
             <h1 class="text-2xl font-bold text-slate-800">Statements</h1>
