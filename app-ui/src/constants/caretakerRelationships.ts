@@ -38,3 +38,13 @@ export const RELATIONSHIP_DROPDOWN_OPTIONS: readonly { value: CaretakerRelations
 export function isSelfRelationship(relationship: string | null | undefined): boolean {
   return (relationship ?? '').toLowerCase() === CaretakerRelationship.Self.toLowerCase();
 }
+
+/**
+ * WP-63 (C3): display label for a wire relationship value ("Legal-Guardian" → "Legal Guardian").
+ * Unknown values pass through unchanged; empty stays empty so call sites keep their own fallback
+ * (e.g. `getRelationshipLabel(x) || 'No relationship'`).
+ */
+export function getRelationshipLabel(relationship: string | null | undefined): string {
+  if (!relationship) return '';
+  return CARETAKER_RELATIONSHIP_LABEL[relationship as CaretakerRelationshipValue] ?? relationship;
+}

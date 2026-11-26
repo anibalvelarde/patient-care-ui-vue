@@ -21,7 +21,7 @@
             class="hover:bg-slate-50 transition-colors"
           >
             <td class="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{{ appt.sessionDate }}</td>
-            <td class="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{{ appt.sessionTime }}</td>
+            <td class="px-4 py-3 text-sm text-slate-700 whitespace-nowrap" data-testid="appt-time">{{ formatWireTime(appt.sessionTime) }}</td>
             <td class="px-4 py-3 text-sm text-slate-800 font-medium">{{ appt.patient }}</td>
             <td class="px-4 py-3 text-sm text-slate-700">{{ appt.therapist }}</td>
             <td class="px-4 py-3 text-sm text-slate-500">{{ appt.therapyTypes || 'N/A' }}</td>
@@ -73,6 +73,7 @@ import StatusBadge from './StatusBadge.vue';
 import type { Appointment } from '../../interfaces/Appointment';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import { SessionStatus } from '../../constants/sessionStatus';
+import { formatWireTime } from '../../utils/localDate';
 
 interface ActionInfo {
   label: string;
@@ -104,7 +105,7 @@ export default defineComponent({
       }
     };
 
-    return { nextAction, hasClaim, Permissions };
+    return { nextAction, hasClaim, Permissions, formatWireTime };
   },
 });
 </script>
