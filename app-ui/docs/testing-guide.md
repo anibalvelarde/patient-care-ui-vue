@@ -186,7 +186,11 @@ function patient(overrides: Partial<Patient> = {}): Patient {
   pinia (`authAs`) so `useClaims` works; don't mock these.
 - Router: most component specs don't install a router — components using `useRouter` need
   `vi.mock('vue-router', …)` or a real router instance (see `router-guard.spec.ts`,
-  `login-view.spec.ts`).
+  `login-view.spec.ts`). Components whose template renders `<router-link>` also need
+  `global: { stubs: { RouterLink: RouterLinkStub } }` (from `@vue/test-utils`) when no real
+  router is installed — otherwise Vue warns `Failed to resolve component: router-link`.
+- **Keep the console clean:** a passing spec should print zero `[Vue warn]` lines. A warning in
+  the output is a harness gap (missing router/stub) or an app bug — fix the cause, never mute it.
 
 ## LookupSelect typeaheads (WP-30) — focus, fake timers, mousedown
 

@@ -33,6 +33,11 @@ const { getPatientCaretakersMock, getCaretakerPatientsMock } = vi.hoisted(() => 
   getCaretakerPatientsMock: vi.fn(),
 }));
 
+// CaretakerPatientsList calls useRouter(); this spec installs no router.
+vi.mock('vue-router', () => ({
+  useRoute: () => ({ query: {} }),
+  useRouter: () => ({ push: vi.fn() }),
+}));
 vi.mock('../services/PatientsHttpClient', () => ({
   PatientsHttpClient: vi.fn().mockImplementation(() => ({
     getPatientCaretakers: getPatientCaretakersMock,
