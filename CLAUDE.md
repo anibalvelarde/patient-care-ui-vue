@@ -66,6 +66,11 @@ npm run lint             # ESLint
 npm run build            # Production build → dist/
 ```
 
+**Full local stack (UI + API + synthetic DB, no PII):** `../patient-care-db/tools/local-dev/local-dev.sh up`
+runs this repo's current branch against a throwaway DB. `walk` tallies browser-console
+warnings/errors over ~35 screens (run it on `main` too for a baseline), and `down` stops everything.
+Guide: `../patient-care-db/tools/local-dev/README.md`.
+
 ## Testing
 
 **Before writing or modifying any spec, read [`app-ui/docs/testing-guide.md`](app-ui/docs/testing-guide.md)** —
