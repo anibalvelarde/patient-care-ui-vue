@@ -28,8 +28,11 @@ export function useClaims() {
     isSystemAdmin,
     roles,
     fullName,
-    hasClaim: store.hasClaim,
-    hasAnyClaim: store.hasAnyClaim,
-    hasAllClaims: store.hasAllClaims,
+    // Wrapped, not passed through: under Vitest a template calls these with the component proxy
+    // as `this`, and Pinia's action wrapper probes `this.$id` — which logs Vue's
+    // 'Property "$id" was accessed during render' warning on every render (test output only).
+    hasClaim: (type: string, value: string) => store.hasClaim(type, value),
+    hasAnyClaim: (claims: Array<[string, string]>) => store.hasAnyClaim(claims),
+    hasAllClaims: (claims: Array<[string, string]>) => store.hasAllClaims(claims),
   };
 }

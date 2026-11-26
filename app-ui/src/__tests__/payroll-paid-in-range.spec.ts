@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia, type Pinia } from 'pinia';
-import { mount, type VueWrapper } from '@vue/test-utils';
+import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils';
 import manifest from '../generated/access-control-matrix.json';
 import { useAuthStore } from '../stores/auth';
 import type { ClaimDto } from '../interfaces/Auth';
@@ -94,7 +94,7 @@ async function mountPayWizard(paid: PaidInRangeSummary | null, sessions: UnpaidP
   const pinia = authAsMgr();
   const w = mount(PayTherapistWizard, {
     props: PAY_WIZARD_PROPS,
-    global: { plugins: [pinia] },
+    global: { plugins: [pinia], stubs: { RouterLink: RouterLinkStub } },
   });
   // Drive the component into its loaded state without hitting the network.
   const vm = w.vm as unknown as {
@@ -222,7 +222,7 @@ describe('RunPayrollWizard — paid-in-range sub-line', () => {
     const pinia = authAsMgr();
     const w = mount(RunPayrollWizard, {
       props: { paymentTypes: PAY_WIZARD_PROPS.paymentTypes },
-      global: { plugins: [pinia] },
+      global: { plugins: [pinia], stubs: { RouterLink: RouterLinkStub } },
     });
     const vm = w.vm as unknown as { preview: PayrollPreviewTherapist[]; loaded: boolean };
     vm.preview = preview;
