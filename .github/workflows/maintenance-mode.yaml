@@ -1,0 +1,99 @@
+# WP-51 — Maintenance mode ("shut-off valve").
+#
+# Turns the maintenance valve ON or OFF by writing s3://neurocorp/maintenance.json (served
+# never-cached through CloudFront; the K3s UI proxies the same file). While ON, every user except
+# SYSADMIN gets a full-screen lockout within ~1 minute; SYSADMIN keeps working under a banner.
+# Use it before a DB restore so nothing the front desk enters is thrown away by the restore.
+#
+#   gh workflow run maintenance-mode.yaml -R anibalvelarde/patient-care-ui-vue -f state=on -f message="Restoring data — back by 14:30"
+#   gh workflow run maintenance-mode.yaml -R anibalvelarde/patient-care-ui-vue -f state=off
+#
+# Wait ~2 minutes after ON before starting the restore (one poll interval + the invalidation).
+# The final step reads the file back through CloudFront and fails the run if it doesn't match.
+
+name: Maintenance mode
+
+on:
+  workflow_dispatch:
+    inputs:
+      state:
+        description: "Turn maintenance mode on or off"
+        required: true
+        type: choice
+        options: ["on", "off"]
+      message:
+        description: "Optional message shown to locked-out users (plain text, max 300 chars)"
+        required: false
+        type: string
+        default: ""
+
+# Two flips must never race each other.
+concurrency:
+  group: maintenance-mode
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  set:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build maintenance.json
+        env:
+          STATE: ${{ inputs.state }}
+          MESSAGE: ${{ inputs.message }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          if [ "$STATE" = "on" ]; then
+            jq -n --arg m "${MESSAGE:0:300}" --arg s "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg by "$ACTOR" \
+              '{enabled: true, message: $m, since: $s, by: $by}' > maintenance.json
+          else
+            jq -n --arg s "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg by "$ACTOR" \
+              '{enabled: false, since: $s, by: $by}' > maintenance.json
+          fi
+          cat maintenance.json
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Upload to S3 (never cached)
+        run: |
+          aws s3 cp maintenance.json s3://neurocorp/maintenance.json \
+            --cache-control "no-cache, no-store, must-revalidate" --content-type application/json
+
+      - name: Invalidate CloudFront
+        run: |
+          if [ -z "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" ]; then
+            echo "::error::CLOUDFRONT_DISTRIBUTION_ID repo secret is not set"
+            exit 1
+          fi
+          # CloudFront's control plane is global and served from us-east-1 (see main.yaml).
+          aws cloudfront create-invalidation \
+            --region us-east-1 \
+            --distribution-id "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" \
+            --paths "/maintenance.json"
+
+      - name: Verify through CloudFront
+        env:
+          STATE: ${{ inputs.state }}
+        run: |
+          set -euo pipefail
+          want=false; [ "$STATE" = "on" ] && want=true
+          for i in $(seq 1 12); do
+            got="$(curl -fsS --max-time 10 "https://d26wxxuffdufr.cloudfront.net/maintenance.json?t=$(date +%s)" \
+                   | jq -r '.enabled // false' 2>/dev/null || echo unknown)"
+            echo "attempt $i: enabled=$got (want $want)"
+            if [ "$got" = "$want" ]; then
+              echo "::notice::Maintenance mode is now $(echo "$STATE" | tr a-z A-Z). Open tabs pick it up within ~1 minute."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::CloudFront still does not serve enabled=$want after 2 minutes — check the S3 object and the invalidation"
+          exit 1

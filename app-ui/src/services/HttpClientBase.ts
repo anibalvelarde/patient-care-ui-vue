@@ -1,6 +1,10 @@
 // services/HttpClientBase.ts
 import { authBridge } from './authBridge';
 import { ApiError } from './ApiError';
+import { maintenanceGate } from './maintenanceState';
+
+export const MAINTENANCE_WRITE_BLOCKED =
+  'The system is under maintenance — nothing was saved. Please try again when maintenance ends.';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
@@ -68,6 +72,13 @@ export abstract class HttpClientBase {
 
   private async request<T>(method: HttpMethod, url: string, body: unknown, opts: RequestOptions): Promise<T> {
     const includeAuth = opts.auth !== false;
+    // WP-51: while the maintenance valve is on, refuse writes for everyone but SYSADMIN — a
+    // backstop for a form submitted in the seconds before the lockout appears. Reads stay
+    // allowed (the lockout already hides the screens), and anonymous auth calls (login/refresh)
+    // must pass so the SYSADMIN can sign in.
+    if (method !== 'GET' && includeAuth && maintenanceGate.blocksWrites()) {
+      throw new ApiError(MAINTENANCE_WRITE_BLOCKED, 503, 'maintenance');
+    }
     const fullUrl = this.baseUrl + url;
     const serialized = body !== undefined ? JSON.stringify(body) : undefined;
 
