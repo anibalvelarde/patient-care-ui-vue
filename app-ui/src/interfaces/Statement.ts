@@ -41,6 +41,13 @@ export interface StatementCharge {
   amountDue: number
   isPastDue: boolean
   paymentsApplied: ChargePaymentApplied[]
+  /**
+   * WP-63B: the session's wire status name (SessionStatusName). Optional — an older API omits it,
+   * and the Status column then falls back to the money status (Past Due / Paid / Open).
+   */
+  statusName?: string
+  /** WP-63B: true when the session's fee was waived. Optional — an older API omits it. */
+  isFeeWaived?: boolean
 }
 
 export interface StatementPaymentAllocation {

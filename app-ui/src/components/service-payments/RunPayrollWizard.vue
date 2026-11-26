@@ -13,6 +13,7 @@
         </div>
         <div>
           <button
+            data-testid="payroll-preview-btn"
             :disabled="loading"
             class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             @click="loadPreview"
@@ -130,17 +131,46 @@
             <span class="text-sm text-slate-600">Total payroll</span>
             <span class="ml-2 text-2xl font-bold text-blue-700">{{ formatCurrency(grandTotal) }}</span>
           </div>
+          <!-- WP-63 (C6): paying is irreversible-ish (reverse/void is a separate flow), so the first
+               click only asks; Confirm is what calls the API. -->
           <button
+            v-if="!confirmPending"
+            data-testid="payroll-run-btn"
             :disabled="!canRun || submitting"
             class="inline-flex items-center px-5 py-2.5 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            @click="run"
+            @click="confirmPending = true"
           >
-            <svg v-if="submitting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
             Run Payroll
           </button>
+        </div>
+        <div
+          v-if="confirmPending"
+          data-testid="payroll-confirm"
+          class="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+        >
+          <p data-testid="payroll-confirm-line" class="text-sm font-medium text-amber-900">{{ confirmMessage }}</p>
+          <div class="flex items-center gap-2">
+            <button
+              data-testid="payroll-confirm-btn"
+              :disabled="!canRun || submitting"
+              class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              @click="run"
+            >
+              <svg v-if="submitting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              {{ submitting ? 'Paying...' : 'Confirm' }}
+            </button>
+            <button
+              data-testid="payroll-cancel-btn"
+              :disabled="submitting"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50"
+              @click="confirmPending = false"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </div>
     </template>
@@ -183,6 +213,10 @@ export default defineComponent({
     const selectedCount = computed(() => selectedTherapists.value.length);
     const grandTotal = computed(() => selectedTherapists.value.reduce((sum, t) => sum + t.totalRemaining, 0));
     const canRun = computed(() => selectedCount.value > 0 && !!paymentTypeId.value);
+    // WP-63 (C6): inline confirm step (pattern: ActionsPanel no-show confirm).
+    const confirmPending = ref(false);
+    const confirmMessage = computed(() =>
+      `Pay ${selectedCount.value} therapist${selectedCount.value !== 1 ? 's' : ''} a total of ${formatCurrency(grandTotal.value)}?`);
 
     const selectAll = (value: boolean) => {
       preview.value.forEach((t) => { selected[t.therapistId] = value; });
@@ -192,6 +226,7 @@ export default defineComponent({
       loading.value = true;
       error.value = '';
       result.value = null;
+      confirmPending.value = false;
       try {
         const list = await client.getPayrollPreview(fromDate.value, toDate.value);
         preview.value = list;
@@ -221,6 +256,7 @@ export default defineComponent({
         });
         loaded.value = false;
         preview.value = [];
+        confirmPending.value = false;
         emit('completed', result.value);
       } catch (e: unknown) {
         error.value = e instanceof Error ? e.message : 'Failed to run payroll.';
@@ -251,7 +287,7 @@ export default defineComponent({
     return {
       fromDate, toDate, paymentDate, paymentTypeId, referenceNumber, notes,
       preview, selected, loaded, loading, submitting, error, result,
-      selectedCount, grandTotal, canRun,
+      selectedCount, grandTotal, canRun, confirmPending, confirmMessage,
       formatCurrency, selectAll, loadPreview, run, reset,
     };
   },
