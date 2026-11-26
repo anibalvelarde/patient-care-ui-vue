@@ -633,8 +633,9 @@ export default defineComponent({
 
     const availableActions = computed(() => {
       const currentId = props.appointment?.appointmentStatusId;
+      // WP-63 (C4, owner ruling): no "Proposed" button. There is no endpoint to move a session BACK
+      // to Proposed — the old button fell through to confirmSession, so clicking it confirmed.
       const actions = [
-        { statusId: SessionStatus.Proposed, label: SESSION_STATUS_LABEL.Proposed, class: 'border-amber-200 text-amber-700 hover:bg-amber-50' },
         { statusId: SessionStatus.Confirmed, label: SESSION_STATUS_LABEL.Confirmed, class: 'border-green-200 text-green-700 hover:bg-green-50' },
         { statusId: SessionStatus.CheckedIn, label: SESSION_STATUS_LABEL.CheckedIn, class: 'border-blue-200 text-blue-700 hover:bg-blue-50' },
         { statusId: SessionStatus.InTherapy, label: SESSION_STATUS_LABEL.InTherapy, class: 'border-purple-200 text-purple-700 hover:bg-purple-50' },
@@ -726,7 +727,6 @@ export default defineComponent({
       try {
         const id = props.appointment.sessionId;
         switch (statusId) {
-          case SessionStatus.Proposed: // Can't directly set to Proposed via endpoint — use confirm with special handling
           case SessionStatus.Confirmed: await client.confirmSession(id, { confirmationMethod: ConfirmationMethod.InPerson, confirmationResult: ConfirmationResult.Confirmed }); break;
           case SessionStatus.Completed: await client.completeSession(id); break;
           case SessionStatus.NoShow:

@@ -75,4 +75,8 @@ export interface UnpaidSessionSummary {
   amountPaid: number
   amountDue: number
   isPastDue: boolean
+  /** WP-63B: specialty name; null when the session has none. Optional — an older API omits it. */
+  specialtyName?: string | null
+  /** WP-63B: wire status name (SessionStatusName). Optional — an older API omits it. */
+  statusName?: string
 }

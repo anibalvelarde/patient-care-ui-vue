@@ -132,26 +132,32 @@
             Loading sessions...
           </div>
 
-          <div v-else-if="unpaidSessions.length === 0" class="text-center text-sm text-slate-400 py-4">
+          <div v-else-if="allocatableSessions.length === 0" class="text-center text-sm text-slate-400 py-4">
             No unpaid sessions found for this caretaker's patients.
           </div>
 
           <div v-else class="space-y-2">
             <div
-              v-for="session in unpaidSessions"
+              v-for="session in allocatableSessions"
               :key="session.sessionId"
+              data-testid="unpaid-session-row"
               class="border border-slate-200 rounded-lg p-3"
             >
               <div class="flex items-center justify-between mb-2">
                 <div>
                   <span class="text-sm font-medium text-slate-800">{{ session.patientName }}</span>
                   <span class="text-xs text-slate-400 ml-2">{{ session.sessionDate }}</span>
+                  <span class="text-xs text-slate-400 ml-1" data-testid="unpaid-session-time">{{ formatWireTime(session.sessionTime) }}</span>
                   <span v-if="session.isPastDue" class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Past Due</span>
                 </div>
                 <span class="text-sm text-slate-600">Due: {{ formatCurrency(session.amountDue) }}</span>
               </div>
               <div class="flex items-center space-x-2">
                 <span class="text-xs text-slate-400">Therapist: {{ session.therapistName }}</span>
+                <span v-if="session.specialtyName" class="text-xs text-slate-500" data-testid="unpaid-session-specialty">{{ session.specialtyName }}</span>
+                <span v-if="session.statusName" data-testid="unpaid-session-status">
+                  <StatusBadge :status-id="statusIdOf(session.statusName)" :status-name="session.statusName" />
+                </span>
                 <div class="flex-1"></div>
                 <label class="flex items-center space-x-1 cursor-pointer">
                   <input
@@ -230,7 +236,9 @@
 </template>
 
 <script lang="ts">
-import { clinicToday } from '../../utils/localDate';
+import { clinicToday, formatWireTime } from '../../utils/localDate';
+import { SessionStatus } from '../../constants/sessionStatus';
+import StatusBadge from '../appointments/StatusBadge.vue';
 import { defineComponent, ref, reactive, computed, watch, type PropType } from 'vue';
 import type { PaymentRecord, PaymentTypeInfo, UnpaidSessionSummary, SessionAllocationItem } from '../../interfaces/Payment';
 import { PaymentsHttpClient } from '../../services/PaymentsHttpClient';
@@ -242,7 +250,7 @@ import { useClaims, Permissions } from '../../composables/useClaims';
 
 export default defineComponent({
   name: 'PaymentFormModal',
-  components: { FormErrorBanner, LookupSelect },
+  components: { FormErrorBanner, LookupSelect, StatusBadge },
   props: {
     visible: { type: Boolean, required: true },
     payment: { type: Object as PropType<PaymentRecord | null>, default: null },
@@ -278,6 +286,14 @@ export default defineComponent({
       const pt = paymentTypes.value.find((t) => t.paymentTypeId === form.paymentTypeId);
       return pt?.abbreviation === 'CHK';
     });
+
+    // WP-63 (C5): the API (WP-63B) already drops $0-due sessions; skip them here too (same 0.005
+    // tolerance as the allocation checks) so an older API can't offer a row with nothing to pay.
+    const allocatableSessions = computed(() => unpaidSessions.value.filter((s) => s.amountDue > 0.005));
+
+    // StatusBadge colours by id; the unpaid-sessions DTO carries only the wire name.
+    const statusIdOf = (statusName: string): number =>
+      SessionStatus[statusName as keyof typeof SessionStatus] ?? 0;
 
     const totalAllocated = computed(() =>
       Object.values(allocations).reduce((sum, val) => sum + (val || 0), 0)
@@ -317,7 +333,7 @@ export default defineComponent({
       }
 
       let remainingAmount = form.amount;
-      for (const session of unpaidSessions.value) {
+      for (const session of allocatableSessions.value) {
         if (remainingAmount <= 0) break;
         const allocAmount = Math.min(remainingAmount, session.amountDue);
         allocations[session.sessionId] = parseFloat(allocAmount.toFixed(2));
@@ -482,6 +498,9 @@ export default defineComponent({
       fetchCaretakerOptions,
       paymentTypes,
       unpaidSessions,
+      allocatableSessions,
+      statusIdOf,
+      formatWireTime,
       allocations,
       form,
       isEdit,

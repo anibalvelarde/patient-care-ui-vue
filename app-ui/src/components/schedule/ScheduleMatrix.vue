@@ -85,7 +85,7 @@
                 >
                   <div class="truncate font-semibold">{{ getSlot(row, activeDay, hour)!.patientName }}</div>
                   <div class="text-[10px] opacity-80 mt-0.5">{{ getSlot(row, activeDay, hour)!.specialtyAbbreviation }}</div>
-                  <div class="text-[10px] opacity-60">{{ getSlot(row, activeDay, hour)!.statusName }}</div>
+                  <div class="text-[10px] opacity-60" data-testid="matrix-slot-status">{{ getStatusLabel(getSlot(row, activeDay, hour)!.statusName ?? '') }}</div>
                 </div>
                 <div v-else class="h-14 rounded-lg mx-0.5 border border-dashed border-transparent hover:border-violet-200"></div>
               </td>
@@ -112,7 +112,7 @@
 import { clinicToday, toLocalYmd } from '../../utils/localDate';
 import { defineComponent, computed, ref, watch, type PropType } from 'vue';
 import type { ScheduleMatrixResponse, TherapistScheduleRow, ScheduleSlot } from '../../interfaces/ScheduleMatrix';
-import { getStatusBadgeClass, SESSION_STATUS_LABEL } from '../../constants/sessionStatus';
+import { getStatusBadgeClass, getStatusLabel, SESSION_STATUS_LABEL } from '../../constants/sessionStatus';
 
 export default defineComponent({
   name: 'ScheduleMatrix',
@@ -203,7 +203,7 @@ export default defineComponent({
       { label: SESSION_STATUS_LABEL.InTherapy, bgClass: 'bg-purple-200' },
     ];
 
-    return { hours, days, activeDay, isToday, formatHour, getSlot, getDaySessionCount, getSlotClass, onSlotClick, legendItems };
+    return { hours, days, activeDay, isToday, formatHour, getSlot, getDaySessionCount, getSlotClass, getStatusLabel, onSlotClick, legendItems };
   },
 });
 </script>

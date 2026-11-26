@@ -10,6 +10,7 @@
     <!-- Pro-forma banner (also visible in print) -->
     <div
       v-if="statement.isProForma"
+      data-testid="therapist-stmt-proforma"
       class="mb-6 rounded-lg border border-amber-400 bg-amber-100 text-amber-900 px-4 py-3"
     >
       <div class="flex items-start gap-2">
@@ -17,7 +18,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
         <p class="text-sm font-medium">
-          Estimated &mdash; Service Payments not yet tracked. This report shows gross amount due based on completed sessions.
+          Estimated &mdash; no service payments have been recorded against this period yet. Amounts are based on completed sessions.
         </p>
       </div>
     </div>
@@ -85,15 +86,16 @@
               :class="session.isBillable ? 'hover:bg-slate-50' : 'bg-slate-50/40 hover:bg-slate-100/60'"
             >
               <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-900">{{ formatDate(session.sessionDate) }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-900">{{ session.sessionTime }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-900" data-testid="therapist-stmt-time">{{ formatWireTime(session.sessionTime) }}</td>
               <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-900">{{ session.therapyType }}</td>
               <td class="px-4 py-3 whitespace-nowrap text-sm">
                 <span
+                  data-testid="therapist-stmt-status"
                   :class="session.isBillable
                     ? 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800'
                     : 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-200 text-slate-600'"
                 >
-                  {{ session.statusName }}
+                  {{ getStatusLabel(session.statusName) }}
                 </span>
               </td>
               <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-900 text-right">{{ formatCurrency(session.amount) }}</td>
@@ -101,7 +103,8 @@
               <td
                 class="px-4 py-3 whitespace-nowrap text-sm text-right font-medium"
                 :class="session.isBillable ? 'text-slate-900' : 'text-slate-400'"
-                :title="session.isBillable ? undefined : `Non-billable: ${session.statusName}`"
+                data-testid="therapist-stmt-provider"
+                :title="session.isBillable ? undefined : `Non-billable: ${getStatusLabel(session.statusName)}`"
               >
                 {{ formatCurrency(session.providerAmount) }}
               </td>
@@ -212,7 +215,8 @@
 
 <script lang="ts">
 import { defineComponent, type PropType } from 'vue';
-import { formatWireDate } from '../../utils/localDate';
+import { formatWireDate, formatWireTime } from '../../utils/localDate';
+import { getStatusLabel } from '../../constants/sessionStatus';
 import type { TherapistStatement } from '../../interfaces/TherapistStatement';
 
 export default defineComponent({
@@ -231,7 +235,7 @@ export default defineComponent({
       window.print();
     };
 
-    return { formatCurrency, formatDate, printStatement };
+    return { formatCurrency, formatDate, formatWireTime, getStatusLabel, printStatement };
   },
 });
 </script>

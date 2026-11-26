@@ -25,7 +25,7 @@
             <li v-for="p in statement.patients" :key="p.patientId" class="text-sm text-slate-700">
               {{ p.patientName }}
               <span v-if="p.isPrimaryCaretaker" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 ml-1">Primary</span>
-              <span v-if="p.relationshipToPatient" class="text-slate-400 ml-1">({{ p.relationshipToPatient }})</span>
+              <span v-if="p.relationshipToPatient" class="text-slate-400 ml-1" data-testid="statement-patient-relationship">({{ getRelationshipLabel(p.relationshipToPatient) }})</span>
             </li>
           </ul>
         </div>
@@ -76,9 +76,18 @@
               <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-medium" :class="charge.amountDue > 0 ? 'text-red-600' : 'text-slate-900'">
                 {{ formatCurrency(charge.amountDue) }}
               </td>
-              <td class="px-4 py-3 whitespace-nowrap text-sm">
+              <td class="px-4 py-3 whitespace-nowrap text-sm" data-testid="statement-charge-status">
+                <!-- WP-63 (C7): a session that was cancelled, waived, or a no-show with nothing owed
+                     says so — "Paid" implied money changed hands. A no-show whose fee is still due
+                     keeps its money status so the balance stays explainable. -->
                 <span
-                  v-if="charge.isPastDue"
+                  v-if="chargeOutcome(charge)"
+                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600"
+                >
+                  {{ chargeOutcome(charge) }}
+                </span>
+                <span
+                  v-else-if="charge.isPastDue"
                   class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800"
                 >
                   Past Due
@@ -216,7 +225,9 @@
 <script lang="ts">
 import { defineComponent, type PropType } from 'vue';
 import { formatWireDate } from '../../utils/localDate';
-import type { AccountStatement } from '../../interfaces/Statement';
+import type { AccountStatement, StatementCharge } from '../../interfaces/Statement';
+import { SessionStatusName, getStatusLabel } from '../../constants/sessionStatus';
+import { getRelationshipLabel } from '../../constants/caretakerRelationships';
 
 export default defineComponent({
   name: 'CaretakerStatementScreen',
@@ -234,7 +245,18 @@ export default defineComponent({
       window.print();
     };
 
-    return { formatCurrency, formatDate, printStatement };
+    // WP-63 (C7): non-money outcome label, or null to fall through to Past Due / Paid / Open.
+    // Order: Cancelled → Waived → No Show (only when nothing is still due).
+    const chargeOutcome = (charge: StatementCharge): string | null => {
+      if (charge.statusName === SessionStatusName.Cancelled) return getStatusLabel(SessionStatusName.Cancelled);
+      if (charge.isFeeWaived) return 'Waived';
+      if (charge.statusName === SessionStatusName.NoShow && charge.amountDue <= 0.005) {
+        return getStatusLabel(SessionStatusName.NoShow);
+      }
+      return null;
+    };
+
+    return { formatCurrency, formatDate, printStatement, chargeOutcome, getRelationshipLabel };
   },
 });
 </script>

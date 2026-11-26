@@ -87,3 +87,24 @@ export function formatDateOnly(
   const ymd = value.slice(0, 10);
   return DATE_ONLY.test(ymd) ? formatWireDate(ymd, options) : value;
 }
+
+// ── WP-63 (C2): wire times ───────────────────────────────────────────────────
+
+const WIRE_TIME = /^(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/;
+
+/**
+ * WP-63 (C2): display a wire time-of-day (`"08:00:00"` / `"13:30"`) as `"8:00 AM"` / `"1:30 PM"` —
+ * 12-hour, no seconds. Pure string math (a time-of-day has no zone, so no Date round-trip).
+ * Empty input → `''`; anything unparseable (incl. out-of-range hours/minutes) is returned unchanged.
+ */
+export function formatWireTime(value: string | null | undefined): string {
+  if (!value) return '';
+  const m = WIRE_TIME.exec(value.trim());
+  if (!m) return value;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h > 23 || min > 59) return value;
+  const suffix = h < 12 ? 'AM' : 'PM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${m[2]} ${suffix}`;
+}

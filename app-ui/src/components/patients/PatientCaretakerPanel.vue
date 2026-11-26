@@ -42,8 +42,8 @@
         <div class="flex items-center space-x-3">
           <div>
             <p class="text-sm font-medium text-slate-800">{{ lc.caretakerName }}</p>
-            <p class="text-xs text-slate-500">
-              {{ lc.relationshipToPatient || 'No relationship' }}
+            <p class="text-xs text-slate-500" data-testid="caretaker-relationship">
+              {{ getRelationshipLabel(lc.relationshipToPatient) || 'No relationship' }}
             </p>
           </div>
           <span
@@ -208,7 +208,7 @@ import { CaretakersHttpClient } from '../../services/CaretakersHttpClient';
 import { PatientsHttpClient } from '../../services/PatientsHttpClient';
 import { useClaims, Permissions } from '../../composables/useClaims';
 import CaretakerLinkForm, { type LookupOption } from '../shared/CaretakerLinkForm.vue';
-import { isSelfRelationship, type CaretakerRelationshipValue } from '../../constants/caretakerRelationships';
+import { isSelfRelationship, getRelationshipLabel, type CaretakerRelationshipValue } from '../../constants/caretakerRelationships';
 import { isConflict } from '../../services/ApiError';
 
 export default defineComponent({
@@ -338,6 +338,7 @@ export default defineComponent({
     onMounted(loadData);
 
     return {
+      getRelationshipLabel,
       canLink,
       primaryCount,
       isLastPrimary,
