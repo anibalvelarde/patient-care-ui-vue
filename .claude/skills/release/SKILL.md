@@ -12,6 +12,12 @@ user-invocable: true
 - [ ] `npm run lint` passes
 - [ ] Dev server starts cleanly (`npm run dev`)
 
+## Local Stack (PII-free) — `../patient-care-db/tools/local-dev/`
+- [ ] `local-dev.sh up` with this branch checked out → DB, API and UI ready
+- [ ] `local-dev.sh walk` exits 0 (no console errors, page errors, failed requests or 5xx)
+- [ ] Console warnings are not higher than the `main` baseline (`walk main` on main)
+- [ ] `local-dev.sh down` afterwards (unless the owner is localhost-testing)
+
 ## Routes & Navigation
 - [ ] All routes in `router/index.ts` resolve to existing views
 - [ ] `CompareView.vue` has cards for every option
