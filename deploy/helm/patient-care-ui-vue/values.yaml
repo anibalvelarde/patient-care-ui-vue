@@ -15,6 +15,10 @@ namespace: nc-k3s
 
 apiBaseUrl: http://neurocorp.k3s:30000
 
+# WP-51: maintenance valve. K3s proxies the CloudFront flag file, so the single "Maintenance mode"
+# GitHub Action flips this host too. Set to "" to disable the valve here (always OFF).
+maintenanceFlagUrl: https://d26wxxuffdufr.cloudfront.net/maintenance.json
+
 healthChecks:
   enabled: true
   path: /

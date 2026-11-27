@@ -3,3 +3,5 @@
 app-ui/src/generated/permissions.ts            text eol=lf
 app-ui/src/generated/access-control-matrix.json text eol=lf
 tools/generate-ui-permissions.sh               text eol=lf
+# WP-51: shell scripts run inside the Linux UI container; a CRLF checkout breaks them on a local docker build.
+build/scripts/*.sh text eol=lf

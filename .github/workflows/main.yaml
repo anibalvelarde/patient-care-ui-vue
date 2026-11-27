@@ -103,10 +103,17 @@ jobs:
       # (index.html, config.js) are what NAME the hashed chunks, so they must never be
       # cached — a stale index.html referencing chunks that `--delete` already removed is
       # exactly the "Failed to fetch dynamically imported module" dead-menu bug (2026-07-11).
+      # WP-51: maintenance.json is the maintenance valve, owned by the "Maintenance mode" workflow,
+      # never by a build. It MUST stay excluded from `--delete`, or a deploy during a restore
+      # would delete the flag and silently reopen the clinic. A build must never ship one either.
       - name: Sync files to S3
         run: |
+          if [ -e app-ui/dist/maintenance.json ]; then
+            echo "::error::dist/maintenance.json must not be built — the valve is set only by the Maintenance mode workflow"
+            exit 1
+          fi
           aws s3 sync app-ui/dist/ s3://neurocorp --delete \
-            --exclude index.html --exclude config.js --exclude version.json \
+            --exclude index.html --exclude config.js --exclude version.json --exclude maintenance.json \
             --cache-control "public,max-age=31536000,immutable"
           aws s3 cp app-ui/dist/index.html s3://neurocorp/index.html \
             --cache-control "no-cache, no-store, must-revalidate"

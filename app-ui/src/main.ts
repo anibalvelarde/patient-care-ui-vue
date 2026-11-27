@@ -5,6 +5,7 @@ import router from './router';
 import { useAuthStore } from './stores/auth';
 import { useNotificationsStore } from './stores/notifications';
 import { authBridge } from './services/authBridge';
+import { maintenanceGate } from './services/maintenanceState';
 import { installStaleChunkReload } from './utils/staleChunkReload';
 import './assets/styles.css';
 import './tailwind.css';
@@ -22,6 +23,8 @@ const auth = useAuthStore(pinia);
 const notifications = useNotificationsStore(pinia);
 authBridge.setAccessTokenGetter(() => auth.accessToken);
 authBridge.setRefreshFn(() => auth.refresh());
+// WP-51: SYSADMIN keeps working (and saving) while the maintenance valve is on.
+maintenanceGate.setBypassGetter(() => auth.isSystemAdmin);
 authBridge.setOnUnauthorized(() => {
   const wasAuthenticated = auth.isAuthenticated;
   auth.logout();
